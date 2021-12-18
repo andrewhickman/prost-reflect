@@ -76,3 +76,24 @@ jobs:
         with:
           command: clippy
           args: -- -D warnings
+
+  doc:
+    name: Rustdoc
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+      - uses: actions-rs/cargo@v1
+        env:
+          RUSTDOCFLAGS: -Z unstable-options --enable-index-page
+        with:
+          command: doc
+          args: --release --all-features
+          toolchain: nightly
+      - uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./target/doc
