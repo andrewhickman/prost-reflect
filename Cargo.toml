@@ -1,0 +1,14 @@
+[package]
+name = "prost-dynamic"
+description = "prost-dynamic."
+version = "0.0.0"
+authors = ["Andrew Hickman <andrew.hickman1@sky.com>"]
+repository = "https://github.com/andrewhickman/prost-dynamic"
+documentation = "https://docs.rs/prost-dynamic"
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+edition = "2018"
+
+[dependencies]
+
+[dev-dependencies]
