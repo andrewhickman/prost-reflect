@@ -15,39 +15,39 @@ use prost_types::{
 /// A wrapper around a [`FileDescriptorSet`], which provides convenient APIs for the
 /// protobuf message definitions.
 #[derive(Debug, Clone)]
-pub struct FileSet {
-    inner: Arc<FileSetInner>,
+pub struct FileDescriptor {
+    inner: Arc<FileDescriptorInner>,
 }
 
 #[derive(Debug)]
-struct FileSetInner {
+struct FileDescriptorInner {
     raw: FileDescriptorSet,
     type_map: ty::TypeMap,
-    services: Vec<ServiceInner>,
+    services: Vec<ServiceDescriptorInner>,
 }
 
 /// A protobuf service definition.
 #[derive(Debug, Clone)]
-pub struct Service {
-    file_set: FileSet,
+pub struct ServiceDescriptor {
+    file_set: FileDescriptor,
     index: usize,
 }
 
 #[derive(Debug)]
-struct ServiceInner {
+struct ServiceDescriptorInner {
     name: String,
-    methods: Vec<MethodInner>,
+    methods: Vec<MethodDescriptorInner>,
 }
 
-/// A method definition for a [`Service`].
+/// A method definition for a [`ServiceDescriptor`].
 #[derive(Debug, Clone)]
-pub struct Method {
-    service: Service,
+pub struct MethodDescriptor {
+    service: ServiceDescriptor,
     index: usize,
 }
 
 #[derive(Debug)]
-struct MethodInner {
+struct MethodDescriptorInner {
     name: String,
     request_ty: ty::TypeId,
     response_ty: ty::TypeId,
@@ -55,30 +55,30 @@ struct MethodInner {
 
 /// A protobuf message definition.
 #[derive(Debug, Clone)]
-pub struct Message {
-    file_set: FileSet,
+pub struct Descriptor {
+    file_set: FileDescriptor,
     ty: ty::TypeId,
 }
 
 #[derive(Debug)]
-struct MessageInner {
-    file_set: FileSet,
+struct DescriptorInner {
+    file_set: FileDescriptor,
     index: usize,
 }
 
-/// An error that may occur while creating a [`FileSet`].
+/// An error that may occur while creating a [`FileDescriptor`].
 #[derive(Debug)]
-pub struct FileSetError {
-    kind: FileSetErrorKind,
+pub struct DescriptorError {
+    kind: DescriptorErrorKind,
 }
 
 #[derive(Debug)]
-enum FileSetErrorKind {
+enum DescriptorErrorKind {
     TypeNotFound { name: String },
     TypeAlreadyExists { name: String },
 }
 
-impl FileSet {
+impl FileDescriptor {
     /// Create a [`FileSet`] from a [`FileDescriptorSet`].
     ///
     /// This method may return an error if `file_descriptor_set` is invalid, for example
@@ -87,30 +87,30 @@ impl FileSet {
     ///
     /// This type is immutable once constructed and uses reference couting internally, so it is
     /// cheap to clone.
-    pub fn new(file_descriptor_set: FileDescriptorSet) -> Result<Self, FileSetError> {
-        let inner = FileSet::from_raw(file_descriptor_set)?;
-        Ok(FileSet {
+    pub fn new(file_descriptor_set: FileDescriptorSet) -> Result<Self, DescriptorError> {
+        let inner = FileDescriptor::from_raw(file_descriptor_set)?;
+        Ok(FileDescriptor {
             inner: Arc::new(inner),
         })
     }
 
-    fn from_raw(raw: FileDescriptorSet) -> Result<FileSetInner, FileSetError> {
+    fn from_raw(raw: FileDescriptorSet) -> Result<FileDescriptorInner, DescriptorError> {
         let mut type_map = ty::TypeMap::new();
         type_map.add_files(&raw)?;
         type_map.shrink_to_fit();
         let type_map_ref = &type_map;
 
-        let services =
-            raw.file
-                .iter()
-                .flat_map(|raw_file| {
-                    raw_file.service.iter().map(move |raw_service| {
-                        Service::from_raw(raw_file, raw_service, type_map_ref)
-                    })
+        let services = raw
+            .file
+            .iter()
+            .flat_map(|raw_file| {
+                raw_file.service.iter().map(move |raw_service| {
+                    ServiceDescriptor::from_raw(raw_file, raw_service, type_map_ref)
                 })
-                .collect::<Result<_, _>>()?;
+            })
+            .collect::<Result<_, _>>()?;
 
-        Ok(FileSetInner {
+        Ok(FileDescriptorInner {
             raw,
             type_map,
             services,
@@ -123,42 +123,44 @@ impl FileSet {
     }
 
     /// Gets an iterator over the services defined in these protobuf files.
-    pub fn services(&self) -> impl ExactSizeIterator<Item = Service> + '_ {
-        (0..self.inner.services.len()).map(move |index| Service {
+    pub fn services(&self) -> impl ExactSizeIterator<Item = ServiceDescriptor> + '_ {
+        (0..self.inner.services.len()).map(move |index| ServiceDescriptor {
             file_set: self.clone(),
             index,
         })
     }
 
     /// Gets a protobuf message by its fully qualified name, for example `.PackageName.MessageName`.
-    pub fn get_message_by_name(&self, name: &str) -> Option<Message> {
+    pub fn get_message_by_name(&self, name: &str) -> Option<Descriptor> {
         let ty = self.inner.type_map.get_by_name(name).ok()?;
-        Some(Message {
+        Some(Descriptor {
             file_set: self.clone(),
             ty,
         })
     }
 }
 
-impl Service {
+impl ServiceDescriptor {
     fn from_raw(
         raw_file: &FileDescriptorProto,
         raw_service: &ServiceDescriptorProto,
         type_map: &ty::TypeMap,
-    ) -> Result<ServiceInner, FileSetError> {
+    ) -> Result<ServiceDescriptorInner, DescriptorError> {
         let methods = raw_service
             .method
             .iter()
-            .map(|raw_method| Method::from_raw(raw_file, raw_service, raw_method, type_map))
-            .collect::<Result<_, FileSetError>>()?;
-        Ok(ServiceInner {
+            .map(|raw_method| {
+                MethodDescriptor::from_raw(raw_file, raw_service, raw_method, type_map)
+            })
+            .collect::<Result<_, DescriptorError>>()?;
+        Ok(ServiceDescriptorInner {
             name: raw_service.name().into(),
             methods,
         })
     }
 
     /// Gets a reference to the [`FileSet`] this service is part of.
-    pub fn file_set(&self) -> &FileSet {
+    pub fn file_set(&self) -> &FileDescriptor {
         &self.file_set
     }
 
@@ -168,29 +170,29 @@ impl Service {
     }
 
     /// Gets an iterator over the methods defined in this service.
-    pub fn methods(&self) -> impl ExactSizeIterator<Item = Method> + '_ {
-        (0..self.inner().methods.len()).map(move |index| Method {
+    pub fn methods(&self) -> impl ExactSizeIterator<Item = MethodDescriptor> + '_ {
+        (0..self.inner().methods.len()).map(move |index| MethodDescriptor {
             service: self.clone(),
             index,
         })
     }
 
-    fn inner(&self) -> &ServiceInner {
+    fn inner(&self) -> &ServiceDescriptorInner {
         &self.file_set().inner.services[self.index]
     }
 }
 
-impl Method {
+impl MethodDescriptor {
     fn from_raw(
         _raw_file: &FileDescriptorProto,
         _raw_service: &ServiceDescriptorProto,
         raw_method: &MethodDescriptorProto,
         type_map: &ty::TypeMap,
-    ) -> Result<MethodInner, FileSetError> {
+    ) -> Result<MethodDescriptorInner, DescriptorError> {
         let request_ty = type_map.get_by_name(raw_method.input_type())?;
         let response_ty = type_map.get_by_name(raw_method.output_type())?;
 
-        Ok(MethodInner {
+        Ok(MethodDescriptorInner {
             name: raw_method.name().to_owned(),
             request_ty,
             response_ty,
@@ -198,7 +200,7 @@ impl Method {
     }
 
     /// Gets a reference to the [`FileSet`] this method is defined in.
-    pub fn file_set(&self) -> &FileSet {
+    pub fn file_set(&self) -> &FileDescriptor {
         self.service.file_set()
     }
 
@@ -208,35 +210,35 @@ impl Method {
     }
 
     /// Gets the request message type of this method.
-    pub fn request(&self) -> Message {
-        Message {
+    pub fn request(&self) -> Descriptor {
+        Descriptor {
             file_set: self.file_set().clone(),
             ty: self.inner().request_ty,
         }
     }
 
     /// Gets the response message type of this method.
-    pub fn response(&self) -> Message {
-        Message {
+    pub fn response(&self) -> Descriptor {
+        Descriptor {
             file_set: self.file_set().clone(),
             ty: self.inner().response_ty,
         }
     }
 
-    fn inner(&self) -> &MethodInner {
+    fn inner(&self) -> &MethodDescriptorInner {
         &self.service.inner().methods[self.index]
     }
 }
 
-impl std::error::Error for FileSetError {}
+impl std::error::Error for DescriptorError {}
 
-impl fmt::Display for FileSetError {
+impl fmt::Display for DescriptorError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.kind {
-            FileSetErrorKind::TypeNotFound { name } => {
+            DescriptorErrorKind::TypeNotFound { name } => {
                 write!(f, "the message or enum type '{}' was not found", name)
             }
-            FileSetErrorKind::TypeAlreadyExists { name } => {
+            DescriptorErrorKind::TypeAlreadyExists { name } => {
                 write!(
                     f,
                     "the message or enum type '{}' is defined multiple times",
@@ -247,18 +249,18 @@ impl fmt::Display for FileSetError {
     }
 }
 
-impl FileSetError {
+impl DescriptorError {
     fn type_not_found(name: impl ToString) -> Self {
-        FileSetError {
-            kind: FileSetErrorKind::TypeNotFound {
+        DescriptorError {
+            kind: DescriptorErrorKind::TypeNotFound {
                 name: name.to_string(),
             },
         }
     }
 
     fn type_already_exists(name: impl ToString) -> Self {
-        FileSetError {
-            kind: FileSetErrorKind::TypeAlreadyExists {
+        DescriptorError {
+            kind: DescriptorErrorKind::TypeAlreadyExists {
                 name: name.to_string(),
             },
         }

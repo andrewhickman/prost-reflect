@@ -3,7 +3,7 @@ use std::{
     ops::{Index, IndexMut},
 };
 
-use crate::FileSetError;
+use crate::DescriptorError;
 
 use super::{Scalar, Ty};
 
@@ -49,10 +49,10 @@ impl TypeMap {
         self.named_types.get(name).copied()
     }
 
-    pub fn get_by_name(&self, name: &str) -> Result<TypeId, FileSetError> {
+    pub fn get_by_name(&self, name: &str) -> Result<TypeId, DescriptorError> {
         match self.try_get_by_name(name) {
             Some(id) => Ok(id),
-            None => Err(FileSetError::type_not_found(name)),
+            None => Err(DescriptorError::type_not_found(name)),
         }
     }
 

@@ -7,7 +7,7 @@ use prost_types::{
     FileDescriptorSet,
 };
 
-use crate::FileSetError;
+use crate::DescriptorError;
 
 pub(crate) use self::map::{TypeId, TypeMap};
 
@@ -67,7 +67,7 @@ pub(crate) struct EnumValue {
 }
 
 impl TypeMap {
-    pub fn add_files(&mut self, raw: &FileDescriptorSet) -> Result<(), FileSetError> {
+    pub fn add_files(&mut self, raw: &FileDescriptorSet) -> Result<(), DescriptorError> {
         let protos = iter_tys(raw)?;
 
         for (name, proto) in &protos {
@@ -89,7 +89,7 @@ impl TypeMap {
         name: &str,
         message_proto: &DescriptorProto,
         protos: &HashMap<String, TyProto>,
-    ) -> Result<TypeId, FileSetError> {
+    ) -> Result<TypeId, DescriptorError> {
         if let Some(id) = self.try_get_by_name(name) {
             return Ok(id);
         }
@@ -133,7 +133,7 @@ impl TypeMap {
         &mut self,
         field_proto: &FieldDescriptorProto,
         protos: &HashMap<String, TyProto>,
-    ) -> Result<TypeId, FileSetError> {
+    ) -> Result<TypeId, DescriptorError> {
         use prost_types::field_descriptor_proto::{Label, Type};
 
         let is_repeated = field_proto.label() == Label::Repeated;
@@ -156,7 +156,7 @@ impl TypeMap {
             Type::Sint32 => self.get_scalar(Scalar::Sint32),
             Type::Sint64 => self.get_scalar(Scalar::Sint64),
             Type::Enum | Type::Message | Type::Group => match protos.get(field_proto.type_name()) {
-                None => return Err(FileSetError::type_not_found(field_proto.type_name())),
+                None => return Err(DescriptorError::type_not_found(field_proto.type_name())),
                 Some(TyProto::Message { message_proto }) => {
                     is_map = match &message_proto.options {
                         Some(options) => options.map_entry(),
@@ -187,7 +187,7 @@ impl TypeMap {
         &mut self,
         name: &str,
         enum_proto: &EnumDescriptorProto,
-    ) -> Result<TypeId, FileSetError> {
+    ) -> Result<TypeId, DescriptorError> {
         if let Some(id) = self.try_get_by_name(name) {
             return Ok(id);
         }
@@ -213,7 +213,7 @@ enum TyProto<'a> {
     Enum { enum_proto: &'a EnumDescriptorProto },
 }
 
-fn iter_tys(raw: &FileDescriptorSet) -> Result<HashMap<String, TyProto<'_>>, FileSetError> {
+fn iter_tys(raw: &FileDescriptorSet) -> Result<HashMap<String, TyProto<'_>>, DescriptorError> {
     let mut result = HashMap::with_capacity(128);
 
     for file in &raw.file {
@@ -229,7 +229,7 @@ fn iter_tys(raw: &FileDescriptorSet) -> Result<HashMap<String, TyProto<'_>>, Fil
                 .insert(full_name.clone(), TyProto::Message { message_proto })
                 .is_some()
             {
-                return Err(FileSetError::type_already_exists(full_name));
+                return Err(DescriptorError::type_already_exists(full_name));
             }
         }
         for enum_proto in &file.enum_type {
@@ -238,7 +238,7 @@ fn iter_tys(raw: &FileDescriptorSet) -> Result<HashMap<String, TyProto<'_>>, Fil
                 .insert(full_name.clone(), TyProto::Enum { enum_proto })
                 .is_some()
             {
-                return Err(FileSetError::type_already_exists(full_name));
+                return Err(DescriptorError::type_already_exists(full_name));
             }
         }
     }
@@ -250,7 +250,7 @@ fn iter_message<'a>(
     namespace: &str,
     result: &mut HashMap<String, TyProto<'a>>,
     raw: &'a DescriptorProto,
-) -> Result<(), FileSetError> {
+) -> Result<(), DescriptorError> {
     for message_proto in &raw.nested_type {
         let full_name = format!("{}.{}", namespace, message_proto.name());
         iter_message(&full_name, result, message_proto)?;
@@ -258,7 +258,7 @@ fn iter_message<'a>(
             .insert(full_name.clone(), TyProto::Message { message_proto })
             .is_some()
         {
-            return Err(FileSetError::type_already_exists(full_name));
+            return Err(DescriptorError::type_already_exists(full_name));
         }
     }
 
@@ -268,7 +268,7 @@ fn iter_message<'a>(
             .insert(full_name.clone(), TyProto::Enum { enum_proto })
             .is_some()
         {
-            return Err(FileSetError::type_already_exists(full_name));
+            return Err(DescriptorError::type_already_exists(full_name));
         }
     }
 
