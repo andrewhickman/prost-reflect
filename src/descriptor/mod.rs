@@ -75,6 +75,7 @@ enum DescriptorErrorKind {
     TypeNotFound { name: String },
     TypeAlreadyExists { name: String },
     UnknownSyntax { syntax: String },
+    InvalidMapType { name: String },
 }
 
 impl FileDescriptor {
@@ -253,10 +254,14 @@ impl Descriptor {
             .as_message()
             .expect("descriptor is not a message type")
     }
+
+    pub(crate) fn type_map(&self) -> &ty::TypeMap {
+        &self.file_set.inner.type_map
+    }
 }
 
 impl FieldDescriptor {
-    pub fn number(&self) -> u32 {
+    pub fn tag(&self) -> u32 {
         self.field
     }
 
@@ -283,12 +288,18 @@ impl FieldDescriptor {
         }
     }
 
-    pub(crate) fn ty(&self) -> &ty::Type {
-        &self.type_map()[self.message_field_ty().ty]
+    pub(crate) fn map_entry_descriptor(&self) -> Option<Descriptor> {
+        match self.ty() {
+            ty::Type::Map(map) => Some(Descriptor {
+                file_set: self.message.file_set.clone(),
+                ty: map.entry_ty,
+            }),
+            _ => None,
+        }
     }
 
-    pub(crate) fn type_map(&self) -> &ty::TypeMap {
-        &self.message.file_set.inner.type_map
+    pub(crate) fn ty(&self) -> &ty::Type {
+        &self.message.type_map()[self.message_field_ty().ty]
     }
 
     fn message_field_ty(&self) -> &ty::MessageField {
@@ -313,6 +324,9 @@ impl fmt::Display for DescriptorError {
             }
             DescriptorErrorKind::UnknownSyntax { syntax } => {
                 write!(f, "the syntax '{}' is not recognized", syntax)
+            }
+            DescriptorErrorKind::InvalidMapType { name } => {
+                write!(f, "the map entry message '{}' is invalid", name)
             }
         }
     }
@@ -339,6 +353,14 @@ impl DescriptorError {
         DescriptorError {
             kind: DescriptorErrorKind::UnknownSyntax {
                 syntax: syntax.to_string(),
+            },
+        }
+    }
+
+    pub(crate) fn invalid_map_entry(name: impl ToString) -> Self {
+        DescriptorError {
+            kind: DescriptorErrorKind::InvalidMapType {
+                name: name.to_string(),
             },
         }
     }

@@ -2,7 +2,7 @@
 //! protobuf type definition is not known ahead of time.
 
 // #![deny(missing_debug_implementations, missing_docs)]
-// #![allow(dead_code)]
+#![allow(dead_code)]
 
 mod descriptor;
 mod dynamic;

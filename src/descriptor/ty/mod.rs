@@ -2,6 +2,7 @@ mod map;
 
 use std::collections::{BTreeMap, HashMap};
 
+use prost::encoding::WireType;
 use prost_types::{
     field_descriptor_proto, DescriptorProto, EnumDescriptorProto, FieldDescriptorProto,
     FileDescriptorSet,
@@ -17,7 +18,7 @@ pub(crate) enum Type {
     Enum(Enum),
     Scalar(Scalar),
     List(List),
-    Map(TypeId),
+    Map(Map),
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -69,6 +70,13 @@ pub(crate) struct EnumValue {
 pub(crate) struct List {
     pub ty: TypeId,
     pub packed: bool,
+}
+
+#[derive(Debug)]
+pub(crate) struct Map {
+    pub entry_ty: TypeId,
+    pub key_ty: TypeId,
+    pub value_ty: TypeId,
 }
 
 impl TypeMap {
@@ -186,7 +194,21 @@ impl TypeMap {
         };
 
         if is_map {
-            Ok(self.add(Type::Map(base_ty)))
+            let message = self[base_ty].as_message().unwrap();
+            let key_ty = match message.fields.get(&1) {
+                Some(field) => field.ty,
+                None => return Err(DescriptorError::invalid_map_entry(&message.name)),
+            };
+            let value_ty = match message.fields.get(&2) {
+                Some(field) => field.ty,
+                None => return Err(DescriptorError::invalid_map_entry(&message.name)),
+            };
+
+            Ok(self.add(Type::Map(Map {
+                entry_ty: base_ty,
+                key_ty,
+                value_ty,
+            })))
         } else if is_repeated {
             let packed = self[base_ty].is_packable()
                 && (syntax == Syntax::Proto3
@@ -263,6 +285,21 @@ impl Scalar {
             | Scalar::Sfixed64
             | Scalar::Bool => true,
             Scalar::String | Scalar::Bytes => false,
+        }
+    }
+
+    pub(crate) fn wire_type(&self) -> WireType {
+        match self {
+            Scalar::Double | Scalar::Fixed64 | Scalar::Sfixed64 => WireType::SixtyFourBit,
+            Scalar::Float | Scalar::Fixed32 | Scalar::Sfixed32 => WireType::ThirtyTwoBit,
+            Scalar::Int32
+            | Scalar::Int64
+            | Scalar::Uint32
+            | Scalar::Uint64
+            | Scalar::Sint32
+            | Scalar::Sint64
+            | Scalar::Bool => WireType::Varint,
+            Scalar::String | Scalar::Bytes => WireType::LengthDelimited,
         }
     }
 }

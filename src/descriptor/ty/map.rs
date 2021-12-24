@@ -101,19 +101,19 @@ impl IndexMut<TypeId> for TypeMap {
 }
 
 impl TypeId {
-    const DOUBLE: Self = TypeId(Scalar::Double as usize);
-    const FLOAT: Self = TypeId(Scalar::Float as usize);
-    const INT32: Self = TypeId(Scalar::Int32 as usize);
-    const INT64: Self = TypeId(Scalar::Int64 as usize);
-    const UINT32: Self = TypeId(Scalar::Uint32 as usize);
-    const UINT64: Self = TypeId(Scalar::Uint64 as usize);
-    const SINT32: Self = TypeId(Scalar::Sint32 as usize);
-    const SINT64: Self = TypeId(Scalar::Sint64 as usize);
-    const FIXED32: Self = TypeId(Scalar::Fixed32 as usize);
-    const FIXED64: Self = TypeId(Scalar::Fixed64 as usize);
-    const SFIXED32: Self = TypeId(Scalar::Sfixed32 as usize);
-    const SFIXED64: Self = TypeId(Scalar::Sfixed64 as usize);
-    const BOOL: Self = TypeId(Scalar::Bool as usize);
-    const STRING: Self = TypeId(Scalar::String as usize);
-    const BYTES: Self = TypeId(Scalar::Bytes as usize);
+    pub const DOUBLE: Self = TypeId(Scalar::Double as usize);
+    pub const FLOAT: Self = TypeId(Scalar::Float as usize);
+    pub const INT32: Self = TypeId(Scalar::Int32 as usize);
+    pub const INT64: Self = TypeId(Scalar::Int64 as usize);
+    pub const UINT32: Self = TypeId(Scalar::Uint32 as usize);
+    pub const UINT64: Self = TypeId(Scalar::Uint64 as usize);
+    pub const SINT32: Self = TypeId(Scalar::Sint32 as usize);
+    pub const SINT64: Self = TypeId(Scalar::Sint64 as usize);
+    pub const FIXED32: Self = TypeId(Scalar::Fixed32 as usize);
+    pub const FIXED64: Self = TypeId(Scalar::Fixed64 as usize);
+    pub const SFIXED32: Self = TypeId(Scalar::Sfixed32 as usize);
+    pub const SFIXED64: Self = TypeId(Scalar::Sfixed64 as usize);
+    pub const BOOL: Self = TypeId(Scalar::Bool as usize);
+    pub const STRING: Self = TypeId(Scalar::String as usize);
+    pub const BYTES: Self = TypeId(Scalar::Bytes as usize);
 }
