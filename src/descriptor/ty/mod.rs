@@ -56,13 +56,17 @@ pub(crate) struct MessageField {
 
 #[derive(Debug)]
 pub(crate) struct Enum {
+    #[allow(unused)]
     name: String,
+    #[allow(unused)]
     values: Vec<EnumValue>,
 }
 
 #[derive(Debug)]
 pub(crate) struct EnumValue {
+    #[allow(unused)]
     name: String,
+    #[allow(unused)]
     number: i32,
 }
 

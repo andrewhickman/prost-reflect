@@ -872,12 +872,12 @@ where
 fn from_sint32(value: i32) -> u32 {
     ((value << 1) ^ (value >> 31)) as u32
 }
-fn to_sint32(value: u32) -> i32 {
-    ((value >> 1) as i32) ^ (-((value & 1) as i32))
-}
+// fn to_sint32(value: u32) -> i32 {
+//     ((value >> 1) as i32) ^ (-((value & 1) as i32))
+// }
 fn from_sint64(value: i64) -> u64 {
     ((value << 1) ^ (value >> 63)) as u64
 }
-fn to_sint64(value: u64) -> i64 {
-    ((value >> 1) as i64) ^ (-((value & 1) as i64))
-}
+// fn to_sint64(value: u64) -> i64 {
+//     ((value >> 1) as i64) ^ (-((value & 1) as i64))
+// }

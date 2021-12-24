@@ -101,7 +101,9 @@ impl IndexMut<TypeId> for TypeMap {
 }
 
 impl TypeId {
+    #[allow(unused)]
     pub const DOUBLE: Self = TypeId(Scalar::Double as usize);
+    #[allow(unused)]
     pub const FLOAT: Self = TypeId(Scalar::Float as usize);
     pub const INT32: Self = TypeId(Scalar::Int32 as usize);
     pub const INT64: Self = TypeId(Scalar::Int64 as usize);
@@ -115,5 +117,6 @@ impl TypeId {
     pub const SFIXED64: Self = TypeId(Scalar::Sfixed64 as usize);
     pub const BOOL: Self = TypeId(Scalar::Bool as usize);
     pub const STRING: Self = TypeId(Scalar::String as usize);
+    #[allow(unused)]
     pub const BYTES: Self = TypeId(Scalar::Bytes as usize);
 }
