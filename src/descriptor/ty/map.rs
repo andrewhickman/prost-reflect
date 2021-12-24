@@ -5,7 +5,7 @@ use std::{
 
 use crate::DescriptorError;
 
-use super::{Scalar, Ty};
+use super::{Scalar, Type};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub(crate) struct TypeId(usize);
@@ -13,7 +13,7 @@ pub(crate) struct TypeId(usize);
 #[derive(Debug)]
 pub(crate) struct TypeMap {
     named_types: HashMap<String, TypeId>,
-    storage: Vec<Ty>,
+    storage: Vec<Type>,
 }
 
 impl TypeMap {
@@ -33,13 +33,13 @@ impl TypeMap {
         self.storage.shrink_to_fit();
     }
 
-    pub fn add(&mut self, ty: Ty) -> TypeId {
+    pub fn add(&mut self, ty: Type) -> TypeId {
         let index = self.storage.len();
         self.storage.push(ty);
         TypeId(index)
     }
 
-    pub fn add_with_name(&mut self, name: String, ty: Ty) -> TypeId {
+    pub fn add_with_name(&mut self, name: String, ty: Type) -> TypeId {
         let id = self.add(ty);
         self.named_types.insert(name, id);
         id
@@ -80,14 +80,14 @@ impl TypeMap {
         ];
 
         for scalar in scalars {
-            let id = self.add(Ty::Scalar(scalar));
+            let id = self.add(Type::Scalar(scalar));
             debug_assert_eq!(self.get_scalar(scalar), id);
         }
     }
 }
 
 impl Index<TypeId> for TypeMap {
-    type Output = Ty;
+    type Output = Type;
 
     fn index(&self, index: TypeId) -> &Self::Output {
         &self.storage[index.0]
@@ -98,4 +98,22 @@ impl IndexMut<TypeId> for TypeMap {
     fn index_mut(&mut self, index: TypeId) -> &mut Self::Output {
         &mut self.storage[index.0]
     }
+}
+
+impl TypeId {
+    const DOUBLE: Self = TypeId(Scalar::Double as usize);
+    const FLOAT: Self = TypeId(Scalar::Float as usize);
+    const INT32: Self = TypeId(Scalar::Int32 as usize);
+    const INT64: Self = TypeId(Scalar::Int64 as usize);
+    const UINT32: Self = TypeId(Scalar::Uint32 as usize);
+    const UINT64: Self = TypeId(Scalar::Uint64 as usize);
+    const SINT32: Self = TypeId(Scalar::Sint32 as usize);
+    const SINT64: Self = TypeId(Scalar::Sint64 as usize);
+    const FIXED32: Self = TypeId(Scalar::Fixed32 as usize);
+    const FIXED64: Self = TypeId(Scalar::Fixed64 as usize);
+    const SFIXED32: Self = TypeId(Scalar::Sfixed32 as usize);
+    const SFIXED64: Self = TypeId(Scalar::Sfixed64 as usize);
+    const BOOL: Self = TypeId(Scalar::Bool as usize);
+    const STRING: Self = TypeId(Scalar::String as usize);
+    const BYTES: Self = TypeId(Scalar::Bytes as usize);
 }

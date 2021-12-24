@@ -1,4 +1,4 @@
-mod ty;
+pub(crate) mod ty;
 
 use std::{fmt, sync::Arc};
 
@@ -57,10 +57,11 @@ pub struct Descriptor {
     ty: ty::TypeId,
 }
 
-#[derive(Debug)]
-struct DescriptorInner {
-    file_set: FileDescriptor,
-    index: usize,
+/// A protobuf message definition.
+#[derive(Debug, Clone)]
+pub struct FieldDescriptor {
+    message: Descriptor,
+    field: u32,
 }
 
 /// An error that may occur while creating a [`FileDescriptor`].
@@ -73,6 +74,7 @@ pub struct DescriptorError {
 enum DescriptorErrorKind {
     TypeNotFound { name: String },
     TypeAlreadyExists { name: String },
+    UnknownSyntax { syntax: String },
 }
 
 impl FileDescriptor {
@@ -224,6 +226,76 @@ impl MethodDescriptor {
     }
 }
 
+impl Descriptor {
+    pub fn fields(&self) -> impl ExactSizeIterator<Item = FieldDescriptor> + '_ {
+        self.message_ty()
+            .fields
+            .keys()
+            .map(move |&field| FieldDescriptor {
+                message: self.clone(),
+                field,
+            })
+    }
+
+    pub fn get_field(&self, number: u32) -> Option<FieldDescriptor> {
+        if self.message_ty().fields.contains_key(&number) {
+            Some(FieldDescriptor {
+                message: self.clone(),
+                field: number,
+            })
+        } else {
+            None
+        }
+    }
+
+    fn message_ty(&self) -> &ty::Message {
+        self.file_set.inner.type_map[self.ty]
+            .as_message()
+            .expect("descriptor is not a message type")
+    }
+}
+
+impl FieldDescriptor {
+    pub fn number(&self) -> u32 {
+        self.field
+    }
+
+    pub fn name(&self) -> &str {
+        &self.message_field_ty().name
+    }
+
+    pub fn json_name(&self) -> &str {
+        &self.message_field_ty().json_name
+    }
+
+    pub fn is_group(&self) -> bool {
+        self.message_field_ty().is_group
+    }
+
+    /// If this field is a message, returns a [Descriptor] representing the message.
+    pub fn message_descriptor(&self) -> Option<Descriptor> {
+        match self.ty() {
+            ty::Type::Message(_) => Some(Descriptor {
+                file_set: self.message.file_set.clone(),
+                ty: self.message_field_ty().ty,
+            }),
+            _ => None,
+        }
+    }
+
+    pub(crate) fn ty(&self) -> &ty::Type {
+        &self.type_map()[self.message_field_ty().ty]
+    }
+
+    pub(crate) fn type_map(&self) -> &ty::TypeMap {
+        &self.message.file_set.inner.type_map
+    }
+
+    fn message_field_ty(&self) -> &ty::MessageField {
+        &self.message.message_ty().fields[&self.field]
+    }
+}
+
 impl std::error::Error for DescriptorError {}
 
 impl fmt::Display for DescriptorError {
@@ -238,6 +310,9 @@ impl fmt::Display for DescriptorError {
                     "the message or enum type '{}' is defined multiple times",
                     name
                 )
+            }
+            DescriptorErrorKind::UnknownSyntax { syntax } => {
+                write!(f, "the syntax '{}' is not recognized", syntax)
             }
         }
     }
@@ -256,6 +331,14 @@ impl DescriptorError {
         DescriptorError {
             kind: DescriptorErrorKind::TypeAlreadyExists {
                 name: name.to_string(),
+            },
+        }
+    }
+
+    pub(crate) fn unknown_syntax(syntax: impl ToString) -> Self {
+        DescriptorError {
+            kind: DescriptorErrorKind::UnknownSyntax {
+                syntax: syntax.to_string(),
             },
         }
     }
