@@ -277,7 +277,7 @@ impl FieldDescriptor {
         self.message_field_ty().is_group
     }
 
-    /// If this field is a message, returns a [Descriptor] representing the message.
+    /// If this field is a message, returns a [`Descriptor`] representing the message type.
     pub fn message_descriptor(&self) -> Option<Descriptor> {
         match self.ty() {
             ty::Type::Message(_) => Some(Descriptor {
