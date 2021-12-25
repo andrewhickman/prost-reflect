@@ -66,7 +66,7 @@ impl Value {
     where
         B: BufMut,
     {
-        if !field_desc.has_presence() && self.is_default(field_desc) {
+        if !field_desc.supports_presence() && self.is_default(field_desc) {
             return;
         }
 
@@ -394,7 +394,7 @@ impl Value {
     }
 
     fn encoded_len(&self, field_desc: &FieldDescriptor) -> usize {
-        if !field_desc.has_presence() && self.is_default(field_desc) {
+        if !field_desc.supports_presence() && self.is_default(field_desc) {
             return 0;
         }
 
@@ -568,7 +568,7 @@ impl MapKey {
     where
         B: BufMut,
     {
-        if !field_desc.has_presence() && self.is_default(&field_desc.kind()) {
+        if !field_desc.supports_presence() && self.is_default(&field_desc.kind()) {
             return;
         }
 
@@ -672,7 +672,7 @@ impl MapKey {
     }
 
     fn encoded_len(&self, field_desc: &FieldDescriptor) -> usize {
-        if !field_desc.has_presence() && self.is_default(&field_desc.kind()) {
+        if !field_desc.supports_presence() && self.is_default(&field_desc.kind()) {
             return 0;
         }
 

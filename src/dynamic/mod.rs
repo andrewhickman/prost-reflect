@@ -89,7 +89,7 @@ impl DynamicMessage {
 impl DynamicMessageField {
     fn new(desc: FieldDescriptor) -> Self {
         DynamicMessageField {
-            value: if desc.has_presence() {
+            value: if desc.supports_presence() {
                 None
             } else {
                 Some(Value::default_value(&desc))
@@ -108,7 +108,7 @@ impl DynamicMessageField {
     }
 
     pub fn clear(&mut self) {
-        self.value = if self.desc.has_presence() {
+        self.value = if self.desc.supports_presence() {
             None
         } else {
             Some(Value::default_value(&self.desc))

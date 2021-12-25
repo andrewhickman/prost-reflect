@@ -367,8 +367,8 @@ impl FieldDescriptor {
         self.message_field_ty().cardinality
     }
 
-    pub fn has_presence(&self) -> bool {
-        self.message_field_ty().has_presence
+    pub fn supports_presence(&self) -> bool {
+        self.message_field_ty().supports_presence
     }
 
     pub fn kind(&self) -> FieldDescriptorKind {

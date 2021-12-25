@@ -53,7 +53,7 @@ pub(in crate::descriptor) struct MessageField {
     pub is_group: bool,
     pub cardinality: Cardinality,
     pub is_packed: bool,
-    pub has_presence: bool,
+    pub supports_presence: bool,
     pub ty: TypeId,
 }
 
@@ -143,7 +143,7 @@ impl TypeMap {
                         .as_ref()
                         .map_or(syntax == Syntax::Proto3, |options| options.packed()));
 
-                let has_presence = field_proto.proto3_optional()
+                let supports_presence = field_proto.proto3_optional()
                     || field_proto.oneof_index.is_some()
                     || (cardinality == Cardinality::Optional
                         && (field_proto.r#type() == ProtoType::Message
@@ -155,7 +155,7 @@ impl TypeMap {
                     is_group: field_proto.r#type() == ProtoType::Group,
                     cardinality,
                     is_packed,
-                    has_presence,
+                    supports_presence,
                     ty,
                 };
 
