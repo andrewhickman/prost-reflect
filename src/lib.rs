@@ -10,4 +10,4 @@ pub use self::descriptor::{
     Descriptor, DescriptorError, EnumDescriptor, FieldDescriptor, FileDescriptor, MethodDescriptor,
     ServiceDescriptor,
 };
-pub use self::dynamic::{DynamicMessage, DynamicValue, MapKey};
+pub use self::dynamic::{DynamicMessage, MapKey, Value};

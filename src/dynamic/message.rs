@@ -6,7 +6,7 @@ use prost::{
 
 use crate::{
     descriptor::{FieldDescriptorKind, MAP_ENTRY_KEY_TAG, MAP_ENTRY_VALUE_TAG},
-    DynamicMessage, DynamicValue, FieldDescriptor, MapKey,
+    DynamicMessage, FieldDescriptor, MapKey, Value,
 };
 
 impl Message for DynamicMessage {
@@ -38,7 +38,7 @@ impl Message for DynamicMessage {
         if let Some(field_desc) = self.desc.get_field(tag) {
             self.fields
                 .entry(tag)
-                .or_insert_with(|| DynamicValue::default_value(&field_desc))
+                .or_insert_with(|| Value::default_value(&field_desc))
                 .merge_field(&field_desc, wire_type, buf, ctx)
         } else {
             prost::encoding::skip_field(wire_type, tag, buf, ctx)
@@ -62,69 +62,69 @@ impl Message for DynamicMessage {
     }
 }
 
-impl DynamicValue {
+impl Value {
     fn encode_field<B>(&self, field_desc: &FieldDescriptor, buf: &mut B)
     where
         B: BufMut,
     {
         let tag = field_desc.tag();
         match (self, field_desc.kind()) {
-            (DynamicValue::Bool(value), FieldDescriptorKind::Bool) => {
+            (Value::Bool(value), FieldDescriptorKind::Bool) => {
                 prost::encoding::bool::encode(tag, value, buf)
             }
-            (DynamicValue::I32(value), FieldDescriptorKind::Int32) => {
+            (Value::I32(value), FieldDescriptorKind::Int32) => {
                 prost::encoding::int32::encode(tag, value, buf)
             }
-            (DynamicValue::I32(value), FieldDescriptorKind::Sint32) => {
+            (Value::I32(value), FieldDescriptorKind::Sint32) => {
                 prost::encoding::sint32::encode(tag, value, buf)
             }
-            (DynamicValue::I32(value), FieldDescriptorKind::Sfixed32) => {
+            (Value::I32(value), FieldDescriptorKind::Sfixed32) => {
                 prost::encoding::sfixed32::encode(tag, value, buf)
             }
-            (DynamicValue::I64(value), FieldDescriptorKind::Int64) => {
+            (Value::I64(value), FieldDescriptorKind::Int64) => {
                 prost::encoding::int64::encode(tag, value, buf)
             }
-            (DynamicValue::I64(value), FieldDescriptorKind::Sint64) => {
+            (Value::I64(value), FieldDescriptorKind::Sint64) => {
                 prost::encoding::sint64::encode(tag, value, buf)
             }
-            (DynamicValue::I64(value), FieldDescriptorKind::Sfixed64) => {
+            (Value::I64(value), FieldDescriptorKind::Sfixed64) => {
                 prost::encoding::sfixed64::encode(tag, value, buf)
             }
-            (DynamicValue::U32(value), FieldDescriptorKind::Uint32) => {
+            (Value::U32(value), FieldDescriptorKind::Uint32) => {
                 prost::encoding::uint32::encode(tag, value, buf)
             }
-            (DynamicValue::U32(value), FieldDescriptorKind::Fixed32) => {
+            (Value::U32(value), FieldDescriptorKind::Fixed32) => {
                 prost::encoding::fixed32::encode(tag, value, buf)
             }
-            (DynamicValue::U64(value), FieldDescriptorKind::Uint64) => {
+            (Value::U64(value), FieldDescriptorKind::Uint64) => {
                 prost::encoding::uint64::encode(tag, value, buf)
             }
-            (DynamicValue::U64(value), FieldDescriptorKind::Fixed64) => {
+            (Value::U64(value), FieldDescriptorKind::Fixed64) => {
                 prost::encoding::fixed64::encode(tag, value, buf)
             }
-            (DynamicValue::F32(value), FieldDescriptorKind::Float) => {
+            (Value::F32(value), FieldDescriptorKind::Float) => {
                 prost::encoding::float::encode(tag, value, buf)
             }
-            (DynamicValue::F64(value), FieldDescriptorKind::Double) => {
+            (Value::F64(value), FieldDescriptorKind::Double) => {
                 prost::encoding::double::encode(tag, value, buf)
             }
-            (DynamicValue::String(value), FieldDescriptorKind::String) => {
+            (Value::String(value), FieldDescriptorKind::String) => {
                 prost::encoding::string::encode(tag, value, buf)
             }
-            (DynamicValue::Bytes(value), FieldDescriptorKind::Bytes) => {
+            (Value::Bytes(value), FieldDescriptorKind::Bytes) => {
                 prost::encoding::bytes::encode(tag, value, buf)
             }
-            (DynamicValue::EnumNumber(value), FieldDescriptorKind::Enum(_)) => {
+            (Value::EnumNumber(value), FieldDescriptorKind::Enum(_)) => {
                 prost::encoding::int32::encode(tag, value, buf)
             }
-            (DynamicValue::Message(message), FieldDescriptorKind::Message(_)) => {
+            (Value::Message(message), FieldDescriptorKind::Message(_)) => {
                 if field_desc.is_group() {
                     prost::encoding::group::encode(tag, message, buf)
                 } else {
                     prost::encoding::message::encode(tag, message, buf)
                 }
             }
-            (DynamicValue::List(values), _) if field_desc.is_list() => {
+            (Value::List(values), _) if field_desc.is_list() => {
                 if field_desc.is_packed() {
                     match field_desc.kind() {
                         FieldDescriptorKind::Enum(_) => encode_packed_list(
@@ -235,7 +235,7 @@ impl DynamicValue {
                     }
                 }
             }
-            (DynamicValue::Map(values), FieldDescriptorKind::Message(map_entry))
+            (Value::Map(values), FieldDescriptorKind::Message(map_entry))
                 if field_desc.is_map() =>
             {
                 let key_desc = map_entry.get_field(MAP_ENTRY_KEY_TAG).unwrap();
@@ -266,62 +266,62 @@ impl DynamicValue {
         B: Buf,
     {
         match (self, field_desc.kind()) {
-            (DynamicValue::Bool(value), FieldDescriptorKind::Bool) => {
+            (Value::Bool(value), FieldDescriptorKind::Bool) => {
                 prost::encoding::bool::merge(wire_type, value, buf, ctx)
             }
-            (DynamicValue::I32(value), FieldDescriptorKind::Int32) => {
+            (Value::I32(value), FieldDescriptorKind::Int32) => {
                 prost::encoding::int32::merge(wire_type, value, buf, ctx)
             }
-            (DynamicValue::I32(value), FieldDescriptorKind::Sint32) => {
+            (Value::I32(value), FieldDescriptorKind::Sint32) => {
                 prost::encoding::sint32::merge(wire_type, value, buf, ctx)
             }
-            (DynamicValue::I32(value), FieldDescriptorKind::Sfixed32) => {
+            (Value::I32(value), FieldDescriptorKind::Sfixed32) => {
                 prost::encoding::sfixed32::merge(wire_type, value, buf, ctx)
             }
-            (DynamicValue::I64(value), FieldDescriptorKind::Int64) => {
+            (Value::I64(value), FieldDescriptorKind::Int64) => {
                 prost::encoding::int64::merge(wire_type, value, buf, ctx)
             }
-            (DynamicValue::I64(value), FieldDescriptorKind::Sint64) => {
+            (Value::I64(value), FieldDescriptorKind::Sint64) => {
                 prost::encoding::sint64::merge(wire_type, value, buf, ctx)
             }
-            (DynamicValue::I64(value), FieldDescriptorKind::Sfixed64) => {
+            (Value::I64(value), FieldDescriptorKind::Sfixed64) => {
                 prost::encoding::sfixed64::merge(wire_type, value, buf, ctx)
             }
-            (DynamicValue::U32(value), FieldDescriptorKind::Uint32) => {
+            (Value::U32(value), FieldDescriptorKind::Uint32) => {
                 prost::encoding::uint32::merge(wire_type, value, buf, ctx)
             }
-            (DynamicValue::U32(value), FieldDescriptorKind::Fixed32) => {
+            (Value::U32(value), FieldDescriptorKind::Fixed32) => {
                 prost::encoding::fixed32::merge(wire_type, value, buf, ctx)
             }
-            (DynamicValue::U64(value), FieldDescriptorKind::Uint64) => {
+            (Value::U64(value), FieldDescriptorKind::Uint64) => {
                 prost::encoding::uint64::merge(wire_type, value, buf, ctx)
             }
-            (DynamicValue::U64(value), FieldDescriptorKind::Fixed64) => {
+            (Value::U64(value), FieldDescriptorKind::Fixed64) => {
                 prost::encoding::fixed64::merge(wire_type, value, buf, ctx)
             }
-            (DynamicValue::F32(value), FieldDescriptorKind::Float) => {
+            (Value::F32(value), FieldDescriptorKind::Float) => {
                 prost::encoding::float::merge(wire_type, value, buf, ctx)
             }
-            (DynamicValue::F64(value), FieldDescriptorKind::Double) => {
+            (Value::F64(value), FieldDescriptorKind::Double) => {
                 prost::encoding::double::merge(wire_type, value, buf, ctx)
             }
-            (DynamicValue::String(value), FieldDescriptorKind::String) => {
+            (Value::String(value), FieldDescriptorKind::String) => {
                 prost::encoding::string::merge(wire_type, value, buf, ctx)
             }
-            (DynamicValue::Bytes(value), FieldDescriptorKind::Bytes) => {
+            (Value::Bytes(value), FieldDescriptorKind::Bytes) => {
                 prost::encoding::bytes::merge(wire_type, value, buf, ctx)
             }
-            (DynamicValue::EnumNumber(value), FieldDescriptorKind::Enum(_)) => {
+            (Value::EnumNumber(value), FieldDescriptorKind::Enum(_)) => {
                 prost::encoding::int32::merge(wire_type, value, buf, ctx)
             }
-            (DynamicValue::Message(message), FieldDescriptorKind::Message(_)) => {
+            (Value::Message(message), FieldDescriptorKind::Message(_)) => {
                 if field_desc.is_group() {
                     prost::encoding::group::merge(field_desc.tag(), wire_type, message, buf, ctx)
                 } else {
                     prost::encoding::message::merge(wire_type, message, buf, ctx)
                 }
             }
-            (DynamicValue::List(values), _) if field_desc.is_list() => {
+            (Value::List(values), _) if field_desc.is_list() => {
                 if field_desc.is_packed() && wire_type == WireType::LengthDelimited {
                     let packed_wire_type = match field_desc.kind() {
                         FieldDescriptorKind::Double
@@ -341,26 +341,26 @@ impl DynamicValue {
                         _ => unreachable!("invalid entry type for packed list"),
                     };
                     prost::encoding::merge_loop(values, buf, ctx, |values, buf, ctx| {
-                        let mut value = DynamicValue::default_value_inner(field_desc);
+                        let mut value = Value::default_value_inner(field_desc);
                         value.merge_field(field_desc, packed_wire_type, buf, ctx)?;
                         values.push(value);
                         Ok(())
                     })
                 } else {
-                    let mut value = DynamicValue::default_value_inner(field_desc);
+                    let mut value = Value::default_value_inner(field_desc);
                     value.merge_field(field_desc, wire_type, buf, ctx)?;
                     values.push(value);
                     Ok(())
                 }
             }
-            (DynamicValue::Map(values), FieldDescriptorKind::Message(map_entry))
+            (Value::Map(values), FieldDescriptorKind::Message(map_entry))
                 if field_desc.is_map() =>
             {
                 let key_desc = map_entry.get_field(MAP_ENTRY_KEY_TAG).unwrap();
                 let value_desc = map_entry.get_field(MAP_ENTRY_VALUE_TAG).unwrap();
 
                 let mut key = MapKey::default_value(&key_desc);
-                let mut value = DynamicValue::default_value(&value_desc);
+                let mut value = Value::default_value(&value_desc);
                 prost::encoding::merge_loop(
                     &mut (&mut key, &mut value),
                     buf,
@@ -387,62 +387,62 @@ impl DynamicValue {
     fn encoded_len(&self, field_desc: &FieldDescriptor) -> usize {
         let tag = field_desc.tag();
         match (self, field_desc.kind()) {
-            (DynamicValue::Bool(value), FieldDescriptorKind::Bool) => {
+            (Value::Bool(value), FieldDescriptorKind::Bool) => {
                 prost::encoding::bool::encoded_len(tag, value)
             }
-            (DynamicValue::I32(value), FieldDescriptorKind::Int32) => {
+            (Value::I32(value), FieldDescriptorKind::Int32) => {
                 prost::encoding::int32::encoded_len(tag, value)
             }
-            (DynamicValue::I32(value), FieldDescriptorKind::Sint32) => {
+            (Value::I32(value), FieldDescriptorKind::Sint32) => {
                 prost::encoding::sint32::encoded_len(tag, value)
             }
-            (DynamicValue::I32(value), FieldDescriptorKind::Sfixed32) => {
+            (Value::I32(value), FieldDescriptorKind::Sfixed32) => {
                 prost::encoding::sfixed32::encoded_len(tag, value)
             }
-            (DynamicValue::I64(value), FieldDescriptorKind::Int64) => {
+            (Value::I64(value), FieldDescriptorKind::Int64) => {
                 prost::encoding::int64::encoded_len(tag, value)
             }
-            (DynamicValue::I64(value), FieldDescriptorKind::Sint64) => {
+            (Value::I64(value), FieldDescriptorKind::Sint64) => {
                 prost::encoding::sint64::encoded_len(tag, value)
             }
-            (DynamicValue::I64(value), FieldDescriptorKind::Sfixed64) => {
+            (Value::I64(value), FieldDescriptorKind::Sfixed64) => {
                 prost::encoding::sfixed64::encoded_len(tag, value)
             }
-            (DynamicValue::U32(value), FieldDescriptorKind::Uint32) => {
+            (Value::U32(value), FieldDescriptorKind::Uint32) => {
                 prost::encoding::uint32::encoded_len(tag, value)
             }
-            (DynamicValue::U32(value), FieldDescriptorKind::Fixed32) => {
+            (Value::U32(value), FieldDescriptorKind::Fixed32) => {
                 prost::encoding::fixed32::encoded_len(tag, value)
             }
-            (DynamicValue::U64(value), FieldDescriptorKind::Uint64) => {
+            (Value::U64(value), FieldDescriptorKind::Uint64) => {
                 prost::encoding::uint64::encoded_len(tag, value)
             }
-            (DynamicValue::U64(value), FieldDescriptorKind::Fixed64) => {
+            (Value::U64(value), FieldDescriptorKind::Fixed64) => {
                 prost::encoding::fixed64::encoded_len(tag, value)
             }
-            (DynamicValue::F32(value), FieldDescriptorKind::Float) => {
+            (Value::F32(value), FieldDescriptorKind::Float) => {
                 prost::encoding::float::encoded_len(tag, value)
             }
-            (DynamicValue::F64(value), FieldDescriptorKind::Double) => {
+            (Value::F64(value), FieldDescriptorKind::Double) => {
                 prost::encoding::double::encoded_len(tag, value)
             }
-            (DynamicValue::String(value), FieldDescriptorKind::String) => {
+            (Value::String(value), FieldDescriptorKind::String) => {
                 prost::encoding::string::encoded_len(tag, value)
             }
-            (DynamicValue::Bytes(value), FieldDescriptorKind::Bytes) => {
+            (Value::Bytes(value), FieldDescriptorKind::Bytes) => {
                 prost::encoding::bytes::encoded_len(tag, value)
             }
-            (DynamicValue::EnumNumber(value), FieldDescriptorKind::Enum(_)) => {
+            (Value::EnumNumber(value), FieldDescriptorKind::Enum(_)) => {
                 prost::encoding::int32::encoded_len(tag, value)
             }
-            (DynamicValue::Message(message), FieldDescriptorKind::Message(_)) => {
+            (Value::Message(message), FieldDescriptorKind::Message(_)) => {
                 if field_desc.is_group() {
                     prost::encoding::group::encoded_len(tag, message)
                 } else {
                     prost::encoding::message::encoded_len(tag, message)
                 }
             }
-            (DynamicValue::List(values), _) if field_desc.is_list() => {
+            (Value::List(values), _) if field_desc.is_list() => {
                 if field_desc.is_packed() {
                     match field_desc.kind() {
                         FieldDescriptorKind::Enum(_) => packed_list_encoded_len(
@@ -526,7 +526,7 @@ impl DynamicValue {
                         .sum()
                 }
             }
-            (DynamicValue::Map(values), FieldDescriptorKind::Message(map_entry))
+            (Value::Map(values), FieldDescriptorKind::Message(map_entry))
                 if field_desc.is_map() =>
             {
                 let key_desc = map_entry.get_field(MAP_ENTRY_KEY_TAG).unwrap();
