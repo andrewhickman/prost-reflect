@@ -21,7 +21,7 @@ impl Message for DynamicMessage {
                 .get_field(tag)
                 .expect("unexpected field in DynamicMessage");
             value.encode_field(
-                self.desc.type_map(),
+                self.desc.file_descriptor().type_map(),
                 field_desc.tag(),
                 field_desc.ty(),
                 field_desc.is_group(),
@@ -45,7 +45,13 @@ impl Message for DynamicMessage {
             self.fields
                 .entry(tag)
                 .or_insert_with(|| DynamicValue::default_value(&field_desc))
-                .merge_field(self.desc.type_map(), wire_type, &field_desc, buf, ctx)
+                .merge_field(
+                    self.desc.file_descriptor().type_map(),
+                    wire_type,
+                    &field_desc,
+                    buf,
+                    ctx,
+                )
         } else {
             prost::encoding::skip_field(wire_type, tag, buf, ctx)
         }
@@ -59,7 +65,7 @@ impl Message for DynamicMessage {
                 .get_field(tag)
                 .expect("unexpected field in DynamicMessage");
             len += value.encoded_len(
-                self.desc.type_map(),
+                self.desc.file_descriptor().type_map(),
                 field_desc.tag(),
                 field_desc.ty(),
                 field_desc.is_group(),

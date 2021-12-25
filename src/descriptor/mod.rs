@@ -135,6 +135,10 @@ impl FileDescriptor {
             ty,
         })
     }
+
+    pub(crate) fn type_map(&self) -> &ty::TypeMap {
+        &self.inner.type_map
+    }
 }
 
 impl ServiceDescriptor {
@@ -228,6 +232,11 @@ impl MethodDescriptor {
 }
 
 impl Descriptor {
+    /// Gets a reference to the [`FileDescriptor`] this message is defined in.
+    pub fn file_descriptor(&self) -> &FileDescriptor {
+        &self.file_set
+    }
+
     pub fn fields(&self) -> impl ExactSizeIterator<Item = FieldDescriptor> + '_ {
         self.message_ty()
             .fields
@@ -253,10 +262,6 @@ impl Descriptor {
         self.file_set.inner.type_map[self.ty]
             .as_message()
             .expect("descriptor is not a message type")
-    }
-
-    pub(crate) fn type_map(&self) -> &ty::TypeMap {
-        &self.file_set.inner.type_map
     }
 }
 
@@ -299,7 +304,7 @@ impl FieldDescriptor {
     }
 
     pub(crate) fn ty(&self) -> &ty::Type {
-        &self.message.type_map()[self.message_field_ty().ty]
+        &self.message.file_descriptor().type_map()[self.message_field_ty().ty]
     }
 
     pub(crate) fn ty_id(&self) -> ty::TypeId {
