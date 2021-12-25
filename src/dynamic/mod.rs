@@ -9,7 +9,13 @@ use crate::{descriptor::FieldDescriptorKind, Descriptor, FieldDescriptor};
 #[derive(Debug, Clone, PartialEq)]
 pub struct DynamicMessage {
     desc: Descriptor,
-    fields: BTreeMap<u32, Value>,
+    fields: BTreeMap<u32, DynamicMessageField>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct DynamicMessageField {
+    desc: FieldDescriptor,
+    value: Value,
 }
 
 /// A dynamically-typed protobuf value.
@@ -28,7 +34,7 @@ pub enum Value {
     String(String),
     Bytes(Bytes),
     EnumNumber(i32),
-    Message(DynamicMessage),
+    Message(Option<DynamicMessage>),
     List(Vec<Value>),
     Map(HashMap<MapKey, Value>),
 }
@@ -47,8 +53,11 @@ pub enum MapKey {
 impl DynamicMessage {
     pub fn new(desc: Descriptor) -> Self {
         DynamicMessage {
+            fields: desc
+                .fields()
+                .map(|field_desc| (field_desc.tag(), DynamicMessageField::new(field_desc)))
+                .collect(),
             desc,
-            fields: BTreeMap::new(),
         }
     }
 
@@ -56,24 +65,45 @@ impl DynamicMessage {
         self.desc.clone()
     }
 
-    pub fn get_field_value(&self, tag: u32) -> Option<&Value> {
+    pub fn get_field(&self, tag: u32) -> Option<&DynamicMessageField> {
         self.fields.get(&tag)
     }
 
-    pub fn get_field_value_mut(&mut self, tag: u32) -> Option<&mut Value> {
+    pub fn get_field_mut(&mut self, tag: u32) -> Option<&mut DynamicMessageField> {
         self.fields.get_mut(&tag)
     }
 
-    pub fn get_field_value_by_name(&self, name: &str) -> Option<&Value> {
+    pub fn get_field_by_name(&self, name: &str) -> Option<&DynamicMessageField> {
         self.desc
             .get_field_by_name(name)
-            .and_then(|field_desc| self.get_field_value(field_desc.tag()))
+            .map(|field_desc| self.get_field(field_desc.tag()).expect("field not set"))
     }
 
-    pub fn get_field_value_by_name_mut(&mut self, name: &str) -> Option<&mut Value> {
+    pub fn get_field_by_name_mut(&mut self, name: &str) -> Option<&mut DynamicMessageField> {
         self.desc
             .get_field_by_name(name)
-            .and_then(move |field_desc| self.get_field_value_mut(field_desc.tag()))
+            .map(move |field_desc| self.get_field_mut(field_desc.tag()).expect("field not set"))
+    }
+}
+
+impl DynamicMessageField {
+    fn new(desc: FieldDescriptor) -> Self {
+        DynamicMessageField {
+            value: Value::default_value(&desc),
+            desc,
+        }
+    }
+
+    pub fn value(&self) -> &Value {
+        &self.value
+    }
+
+    pub fn value_mut(&mut self) -> &mut Value {
+        &mut self.value
+    }
+
+    pub fn clear(&mut self) {
+        self.value = Value::default_value(&self.desc);
     }
 }
 
@@ -84,13 +114,13 @@ impl Value {
         } else if field_desc.is_map() {
             Value::Map(HashMap::default())
         } else {
-            Self::default_value_inner(field_desc)
+            Self::default_value_for_kind(&field_desc.kind())
         }
     }
 
-    fn default_value_inner(field_desc: &FieldDescriptor) -> Self {
-        match field_desc.kind() {
-            FieldDescriptorKind::Message(desc) => Value::Message(DynamicMessage::new(desc)),
+    fn default_value_for_kind(kind: &FieldDescriptorKind) -> Self {
+        match kind {
+            FieldDescriptorKind::Message(_) => Value::Message(None),
             // TODO this is not correct for proto2 enums, which can have a non-zero default value.
             FieldDescriptorKind::Enum(_) => Value::EnumNumber(0),
             FieldDescriptorKind::Double => Value::F64(0.0),
@@ -181,8 +211,8 @@ impl Value {
 }
 
 impl MapKey {
-    pub fn default_value(desc: &FieldDescriptor) -> Self {
-        match desc.kind() {
+    pub fn default_value(kind: &FieldDescriptorKind) -> Self {
+        match *kind {
             FieldDescriptorKind::Int32
             | FieldDescriptorKind::Sint32
             | FieldDescriptorKind::Sfixed32 => MapKey::I32(0),

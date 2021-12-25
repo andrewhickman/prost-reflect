@@ -15,12 +15,8 @@ impl Message for DynamicMessage {
         B: BufMut,
         Self: Sized,
     {
-        for (&tag, value) in &self.fields {
-            let field_desc = self
-                .desc
-                .get_field(tag)
-                .expect("unexpected field in DynamicMessage");
-            value.encode_field(&field_desc, buf);
+        for field in self.fields.values() {
+            field.value.encode_field(&field.desc, buf);
         }
     }
 
@@ -35,11 +31,8 @@ impl Message for DynamicMessage {
         B: Buf,
         Self: Sized,
     {
-        if let Some(field_desc) = self.desc.get_field(tag) {
-            self.fields
-                .entry(tag)
-                .or_insert_with(|| Value::default_value(&field_desc))
-                .merge_field(&field_desc, wire_type, buf, ctx)
+        if let Some(field) = self.fields.get_mut(&tag) {
+            field.value.merge_field(&field.desc, wire_type, buf, ctx)
         } else {
             prost::encoding::skip_field(wire_type, tag, buf, ctx)
         }
@@ -47,18 +40,16 @@ impl Message for DynamicMessage {
 
     fn encoded_len(&self) -> usize {
         let mut len = 0;
-        for (&tag, value) in &self.fields {
-            let field_desc = self
-                .desc
-                .get_field(tag)
-                .expect("unexpected field in DynamicMessage");
-            len += value.encoded_len(&field_desc);
+        for field in self.fields.values() {
+            len += field.value.encoded_len(&field.desc);
         }
         len
     }
 
     fn clear(&mut self) {
-        self.fields.clear()
+        for value in self.fields.values_mut() {
+            value.clear();
+        }
     }
 }
 
@@ -117,13 +108,14 @@ impl Value {
             (Value::EnumNumber(value), FieldDescriptorKind::Enum(_)) => {
                 prost::encoding::int32::encode(tag, value, buf)
             }
-            (Value::Message(message), FieldDescriptorKind::Message(_)) => {
+            (Value::Message(Some(message)), FieldDescriptorKind::Message(_)) => {
                 if field_desc.is_group() {
                     prost::encoding::group::encode(tag, message, buf)
                 } else {
                     prost::encoding::message::encode(tag, message, buf)
                 }
             }
+            (Value::Message(None), FieldDescriptorKind::Message(_)) => {}
             (Value::List(values), _) if field_desc.is_list() => {
                 if field_desc.is_packed() {
                     match field_desc.kind() {
@@ -314,14 +306,15 @@ impl Value {
             (Value::EnumNumber(value), FieldDescriptorKind::Enum(_)) => {
                 prost::encoding::int32::merge(wire_type, value, buf, ctx)
             }
-            (Value::Message(message), FieldDescriptorKind::Message(_)) => {
+            (Value::Message(message), FieldDescriptorKind::Message(message_desc)) => {
+                let message = message.get_or_insert_with(|| DynamicMessage::new(message_desc));
                 if field_desc.is_group() {
                     prost::encoding::group::merge(field_desc.tag(), wire_type, message, buf, ctx)
                 } else {
                     prost::encoding::message::merge(wire_type, message, buf, ctx)
                 }
             }
-            (Value::List(values), _) if field_desc.is_list() => {
+            (Value::List(values), field_kind) if field_desc.is_list() => {
                 if field_desc.is_packed() && wire_type == WireType::LengthDelimited {
                     let packed_wire_type = match field_desc.kind() {
                         FieldDescriptorKind::Double
@@ -341,13 +334,13 @@ impl Value {
                         _ => unreachable!("invalid entry type for packed list"),
                     };
                     prost::encoding::merge_loop(values, buf, ctx, |values, buf, ctx| {
-                        let mut value = Value::default_value_inner(field_desc);
+                        let mut value = Value::default_value_for_kind(&field_kind);
                         value.merge_field(field_desc, packed_wire_type, buf, ctx)?;
                         values.push(value);
                         Ok(())
                     })
                 } else {
-                    let mut value = Value::default_value_inner(field_desc);
+                    let mut value = Value::default_value_for_kind(&field_kind);
                     value.merge_field(field_desc, wire_type, buf, ctx)?;
                     values.push(value);
                     Ok(())
@@ -359,7 +352,7 @@ impl Value {
                 let key_desc = map_entry.get_field(MAP_ENTRY_KEY_TAG).unwrap();
                 let value_desc = map_entry.get_field(MAP_ENTRY_VALUE_TAG).unwrap();
 
-                let mut key = MapKey::default_value(&key_desc);
+                let mut key = MapKey::default_value(&key_desc.kind());
                 let mut value = Value::default_value(&value_desc);
                 prost::encoding::merge_loop(
                     &mut (&mut key, &mut value),
@@ -435,13 +428,14 @@ impl Value {
             (Value::EnumNumber(value), FieldDescriptorKind::Enum(_)) => {
                 prost::encoding::int32::encoded_len(tag, value)
             }
-            (Value::Message(message), FieldDescriptorKind::Message(_)) => {
+            (Value::Message(Some(message)), FieldDescriptorKind::Message(_)) => {
                 if field_desc.is_group() {
                     prost::encoding::group::encoded_len(tag, message)
                 } else {
                     prost::encoding::message::encoded_len(tag, message)
                 }
             }
+            (Value::Message(None), FieldDescriptorKind::Message(_)) => 0,
             (Value::List(values), _) if field_desc.is_list() => {
                 if field_desc.is_packed() {
                     match field_desc.kind() {
