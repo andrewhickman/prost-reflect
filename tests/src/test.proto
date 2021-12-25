@@ -1,0 +1,78 @@
+syntax = "proto3";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/duration.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/wrappers.proto";
+import "google/protobuf/field_mask.proto";
+import "google/protobuf/empty.proto";
+
+package test;
+
+message Scalars {
+  double double = 1;
+  float float = 2;
+  int32 int32 = 3;
+  int64 int64 = 4;
+  uint32 uint32 = 5;
+  uint64 uint64 = 6;
+  sint32 sint32 = 7;
+  sint64 sint64 = 8;
+  fixed32 fixed32 = 9;
+  fixed64 fixed64 = 10;
+  sfixed32 sfixed32 = 11;
+  sfixed64 sfixed64 = 12;
+  bool bool = 13;
+  string string = 14;
+  bytes bytes = 15;
+}
+
+message ScalarArrays {
+  repeated double double = 1;
+  repeated float float = 2;
+  repeated int32 int32 = 3;
+  repeated int64 int64 = 4;
+  repeated uint32 uint32 = 5;
+  repeated uint64 uint64 = 6;
+  repeated sint32 sint32 = 7;
+  repeated sint64 sint64 = 8;
+  repeated fixed32 fixed32 = 9;
+  repeated fixed64 fixed64 = 10;
+  repeated sfixed32 sfixed32 = 11;
+  repeated sfixed64 sfixed64 = 12;
+  repeated bool bool = 13;
+  repeated string string = 14;
+  repeated bytes bytes = 15;
+}
+
+message ComplexType {
+  map<string, Scalars> string_map = 1;
+  map<int32, Scalars> int_map = 2;
+  Scalars nested = 3;
+  repeated MyEnum my_enum = 4;
+
+  enum MyEnum {
+    DEFAULT = 0;
+    FOO = 1;
+    BAR = 3;
+  }
+}
+
+message WellKnownTypes {
+  google.protobuf.Timestamp timestamp = 1;
+  google.protobuf.Duration duration = 2;
+  google.protobuf.Struct struct = 3;
+  google.protobuf.FloatValue float = 4;
+  google.protobuf.DoubleValue double = 5;
+  google.protobuf.Int32Value int32 = 6;
+  google.protobuf.Int64Value int64 = 7;
+  google.protobuf.UInt32Value uint32 = 8;
+  google.protobuf.UInt64Value uint64 = 9;
+  google.protobuf.BoolValue bool = 10;
+  google.protobuf.StringValue string = 11;
+  google.protobuf.BytesValue bytes = 12;
+  google.protobuf.FieldMask mask = 13;
+  google.protobuf.ListValue list = 14;
+  google.protobuf.NullValue null = 15;
+  google.protobuf.Empty empty = 16;
+}
