@@ -16,7 +16,9 @@ impl Message for DynamicMessage {
         Self: Sized,
     {
         for field in self.fields.values() {
-            field.value.encode_field(&field.desc, buf);
+            if let Some(value) = &field.value {
+                value.encode_field(&field.desc, buf);
+            }
         }
     }
 
@@ -32,7 +34,11 @@ impl Message for DynamicMessage {
         Self: Sized,
     {
         if let Some(field) = self.fields.get_mut(&tag) {
-            field.value.merge_field(&field.desc, wire_type, buf, ctx)
+            let field_value = &mut field.value;
+            let field_desc = &field.desc;
+            field_value
+                .get_or_insert_with(|| Value::default_value(field_desc))
+                .merge_field(field_desc, wire_type, buf, ctx)
         } else {
             prost::encoding::skip_field(wire_type, tag, buf, ctx)
         }
@@ -41,7 +47,9 @@ impl Message for DynamicMessage {
     fn encoded_len(&self) -> usize {
         let mut len = 0;
         for field in self.fields.values() {
-            len += field.value.encoded_len(&field.desc);
+            if let Some(value) = &field.value {
+                len += value.encoded_len(&field.desc);
+            }
         }
         len
     }
@@ -112,14 +120,13 @@ impl Value {
             (Value::EnumNumber(value), FieldDescriptorKind::Enum(_)) => {
                 prost::encoding::int32::encode(tag, value, buf)
             }
-            (Value::Message(Some(message)), FieldDescriptorKind::Message(_)) => {
+            (Value::Message(message), FieldDescriptorKind::Message(_)) => {
                 if field_desc.is_group() {
                     prost::encoding::group::encode(tag, message, buf)
                 } else {
                     prost::encoding::message::encode(tag, message, buf)
                 }
             }
-            (Value::Message(None), FieldDescriptorKind::Message(_)) => {}
             (Value::List(values), _) if field_desc.is_list() => {
                 if field_desc.is_packed() {
                     match field_desc.kind() {
@@ -247,7 +254,10 @@ impl Value {
                     value.encode_field(&value_desc, buf);
                 }
             }
-            _ => unreachable!("mismatch between DynamicMessage value and type"),
+            (value, ty) => unreachable!(
+                "mismatch between DynamicMessage value {:?} and type {:?}",
+                value, ty
+            ),
         }
     }
 
@@ -310,8 +320,7 @@ impl Value {
             (Value::EnumNumber(value), FieldDescriptorKind::Enum(_)) => {
                 prost::encoding::int32::merge(wire_type, value, buf, ctx)
             }
-            (Value::Message(message), FieldDescriptorKind::Message(message_desc)) => {
-                let message = message.get_or_insert_with(|| DynamicMessage::new(message_desc));
+            (Value::Message(message), FieldDescriptorKind::Message(_)) => {
                 if field_desc.is_group() {
                     prost::encoding::group::merge(field_desc.tag(), wire_type, message, buf, ctx)
                 } else {
@@ -377,7 +386,10 @@ impl Value {
 
                 Ok(())
             }
-            _ => unreachable!("invalid type for field in DynamicMessage"),
+            (value, ty) => unreachable!(
+                "mismatch between DynamicMessage value {:?} and type {:?}",
+                value, ty
+            ),
         }
     }
 
@@ -436,7 +448,7 @@ impl Value {
             (Value::EnumNumber(value), FieldDescriptorKind::Enum(_)) => {
                 prost::encoding::int32::encoded_len(tag, value)
             }
-            (Value::Message(Some(message)), FieldDescriptorKind::Message(_)) => {
+            (Value::Message(message), FieldDescriptorKind::Message(_)) => {
                 if field_desc.is_group() {
                     prost::encoding::group::encoded_len(tag, message)
                 } else {
@@ -543,7 +555,10 @@ impl Value {
                     })
                     .sum::<usize>()
             }
-            _ => unreachable!("mismatch between DynamicMessage value and type"),
+            (value, ty) => unreachable!(
+                "mismatch between DynamicMessage value {:?} and type {:?}",
+                value, ty
+            ),
         }
     }
 }
@@ -595,7 +610,10 @@ impl MapKey {
             (MapKey::String(value), FieldDescriptorKind::String) => {
                 prost::encoding::string::encode(tag, value, buf)
             }
-            _ => unreachable!("mismatch between DynamicMessage value and type"),
+            (value, ty) => unreachable!(
+                "mismatch between DynamicMessage value {:?} and type {:?}",
+                value, ty
+            ),
         }
     }
 
@@ -646,7 +664,10 @@ impl MapKey {
             (MapKey::String(value), FieldDescriptorKind::String) => {
                 prost::encoding::string::merge(wire_type, value, buf, ctx)
             }
-            _ => unreachable!("mismatch between DynamicMessage value and type"),
+            (value, ty) => unreachable!(
+                "mismatch between DynamicMessage value {:?} and type {:?}",
+                value, ty
+            ),
         }
     }
 
@@ -693,7 +714,10 @@ impl MapKey {
             (MapKey::String(value), FieldDescriptorKind::String) => {
                 prost::encoding::string::encoded_len(tag, value)
             }
-            _ => unreachable!("mismatch between DynamicMessage value and type"),
+            (value, ty) => unreachable!(
+                "mismatch between DynamicMessage value {:?} and type {:?}",
+                value, ty
+            ),
         }
     }
 }

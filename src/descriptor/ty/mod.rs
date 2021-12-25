@@ -144,6 +144,7 @@ impl TypeMap {
                         .map_or(syntax == Syntax::Proto3, |options| options.packed()));
 
                 let has_presence = field_proto.proto3_optional()
+                    || field_proto.oneof_index.is_some()
                     || (cardinality == Cardinality::Optional
                         && (field_proto.r#type() == ProtoType::Message
                             || syntax == Syntax::Proto2));

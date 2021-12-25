@@ -14,12 +14,11 @@ pub(crate) const MAP_ENTRY_VALUE_TAG: u32 = 2;
 ///
 /// This type is immutable once constructed and uses reference counting internally, so it is
 /// cheap to clone.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct FileDescriptor {
     inner: Arc<FileDescriptorInner>,
 }
 
-#[derive(Debug)]
 struct FileDescriptorInner {
     raw: FileDescriptorSet,
     type_map: ty::TypeMap,
@@ -174,6 +173,14 @@ impl FileDescriptor {
             file_set: self.clone(),
             ty,
         })
+    }
+}
+
+impl fmt::Debug for FileDescriptor {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("FileDescriptor")
+            .field("services", &self.inner.services)
+            .finish_non_exhaustive()
     }
 }
 

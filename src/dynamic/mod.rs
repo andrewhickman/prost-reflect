@@ -15,7 +15,7 @@ pub struct DynamicMessage {
 #[derive(Debug, Clone, PartialEq)]
 pub struct DynamicMessageField {
     desc: FieldDescriptor,
-    value: Value,
+    value: Option<Value>,
 }
 
 /// A dynamically-typed protobuf value.
@@ -34,7 +34,7 @@ pub enum Value {
     String(String),
     Bytes(Bytes),
     EnumNumber(i32),
-    Message(Option<DynamicMessage>),
+    Message(DynamicMessage),
     List(Vec<Value>),
     Map(HashMap<MapKey, Value>),
 }
@@ -89,21 +89,30 @@ impl DynamicMessage {
 impl DynamicMessageField {
     fn new(desc: FieldDescriptor) -> Self {
         DynamicMessageField {
-            value: Value::default_value(&desc),
+            value: if desc.has_presence() {
+                None
+            } else {
+                Some(Value::default_value(&desc))
+            },
             desc,
         }
     }
 
-    pub fn value(&self) -> &Value {
-        &self.value
+    pub fn get(&self) -> Option<&Value> {
+        self.value.as_ref()
     }
 
-    pub fn value_mut(&mut self) -> &mut Value {
-        &mut self.value
+    pub fn set(&mut self, value: Value) {
+        // TODO need to check validity
+        self.value = Some(value);
     }
 
     pub fn clear(&mut self) {
-        self.value = Value::default_value(&self.desc);
+        self.value = if self.desc.has_presence() {
+            None
+        } else {
+            Some(Value::default_value(&self.desc))
+        };
     }
 }
 
@@ -120,7 +129,7 @@ impl Value {
 
     fn default_value_for_kind(kind: &FieldDescriptorKind) -> Self {
         match kind {
-            FieldDescriptorKind::Message(_) => Value::Message(None),
+            FieldDescriptorKind::Message(desc) => Value::Message(DynamicMessage::new(desc.clone())),
             // TODO this is not correct for proto2 enums, which can have a non-zero default value.
             FieldDescriptorKind::Enum(_) => Value::EnumNumber(0),
             FieldDescriptorKind::Double => Value::F64(0.0),
