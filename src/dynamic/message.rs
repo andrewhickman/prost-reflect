@@ -252,16 +252,19 @@ impl DynamicValue {
                 }
             }
             (DynamicValue::Map(values), ty::Type::Map(map)) => {
-                let value_ty = &type_map[map.value_ty];
+                let map_entry = &type_map[map.entry_ty].as_message().unwrap();
+                let key_ty = map_entry.fields[&ty::MAP_ENTRY_VALUE_TAG].ty;
+                let value_ty = &type_map[map_entry.fields[&ty::MAP_ENTRY_KEY_TAG].ty];
+
                 for (key, value) in values {
-                    let len = key.encoded_len(1, map.key_ty)
-                        + value.encoded_len(type_map, 2, value_ty, false);
+                    let len = key.encoded_len(ty::MAP_ENTRY_KEY_TAG, key_ty)
+                        + value.encoded_len(type_map, ty::MAP_ENTRY_VALUE_TAG, value_ty, false);
 
                     prost::encoding::encode_key(tag, WireType::LengthDelimited, buf);
                     prost::encoding::encode_varint(len as u64, buf);
 
-                    key.encode_field(1, map.key_ty, buf);
-                    value.encode_field(type_map, 2, value_ty, false, buf);
+                    key.encode_field(ty::MAP_ENTRY_KEY_TAG, key_ty, buf);
+                    value.encode_field(type_map, ty::MAP_ENTRY_VALUE_TAG, value_ty, false, buf);
                 }
             }
             _ => unreachable!("mismatch between DynamicMessage value and type"),
@@ -355,10 +358,10 @@ impl DynamicValue {
                     Ok(())
                 }
             }
-            (DynamicValue::Map(values), ty::Type::Map(map)) => {
+            (DynamicValue::Map(values), ty::Type::Map(_)) => {
                 let map_entry_desc = field_desc.map_entry_descriptor().unwrap();
-                let key_desc = map_entry_desc.get_field(1).unwrap();
-                let value_desc = map_entry_desc.get_field(2).unwrap();
+                let key_desc = map_entry_desc.get_field(ty::MAP_ENTRY_KEY_TAG).unwrap();
+                let value_desc = map_entry_desc.get_field(ty::MAP_ENTRY_VALUE_TAG).unwrap();
 
                 let mut key = MapKey::default_value(&key_desc);
                 let mut value = DynamicValue::default_value(&value_desc);
@@ -369,8 +372,12 @@ impl DynamicValue {
                     |(key, value), buf, ctx| {
                         let (tag, wire_type) = prost::encoding::decode_key(buf)?;
                         match tag {
-                            1 => key.merge_field(wire_type, map.key_ty, buf, ctx),
-                            2 => value.merge_field(type_map, wire_type, &value_desc, buf, ctx),
+                            ty::MAP_ENTRY_KEY_TAG => {
+                                key.merge_field(wire_type, key_desc.ty_id(), buf, ctx)
+                            }
+                            ty::MAP_ENTRY_VALUE_TAG => {
+                                value.merge_field(type_map, wire_type, &value_desc, buf, ctx)
+                            }
                             _ => prost::encoding::skip_field(wire_type, tag, buf, ctx),
                         }
                     },
@@ -525,13 +532,16 @@ impl DynamicValue {
                 }
             }
             (DynamicValue::Map(values), ty::Type::Map(map)) => {
-                let value_ty = &type_map[map.value_ty];
+                let map_entry = &type_map[map.entry_ty].as_message().unwrap();
+                let key_ty = map_entry.fields[&ty::MAP_ENTRY_VALUE_TAG].ty;
+                let value_ty = &type_map[map_entry.fields[&ty::MAP_ENTRY_KEY_TAG].ty];
+
                 let key_len = prost::encoding::key_len(tag);
                 values
                     .iter()
                     .map(|(key, value)| {
-                        let len = key.encoded_len(1, map.key_ty)
-                            + value.encoded_len(type_map, 2, value_ty, false);
+                        let len = key.encoded_len(ty::MAP_ENTRY_KEY_TAG, key_ty)
+                            + value.encoded_len(type_map, ty::MAP_ENTRY_VALUE_TAG, value_ty, false);
 
                         key_len + prost::encoding::encoded_len_varint(len as u64) + len
                     })

@@ -302,6 +302,10 @@ impl FieldDescriptor {
         &self.message.type_map()[self.message_field_ty().ty]
     }
 
+    pub(crate) fn ty_id(&self) -> ty::TypeId {
+        self.message_field_ty().ty
+    }
+
     fn message_field_ty(&self) -> &ty::MessageField {
         &self.message.message_ty().fields[&self.field]
     }

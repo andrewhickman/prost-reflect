@@ -12,6 +12,9 @@ use crate::DescriptorError;
 
 pub(crate) use self::map::{TypeId, TypeMap};
 
+pub(crate) const MAP_ENTRY_KEY_TAG: u32 = 1;
+pub(crate) const MAP_ENTRY_VALUE_TAG: u32 = 2;
+
 #[derive(Debug)]
 pub(crate) enum Type {
     Message(Message),
@@ -42,7 +45,9 @@ pub(crate) enum Scalar {
 
 #[derive(Debug)]
 pub(crate) struct Message {
+    #[allow(unused)]
     pub(crate) name: String,
+    pub(crate) is_map_entry: bool,
     pub(crate) fields: BTreeMap<u32, MessageField>,
 }
 
@@ -79,8 +84,6 @@ pub(crate) struct List {
 #[derive(Debug)]
 pub(crate) struct Map {
     pub entry_ty: TypeId,
-    pub key_ty: TypeId,
-    pub value_ty: TypeId,
 }
 
 impl TypeMap {
@@ -115,12 +118,18 @@ impl TypeMap {
             return Ok(id);
         }
 
+        let is_map_entry = match &message_proto.options {
+            Some(options) => options.map_entry(),
+            None => false,
+        };
+
         let id = self.add_with_name(
             name.to_owned(),
             // Add a dummy value while we handle any recursive references.
             Type::Message(Message {
-                fields: Default::default(),
                 name: Default::default(),
+                fields: Default::default(),
+                is_map_entry,
             }),
         );
 
@@ -142,9 +151,17 @@ impl TypeMap {
             })
             .collect::<Result<BTreeMap<_, _>, _>>()?;
 
+        if is_map_entry
+            && (!fields.contains_key(&MAP_ENTRY_KEY_TAG)
+                || !fields.contains_key(&MAP_ENTRY_VALUE_TAG))
+        {
+            return Err(DescriptorError::invalid_map_entry(name));
+        }
+
         self[id] = Type::Message(Message {
             fields,
             name: name.to_owned(),
+            is_map_entry,
         });
 
         Ok(id)
@@ -184,11 +201,14 @@ impl TypeMap {
                         message_proto,
                         syntax,
                     }) => {
-                        is_map = match &message_proto.options {
-                            Some(options) => options.map_entry(),
-                            None => false,
-                        };
-                        self.add_message(field_proto.type_name(), message_proto, syntax, protos)?
+                        let ty = self.add_message(
+                            field_proto.type_name(),
+                            message_proto,
+                            syntax,
+                            protos,
+                        )?;
+                        is_map = self[ty].as_message().unwrap().is_map_entry;
+                        ty
                     }
                     Some(TyProto::Enum { enum_proto }) => {
                         self.add_enum(field_proto.type_name(), enum_proto)?
@@ -198,21 +218,7 @@ impl TypeMap {
         };
 
         if is_map {
-            let message = self[base_ty].as_message().unwrap();
-            let key_ty = match message.fields.get(&1) {
-                Some(field) => field.ty,
-                None => return Err(DescriptorError::invalid_map_entry(&message.name)),
-            };
-            let value_ty = match message.fields.get(&2) {
-                Some(field) => field.ty,
-                None => return Err(DescriptorError::invalid_map_entry(&message.name)),
-            };
-
-            Ok(self.add(Type::Map(Map {
-                entry_ty: base_ty,
-                key_ty,
-                value_ty,
-            })))
+            Ok(self.add(Type::Map(Map { entry_ty: base_ty })))
         } else if is_repeated {
             let packed = self[base_ty].is_packable()
                 && (syntax == Syntax::Proto3
