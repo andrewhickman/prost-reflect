@@ -75,7 +75,7 @@ enum DescriptorErrorKind {
     TypeNotFound { name: String },
     TypeAlreadyExists { name: String },
     UnknownSyntax { syntax: String },
-    InvalidMapType { name: String },
+    InvalidMapEntry { name: String },
 }
 
 impl FileDescriptor {
@@ -325,7 +325,7 @@ impl fmt::Display for DescriptorError {
             DescriptorErrorKind::UnknownSyntax { syntax } => {
                 write!(f, "the syntax '{}' is not recognized", syntax)
             }
-            DescriptorErrorKind::InvalidMapType { name } => {
+            DescriptorErrorKind::InvalidMapEntry { name } => {
                 write!(f, "the map entry message '{}' is invalid", name)
             }
         }
@@ -359,7 +359,7 @@ impl DescriptorError {
 
     pub(crate) fn invalid_map_entry(name: impl ToString) -> Self {
         DescriptorError {
-            kind: DescriptorErrorKind::InvalidMapType {
+            kind: DescriptorErrorKind::InvalidMapEntry {
                 name: name.to_string(),
             },
         }
