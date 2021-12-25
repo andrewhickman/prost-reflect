@@ -68,6 +68,7 @@ pub struct FieldDescriptor {
 }
 
 /// The type of a protobuf message field.
+#[derive(Debug, Clone)]
 pub enum FieldDescriptorKind {
     Double,
     Float,

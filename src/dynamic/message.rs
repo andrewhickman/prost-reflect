@@ -238,8 +238,8 @@ impl DynamicValue {
             (DynamicValue::Map(values), FieldDescriptorKind::Message(map_entry))
                 if field_desc.is_map() =>
             {
-                let key_desc = map_entry.get_field(MAP_ENTRY_VALUE_TAG).unwrap();
-                let value_desc = map_entry.get_field(MAP_ENTRY_KEY_TAG).unwrap();
+                let key_desc = map_entry.get_field(MAP_ENTRY_KEY_TAG).unwrap();
+                let value_desc = map_entry.get_field(MAP_ENTRY_VALUE_TAG).unwrap();
 
                 for (key, value) in values {
                     let len = key.encoded_len(&key_desc) + value.encoded_len(&value_desc);
@@ -529,8 +529,8 @@ impl DynamicValue {
             (DynamicValue::Map(values), FieldDescriptorKind::Message(map_entry))
                 if field_desc.is_map() =>
             {
-                let key_desc = map_entry.get_field(MAP_ENTRY_VALUE_TAG).unwrap();
-                let value_desc = map_entry.get_field(MAP_ENTRY_KEY_TAG).unwrap();
+                let key_desc = map_entry.get_field(MAP_ENTRY_KEY_TAG).unwrap();
+                let value_desc = map_entry.get_field(MAP_ENTRY_VALUE_TAG).unwrap();
 
                 let key_len = prost::encoding::key_len(tag);
                 values

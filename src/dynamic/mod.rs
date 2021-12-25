@@ -168,6 +168,7 @@ impl MapKey {
             FieldDescriptorKind::Uint32 | FieldDescriptorKind::Fixed32 => MapKey::U32(0),
             FieldDescriptorKind::Uint64 | FieldDescriptorKind::Fixed64 => MapKey::U64(0),
             FieldDescriptorKind::Bool => MapKey::Bool(false),
+            FieldDescriptorKind::String => MapKey::String(String::default()),
             _ => panic!("invalid type for map key"),
         }
     }

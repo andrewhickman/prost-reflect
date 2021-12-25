@@ -1,6 +1,9 @@
 #![cfg(test)]
 
-use std::fmt::Debug;
+use std::{
+    collections::{BTreeMap, HashMap},
+    fmt::Debug,
+};
 
 use once_cell::sync::Lazy;
 use prost::Message;
@@ -64,6 +67,121 @@ fn roundtrip_scalar_arrays() {
             bytes: vec![b"27".to_vec(), b"28".to_vec()],
         },
         ".test.ScalarArrays",
+    );
+}
+
+#[test]
+fn roundtrip_complex_type() {
+    roundtrip(
+        &ComplexType {
+            string_map: HashMap::from([
+                (
+                    "1".to_owned(),
+                    Scalars {
+                        double: 1.1,
+                        float: 2.2,
+                        int32: 3,
+                        ..Default::default()
+                    },
+                ),
+                (
+                    "2".to_owned(),
+                    Scalars {
+                        int64: 4,
+                        uint32: 5,
+                        uint64: 6,
+                        ..Default::default()
+                    },
+                ),
+            ]),
+            int_map: HashMap::from([
+                (
+                    3,
+                    Scalars {
+                        sint32: 7,
+                        sint64: 8,
+                        fixed32: 9,
+                        ..Default::default()
+                    },
+                ),
+                (
+                    4,
+                    Scalars {
+                        sint64: 8,
+                        fixed32: 9,
+                        fixed64: 10,
+                        ..Default::default()
+                    },
+                ),
+            ]),
+            nested: Some(Scalars {
+                sfixed32: 11,
+                sfixed64: 12,
+                r#bool: true,
+                string: "5".to_owned(),
+                bytes: b"6".to_vec(),
+                ..Default::default()
+            }),
+            my_enum: vec![0, 1, 2, 3],
+        },
+        ".test.ComplexType",
+    );
+}
+
+#[test]
+fn roundtrip_well_known_types() {
+    roundtrip(
+        &WellKnownTypes {
+            timestamp: Some(prost_types::Timestamp {
+                seconds: 63_108_020,
+                nanos: 21_000_000,
+            }),
+            duration: Some(prost_types::Duration {
+                seconds: 1,
+                nanos: 340_012,
+            }),
+            r#struct: Some(prost_types::Struct {
+                fields: BTreeMap::from([
+                    (
+                        "number".to_owned(),
+                        prost_types::Value {
+                            kind: Some(prost_types::value::Kind::NumberValue(42.)),
+                        },
+                    ),
+                    (
+                        "null".to_owned(),
+                        prost_types::Value {
+                            kind: Some(prost_types::value::Kind::NullValue(0)),
+                        },
+                    ),
+                ]),
+            }),
+            float: Some(42.1),
+            double: Some(12.4),
+            int32: Some(1),
+            int64: Some(-2),
+            uint32: Some(3),
+            uint64: Some(4),
+            bool: Some(false),
+            string: Some("hello".to_owned()),
+            bytes: Some(b"hello".to_vec()),
+            mask: Some(prost_types::FieldMask {
+                paths: vec!["field_one".to_owned(), "field_two.b.d".to_owned()],
+            }),
+            list: Some(prost_types::ListValue {
+                values: vec![
+                    prost_types::Value {
+                        kind: Some(prost_types::value::Kind::StringValue("foo".to_owned())),
+                    },
+                    prost_types::Value {
+                        kind: Some(prost_types::value::Kind::BoolValue(false)),
+                    },
+                ],
+            }),
+            null: 0,
+            empty: Some(()),
+        },
+        ".test.WellKnownTypes",
     );
 }
 
