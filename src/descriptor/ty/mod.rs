@@ -221,12 +221,10 @@ impl TypeMap {
             Ok(self.add(Type::Map(Map { entry_ty: base_ty })))
         } else if is_repeated {
             let packed = self[base_ty].is_packable()
-                && (syntax == Syntax::Proto3
-                    || field_proto
-                        .options
-                        .as_ref()
-                        .map(|options| options.packed())
-                        .unwrap_or(false));
+                && (field_proto
+                    .options
+                    .as_ref()
+                    .map_or(syntax == Syntax::Proto3, |options| options.packed()));
 
             Ok(self.add(Type::List(List {
                 ty: base_ty,
