@@ -43,6 +43,7 @@ pub(in crate::descriptor) struct Message {
     pub name: String,
     pub is_map_entry: bool,
     pub fields: BTreeMap<u32, MessageField>,
+    pub field_names: HashMap<String, u32>,
 }
 
 #[derive(Debug)]
@@ -116,6 +117,7 @@ impl TypeMap {
             Type::Message(Message {
                 name: Default::default(),
                 fields: Default::default(),
+                field_names: Default::default(),
                 is_map_entry,
             }),
         );
@@ -148,6 +150,11 @@ impl TypeMap {
             })
             .collect::<Result<BTreeMap<_, _>, _>>()?;
 
+        let field_names = fields
+            .iter()
+            .map(|(&tag, field)| (field.name.clone(), tag))
+            .collect();
+
         if is_map_entry
             && (!fields.contains_key(&MAP_ENTRY_KEY_TAG)
                 || !fields.contains_key(&MAP_ENTRY_VALUE_TAG))
@@ -157,6 +164,7 @@ impl TypeMap {
 
         self[id] = Type::Message(Message {
             fields,
+            field_names,
             name: name.to_owned(),
             is_map_entry,
         });

@@ -6,7 +6,7 @@ use prost::bytes::Bytes;
 
 use crate::{descriptor::FieldDescriptorKind, Descriptor, FieldDescriptor};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct DynamicMessage {
     desc: Descriptor,
     fields: BTreeMap<u32, DynamicValue>,
@@ -16,7 +16,7 @@ pub struct DynamicMessage {
 ///
 /// Note this type may map to multiple possible protobuf wire formats, so it must be
 /// serialized as part of a DynamicMessage.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum DynamicValue {
     Bool(bool),
     I32(i32),
@@ -50,6 +50,30 @@ impl DynamicMessage {
             desc,
             fields: BTreeMap::new(),
         }
+    }
+
+    pub fn descriptor(&self) -> Descriptor {
+        self.desc.clone()
+    }
+
+    pub fn get_field_value(&self, tag: u32) -> Option<&DynamicValue> {
+        self.fields.get(&tag)
+    }
+
+    pub fn get_field_value_mut(&mut self, tag: u32) -> Option<&mut DynamicValue> {
+        self.fields.get_mut(&tag)
+    }
+
+    pub fn get_field_value_by_name(&self, name: &str) -> Option<&DynamicValue> {
+        self.desc
+            .get_field_by_name(name)
+            .and_then(|field_desc| self.get_field_value(field_desc.tag()))
+    }
+
+    pub fn get_field_value_by_name_mut(&mut self, name: &str) -> Option<&mut DynamicValue> {
+        self.desc
+            .get_field_by_name(name)
+            .and_then(move |field_desc| self.get_field_value_mut(field_desc.tag()))
     }
 }
 

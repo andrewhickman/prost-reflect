@@ -27,7 +27,7 @@ struct FileDescriptorInner {
 }
 
 /// A protobuf service definition.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ServiceDescriptor {
     file_set: FileDescriptor,
     index: usize,
@@ -40,7 +40,7 @@ struct ServiceDescriptorInner {
 }
 
 /// A method definition for a [`ServiceDescriptor`].
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MethodDescriptor {
     service: ServiceDescriptor,
     index: usize,
@@ -54,21 +54,21 @@ struct MethodDescriptorInner {
 }
 
 /// A protobuf message definition.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Descriptor {
     file_set: FileDescriptor,
     ty: ty::TypeId,
 }
 
 /// A protobuf message definition.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FieldDescriptor {
     message: Descriptor,
     field: u32,
 }
 
 /// The type of a protobuf message field.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FieldDescriptorKind {
     Double,
     Float,
@@ -101,7 +101,7 @@ pub enum Cardinality {
 }
 
 /// A protobuf enum descriptor.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EnumDescriptor {}
 
 /// An error that may occur while creating a [`FileDescriptor`].
@@ -176,6 +176,14 @@ impl FileDescriptor {
         })
     }
 }
+
+impl PartialEq for FileDescriptor {
+    fn eq(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.inner, &other.inner)
+    }
+}
+
+impl Eq for FileDescriptor {}
 
 impl ServiceDescriptor {
     fn from_raw(
@@ -292,6 +300,16 @@ impl Descriptor {
         } else {
             None
         }
+    }
+
+    pub fn get_field_by_name(&self, name: &str) -> Option<FieldDescriptor> {
+        self.message_ty()
+            .field_names
+            .get(name)
+            .map(|&number| FieldDescriptor {
+                message: self.clone(),
+                field: number,
+            })
     }
 
     pub fn is_map_entry(&self) -> bool {
