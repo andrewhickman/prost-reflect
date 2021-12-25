@@ -1,10 +1,13 @@
-pub(crate) mod ty;
+mod ty;
 
 use std::{fmt, sync::Arc};
 
 use prost_types::{
     FileDescriptorProto, FileDescriptorSet, MethodDescriptorProto, ServiceDescriptorProto,
 };
+
+pub(crate) const MAP_ENTRY_KEY_TAG: u32 = 1;
+pub(crate) const MAP_ENTRY_VALUE_TAG: u32 = 2;
 
 /// A wrapper around a [`FileDescriptorSet`], which provides convenient APIs for the
 /// protobuf message definitions.
@@ -63,6 +66,42 @@ pub struct FieldDescriptor {
     message: Descriptor,
     field: u32,
 }
+
+/// The type of a protobuf message field.
+pub enum FieldDescriptorKind {
+    Double,
+    Float,
+    Int32,
+    Int64,
+    Uint32,
+    Uint64,
+    Sint32,
+    Sint64,
+    Fixed32,
+    Fixed64,
+    Sfixed32,
+    Sfixed64,
+    Bool,
+    String,
+    Bytes,
+    Message(Descriptor),
+    Enum(EnumDescriptor),
+}
+
+/// Cardinality determines whether a field is optional, required, or repeated.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum Cardinality {
+    /// The field appears zero or one times.
+    Optional,
+    /// The field appears exactly one time. This cardinality is invalid with Proto3.
+    Required,
+    /// The field appears zero or more times.
+    Repeated,
+}
+
+/// A protobuf enum descriptor.
+#[derive(Debug, Clone)]
+pub struct EnumDescriptor {}
 
 /// An error that may occur while creating a [`FileDescriptor`].
 #[derive(Debug)]
@@ -134,10 +173,6 @@ impl FileDescriptor {
             file_set: self.clone(),
             ty,
         })
-    }
-
-    pub(crate) fn type_map(&self) -> &ty::TypeMap {
-        &self.inner.type_map
     }
 }
 
@@ -258,6 +293,10 @@ impl Descriptor {
         }
     }
 
+    pub fn is_map_entry(&self) -> bool {
+        self.message_ty().is_map_entry
+    }
+
     fn message_ty(&self) -> &ty::Message {
         self.file_set.inner.type_map[self.ty]
             .as_message()
@@ -282,33 +321,52 @@ impl FieldDescriptor {
         self.message_field_ty().is_group
     }
 
-    /// If this field is a message, returns a [`Descriptor`] representing the message type.
-    pub fn message_descriptor(&self) -> Option<Descriptor> {
-        match self.ty() {
-            ty::Type::Message(_) => Some(Descriptor {
+    pub fn is_list(&self) -> bool {
+        self.cardinality() == Cardinality::Repeated && !self.is_map()
+    }
+
+    pub fn is_packed(&self) -> bool {
+        self.message_field_ty().is_packed
+    }
+
+    pub fn is_map(&self) -> bool {
+        self.cardinality() == Cardinality::Repeated
+            && match self.kind() {
+                FieldDescriptorKind::Message(message) => message.is_map_entry(),
+                _ => false,
+            }
+    }
+
+    pub fn cardinality(&self) -> Cardinality {
+        self.message_field_ty().cardinality
+    }
+
+    pub fn kind(&self) -> FieldDescriptorKind {
+        let ty = self.message_field_ty().ty;
+        match &self.message.file_set.inner.type_map[ty] {
+            ty::Type::Message(_) => FieldDescriptorKind::Message(Descriptor {
                 file_set: self.message.file_set.clone(),
-                ty: self.message_field_ty().ty,
+                ty,
             }),
-            _ => None,
+            ty::Type::Enum(_) => FieldDescriptorKind::Enum(EnumDescriptor {}),
+            ty::Type::Scalar(scalar) => match scalar {
+                ty::Scalar::Double => FieldDescriptorKind::Double,
+                ty::Scalar::Float => FieldDescriptorKind::Float,
+                ty::Scalar::Int32 => FieldDescriptorKind::Int32,
+                ty::Scalar::Int64 => FieldDescriptorKind::Int64,
+                ty::Scalar::Uint32 => FieldDescriptorKind::Uint32,
+                ty::Scalar::Uint64 => FieldDescriptorKind::Uint64,
+                ty::Scalar::Sint32 => FieldDescriptorKind::Sint32,
+                ty::Scalar::Sint64 => FieldDescriptorKind::Sint64,
+                ty::Scalar::Fixed32 => FieldDescriptorKind::Fixed32,
+                ty::Scalar::Fixed64 => FieldDescriptorKind::Fixed64,
+                ty::Scalar::Sfixed32 => FieldDescriptorKind::Sfixed32,
+                ty::Scalar::Sfixed64 => FieldDescriptorKind::Sfixed64,
+                ty::Scalar::Bool => FieldDescriptorKind::Bool,
+                ty::Scalar::String => FieldDescriptorKind::String,
+                ty::Scalar::Bytes => FieldDescriptorKind::Bytes,
+            },
         }
-    }
-
-    pub(crate) fn map_entry_descriptor(&self) -> Option<Descriptor> {
-        match self.ty() {
-            ty::Type::Map(map) => Some(Descriptor {
-                file_set: self.message.file_set.clone(),
-                ty: map.entry_ty,
-            }),
-            _ => None,
-        }
-    }
-
-    pub(crate) fn ty(&self) -> &ty::Type {
-        &self.message.file_descriptor().type_map()[self.message_field_ty().ty]
-    }
-
-    pub(crate) fn ty_id(&self) -> ty::TypeId {
-        self.message_field_ty().ty
     }
 
     fn message_field_ty(&self) -> &ty::MessageField {
@@ -341,8 +399,17 @@ impl fmt::Display for DescriptorError {
     }
 }
 
+impl FieldDescriptorKind {
+    pub fn as_message(&self) -> Option<&Descriptor> {
+        match self {
+            FieldDescriptorKind::Message(desc) => Some(desc),
+            _ => None,
+        }
+    }
+}
+
 impl DescriptorError {
-    pub(crate) fn type_not_found(name: impl ToString) -> Self {
+    fn type_not_found(name: impl ToString) -> Self {
         DescriptorError {
             kind: DescriptorErrorKind::TypeNotFound {
                 name: name.to_string(),
@@ -350,7 +417,7 @@ impl DescriptorError {
         }
     }
 
-    pub(crate) fn type_already_exists(name: impl ToString) -> Self {
+    fn type_already_exists(name: impl ToString) -> Self {
         DescriptorError {
             kind: DescriptorErrorKind::TypeAlreadyExists {
                 name: name.to_string(),
@@ -358,7 +425,7 @@ impl DescriptorError {
         }
     }
 
-    pub(crate) fn unknown_syntax(syntax: impl ToString) -> Self {
+    fn unknown_syntax(syntax: impl ToString) -> Self {
         DescriptorError {
             kind: DescriptorErrorKind::UnknownSyntax {
                 syntax: syntax.to_string(),
@@ -366,7 +433,7 @@ impl DescriptorError {
         }
     }
 
-    pub(crate) fn invalid_map_entry(name: impl ToString) -> Self {
+    fn invalid_map_entry(name: impl ToString) -> Self {
         DescriptorError {
             kind: DescriptorErrorKind::InvalidMapEntry {
                 name: name.to_string(),

@@ -7,7 +7,7 @@ mod descriptor;
 mod dynamic;
 
 pub use self::descriptor::{
-    Descriptor, DescriptorError, FieldDescriptor, FileDescriptor, MethodDescriptor,
+    Descriptor, DescriptorError, EnumDescriptor, FieldDescriptor, FileDescriptor, MethodDescriptor,
     ServiceDescriptor,
 };
 pub use self::dynamic::{DynamicMessage, DynamicValue, MapKey};

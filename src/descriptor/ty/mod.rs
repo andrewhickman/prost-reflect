@@ -2,30 +2,24 @@ mod map;
 
 use std::collections::{BTreeMap, HashMap};
 
-use prost::encoding::WireType;
-use prost_types::{
-    field_descriptor_proto, DescriptorProto, EnumDescriptorProto, FieldDescriptorProto,
-    FileDescriptorSet,
+use prost_types::{DescriptorProto, EnumDescriptorProto, FieldDescriptorProto, FileDescriptorSet};
+
+use crate::{
+    descriptor::{Cardinality, MAP_ENTRY_KEY_TAG, MAP_ENTRY_VALUE_TAG},
+    DescriptorError,
 };
 
-use crate::DescriptorError;
-
-pub(crate) use self::map::{TypeId, TypeMap};
-
-pub(crate) const MAP_ENTRY_KEY_TAG: u32 = 1;
-pub(crate) const MAP_ENTRY_VALUE_TAG: u32 = 2;
+pub(in crate::descriptor) use self::map::{TypeId, TypeMap};
 
 #[derive(Debug)]
-pub(crate) enum Type {
+pub(in crate::descriptor) enum Type {
     Message(Message),
     Enum(Enum),
     Scalar(Scalar),
-    List(List),
-    Map(Map),
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
-pub(crate) enum Scalar {
+pub(in crate::descriptor) enum Scalar {
     Double = 0,
     Float,
     Int32,
@@ -44,23 +38,25 @@ pub(crate) enum Scalar {
 }
 
 #[derive(Debug)]
-pub(crate) struct Message {
+pub(in crate::descriptor) struct Message {
     #[allow(unused)]
-    pub(crate) name: String,
-    pub(crate) is_map_entry: bool,
-    pub(crate) fields: BTreeMap<u32, MessageField>,
+    pub name: String,
+    pub is_map_entry: bool,
+    pub fields: BTreeMap<u32, MessageField>,
 }
 
 #[derive(Debug)]
-pub(crate) struct MessageField {
-    pub(crate) name: String,
-    pub(crate) json_name: String,
-    pub(crate) is_group: bool,
-    pub(crate) ty: TypeId,
+pub(in crate::descriptor) struct MessageField {
+    pub name: String,
+    pub json_name: String,
+    pub is_group: bool,
+    pub cardinality: Cardinality,
+    pub is_packed: bool,
+    pub ty: TypeId,
 }
 
 #[derive(Debug)]
-pub(crate) struct Enum {
+pub(in crate::descriptor) struct Enum {
     #[allow(unused)]
     name: String,
     #[allow(unused)]
@@ -68,22 +64,11 @@ pub(crate) struct Enum {
 }
 
 #[derive(Debug)]
-pub(crate) struct EnumValue {
+pub(in crate::descriptor) struct EnumValue {
     #[allow(unused)]
     name: String,
     #[allow(unused)]
     number: i32,
-}
-
-#[derive(Debug)]
-pub(crate) struct List {
-    pub ty: TypeId,
-    pub packed: bool,
-}
-
-#[derive(Debug)]
-pub(crate) struct Map {
-    pub entry_ty: TypeId,
 }
 
 impl TypeMap {
@@ -114,6 +99,8 @@ impl TypeMap {
         syntax: Syntax,
         protos: &HashMap<String, TyProto>,
     ) -> Result<TypeId, DescriptorError> {
+        use prost_types::field_descriptor_proto::{Label, Type as ProtoType};
+
         if let Some(id) = self.try_get_by_name(name) {
             return Ok(id);
         }
@@ -137,13 +124,23 @@ impl TypeMap {
             .field
             .iter()
             .map(|field_proto| {
-                let ty = self.add_message_field(field_proto, syntax, protos)?;
+                let ty = self.add_message_field(field_proto, protos)?;
 
                 let tag = field_proto.number() as u32;
                 let field = MessageField {
                     name: field_proto.name().to_owned(),
                     json_name: field_proto.json_name().to_owned(),
-                    is_group: field_proto.r#type() == field_descriptor_proto::Type::Group,
+                    is_group: field_proto.r#type() == ProtoType::Group,
+                    cardinality: match field_proto.label() {
+                        Label::Optional => Cardinality::Optional,
+                        Label::Required => Cardinality::Required,
+                        Label::Repeated => Cardinality::Repeated,
+                    },
+                    is_packed: self[ty].is_packable()
+                        && (field_proto
+                            .options
+                            .as_ref()
+                            .map_or(syntax == Syntax::Proto3, |options| options.packed())),
                     ty,
                 };
 
@@ -170,15 +167,11 @@ impl TypeMap {
     fn add_message_field(
         &mut self,
         field_proto: &FieldDescriptorProto,
-        syntax: Syntax,
         protos: &HashMap<String, TyProto>,
     ) -> Result<TypeId, DescriptorError> {
-        use prost_types::field_descriptor_proto::{Label, Type as ProtoType};
+        use prost_types::field_descriptor_proto::Type as ProtoType;
 
-        let is_repeated = field_proto.label() == Label::Repeated;
-        let mut is_map = false;
-
-        let base_ty = match field_proto.r#type() {
+        let ty = match field_proto.r#type() {
             ProtoType::Double => self.get_scalar(Scalar::Double),
             ProtoType::Float => self.get_scalar(Scalar::Float),
             ProtoType::Int64 => self.get_scalar(Scalar::Int64),
@@ -201,14 +194,7 @@ impl TypeMap {
                         message_proto,
                         syntax,
                     }) => {
-                        let ty = self.add_message(
-                            field_proto.type_name(),
-                            message_proto,
-                            syntax,
-                            protos,
-                        )?;
-                        is_map = self[ty].as_message().unwrap().is_map_entry;
-                        ty
+                        self.add_message(field_proto.type_name(), message_proto, syntax, protos)?
                     }
                     Some(TyProto::Enum { enum_proto }) => {
                         self.add_enum(field_proto.type_name(), enum_proto)?
@@ -217,22 +203,7 @@ impl TypeMap {
             }
         };
 
-        if is_map {
-            Ok(self.add(Type::Map(Map { entry_ty: base_ty })))
-        } else if is_repeated {
-            let packed = self[base_ty].is_packable()
-                && (field_proto
-                    .options
-                    .as_ref()
-                    .map_or(syntax == Syntax::Proto3, |options| options.packed()));
-
-            Ok(self.add(Type::List(List {
-                ty: base_ty,
-                packed,
-            })))
-        } else {
-            Ok(base_ty)
-        }
+        Ok(ty)
     }
 
     fn add_enum(
@@ -260,14 +231,14 @@ impl TypeMap {
 }
 
 impl Type {
-    pub(crate) fn as_message(&self) -> Option<&Message> {
+    pub(in crate::descriptor) fn as_message(&self) -> Option<&Message> {
         match self {
             Type::Message(message) => Some(message),
             _ => None,
         }
     }
 
-    pub(crate) fn is_packable(&self) -> bool {
+    fn is_packable(&self) -> bool {
         match self {
             Type::Scalar(scalar) => scalar.is_packable(),
             Type::Enum(_) => true,
@@ -293,21 +264,6 @@ impl Scalar {
             | Scalar::Sfixed64
             | Scalar::Bool => true,
             Scalar::String | Scalar::Bytes => false,
-        }
-    }
-
-    pub(crate) fn wire_type(&self) -> WireType {
-        match self {
-            Scalar::Double | Scalar::Fixed64 | Scalar::Sfixed64 => WireType::SixtyFourBit,
-            Scalar::Float | Scalar::Fixed32 | Scalar::Sfixed32 => WireType::ThirtyTwoBit,
-            Scalar::Int32
-            | Scalar::Int64
-            | Scalar::Uint32
-            | Scalar::Uint64
-            | Scalar::Sint32
-            | Scalar::Sint64
-            | Scalar::Bool => WireType::Varint,
-            Scalar::String | Scalar::Bytes => WireType::LengthDelimited,
         }
     }
 }

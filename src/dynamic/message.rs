@@ -5,7 +5,7 @@ use prost::{
 };
 
 use crate::{
-    descriptor::ty::{self, TypeMap},
+    descriptor::{FieldDescriptorKind, MAP_ENTRY_KEY_TAG, MAP_ENTRY_VALUE_TAG},
     DynamicMessage, DynamicValue, FieldDescriptor, MapKey,
 };
 
@@ -20,13 +20,7 @@ impl Message for DynamicMessage {
                 .desc
                 .get_field(tag)
                 .expect("unexpected field in DynamicMessage");
-            value.encode_field(
-                self.desc.file_descriptor().type_map(),
-                field_desc.tag(),
-                field_desc.ty(),
-                field_desc.is_group(),
-                buf,
-            );
+            value.encode_field(&field_desc, buf);
         }
     }
 
@@ -45,13 +39,7 @@ impl Message for DynamicMessage {
             self.fields
                 .entry(tag)
                 .or_insert_with(|| DynamicValue::default_value(&field_desc))
-                .merge_field(
-                    self.desc.file_descriptor().type_map(),
-                    wire_type,
-                    &field_desc,
-                    buf,
-                    ctx,
-                )
+                .merge_field(&field_desc, wire_type, buf, ctx)
         } else {
             prost::encoding::skip_field(wire_type, tag, buf, ctx)
         }
@@ -64,12 +52,7 @@ impl Message for DynamicMessage {
                 .desc
                 .get_field(tag)
                 .expect("unexpected field in DynamicMessage");
-            len += value.encoded_len(
-                self.desc.file_descriptor().type_map(),
-                field_desc.tag(),
-                field_desc.ty(),
-                field_desc.is_group(),
-            );
+            len += value.encoded_len(&field_desc);
         }
         len
     }
@@ -80,76 +63,71 @@ impl Message for DynamicMessage {
 }
 
 impl DynamicValue {
-    fn encode_field<B>(
-        &self,
-        type_map: &TypeMap,
-        tag: u32,
-        ty: &ty::Type,
-        is_group: bool,
-        buf: &mut B,
-    ) where
+    fn encode_field<B>(&self, field_desc: &FieldDescriptor, buf: &mut B)
+    where
         B: BufMut,
     {
-        match (self, ty) {
-            (DynamicValue::Bool(value), ty::Type::Scalar(ty::Scalar::Bool)) => {
+        let tag = field_desc.tag();
+        match (self, field_desc.kind()) {
+            (DynamicValue::Bool(value), FieldDescriptorKind::Bool) => {
                 prost::encoding::bool::encode(tag, value, buf)
             }
-            (DynamicValue::I32(value), ty::Type::Scalar(ty::Scalar::Int32)) => {
+            (DynamicValue::I32(value), FieldDescriptorKind::Int32) => {
                 prost::encoding::int32::encode(tag, value, buf)
             }
-            (DynamicValue::I32(value), ty::Type::Scalar(ty::Scalar::Sint32)) => {
+            (DynamicValue::I32(value), FieldDescriptorKind::Sint32) => {
                 prost::encoding::sint32::encode(tag, value, buf)
             }
-            (DynamicValue::I32(value), ty::Type::Scalar(ty::Scalar::Sfixed32)) => {
+            (DynamicValue::I32(value), FieldDescriptorKind::Sfixed32) => {
                 prost::encoding::sfixed32::encode(tag, value, buf)
             }
-            (DynamicValue::I64(value), ty::Type::Scalar(ty::Scalar::Int64)) => {
+            (DynamicValue::I64(value), FieldDescriptorKind::Int64) => {
                 prost::encoding::int64::encode(tag, value, buf)
             }
-            (DynamicValue::I64(value), ty::Type::Scalar(ty::Scalar::Sint64)) => {
+            (DynamicValue::I64(value), FieldDescriptorKind::Sint64) => {
                 prost::encoding::sint64::encode(tag, value, buf)
             }
-            (DynamicValue::I64(value), ty::Type::Scalar(ty::Scalar::Sfixed64)) => {
+            (DynamicValue::I64(value), FieldDescriptorKind::Sfixed64) => {
                 prost::encoding::sfixed64::encode(tag, value, buf)
             }
-            (DynamicValue::U32(value), ty::Type::Scalar(ty::Scalar::Uint32)) => {
+            (DynamicValue::U32(value), FieldDescriptorKind::Uint32) => {
                 prost::encoding::uint32::encode(tag, value, buf)
             }
-            (DynamicValue::U32(value), ty::Type::Scalar(ty::Scalar::Fixed32)) => {
+            (DynamicValue::U32(value), FieldDescriptorKind::Fixed32) => {
                 prost::encoding::fixed32::encode(tag, value, buf)
             }
-            (DynamicValue::U64(value), ty::Type::Scalar(ty::Scalar::Uint64)) => {
+            (DynamicValue::U64(value), FieldDescriptorKind::Uint64) => {
                 prost::encoding::uint64::encode(tag, value, buf)
             }
-            (DynamicValue::U64(value), ty::Type::Scalar(ty::Scalar::Fixed64)) => {
+            (DynamicValue::U64(value), FieldDescriptorKind::Fixed64) => {
                 prost::encoding::fixed64::encode(tag, value, buf)
             }
-            (DynamicValue::F32(value), ty::Type::Scalar(ty::Scalar::Float)) => {
+            (DynamicValue::F32(value), FieldDescriptorKind::Float) => {
                 prost::encoding::float::encode(tag, value, buf)
             }
-            (DynamicValue::F64(value), ty::Type::Scalar(ty::Scalar::Double)) => {
+            (DynamicValue::F64(value), FieldDescriptorKind::Double) => {
                 prost::encoding::double::encode(tag, value, buf)
             }
-            (DynamicValue::String(value), ty::Type::Scalar(ty::Scalar::String)) => {
+            (DynamicValue::String(value), FieldDescriptorKind::String) => {
                 prost::encoding::string::encode(tag, value, buf)
             }
-            (DynamicValue::Bytes(value), ty::Type::Scalar(ty::Scalar::Bytes)) => {
+            (DynamicValue::Bytes(value), FieldDescriptorKind::Bytes) => {
                 prost::encoding::bytes::encode(tag, value, buf)
             }
-            (DynamicValue::EnumNumber(value), ty::Type::Enum(_)) => {
+            (DynamicValue::EnumNumber(value), FieldDescriptorKind::Enum(_)) => {
                 prost::encoding::int32::encode(tag, value, buf)
             }
-            (DynamicValue::Message(message), ty::Type::Message(_)) => {
-                if is_group {
+            (DynamicValue::Message(message), FieldDescriptorKind::Message(_)) => {
+                if field_desc.is_group() {
                     prost::encoding::group::encode(tag, message, buf)
                 } else {
                     prost::encoding::message::encode(tag, message, buf)
                 }
             }
-            (DynamicValue::List(values), ty::Type::List(list)) => {
-                if list.packed {
-                    match &type_map[list.ty] {
-                        ty::Type::Enum(_) => encode_packed_list(
+            (DynamicValue::List(values), _) if field_desc.is_list() => {
+                if field_desc.is_packed() {
+                    match field_desc.kind() {
+                        FieldDescriptorKind::Enum(_) => encode_packed_list(
                             tag,
                             values
                                 .iter()
@@ -158,91 +136,91 @@ impl DynamicValue {
                             |v, b| prost::encoding::encode_varint(v as u64, b),
                             |v| prost::encoding::encoded_len_varint(v as u64),
                         ),
-                        ty::Type::Scalar(ty::Scalar::Double) => encode_packed_list(
+                        FieldDescriptorKind::Double => encode_packed_list(
                             tag,
                             values.iter().map(|v| v.as_f64().expect("expected double")),
                             buf,
                             |v, b| b.put_f64_le(v),
                             |_| 8,
                         ),
-                        ty::Type::Scalar(ty::Scalar::Float) => encode_packed_list(
+                        FieldDescriptorKind::Float => encode_packed_list(
                             tag,
                             values.iter().map(|v| v.as_f32().expect("expected float")),
                             buf,
                             |v, b| b.put_f32_le(v),
                             |_| 4,
                         ),
-                        ty::Type::Scalar(ty::Scalar::Int32) => encode_packed_list(
+                        FieldDescriptorKind::Int32 => encode_packed_list(
                             tag,
                             values.iter().map(|v| v.as_i32().expect("expected i32")),
                             buf,
                             |v, b| prost::encoding::encode_varint(v as u64, b),
                             |v| prost::encoding::encoded_len_varint(v as u64),
                         ),
-                        ty::Type::Scalar(ty::Scalar::Int64) => encode_packed_list(
+                        FieldDescriptorKind::Int64 => encode_packed_list(
                             tag,
                             values.iter().map(|v| v.as_i64().expect("expected i64")),
                             buf,
                             |v, b| prost::encoding::encode_varint(v as u64, b),
                             |v| prost::encoding::encoded_len_varint(v as u64),
                         ),
-                        ty::Type::Scalar(ty::Scalar::Uint32) => encode_packed_list(
+                        FieldDescriptorKind::Uint32 => encode_packed_list(
                             tag,
                             values.iter().map(|v| v.as_u32().expect("expected u32")),
                             buf,
                             |v, b| prost::encoding::encode_varint(v as u64, b),
                             |v| prost::encoding::encoded_len_varint(v as u64),
                         ),
-                        ty::Type::Scalar(ty::Scalar::Uint64) => encode_packed_list(
+                        FieldDescriptorKind::Uint64 => encode_packed_list(
                             tag,
                             values.iter().map(|v| v.as_u64().expect("expected u64")),
                             buf,
                             |v, b| prost::encoding::encode_varint(v as u64, b),
                             |v| prost::encoding::encoded_len_varint(v as u64),
                         ),
-                        ty::Type::Scalar(ty::Scalar::Sint32) => encode_packed_list(
+                        FieldDescriptorKind::Sint32 => encode_packed_list(
                             tag,
                             values.iter().map(|v| v.as_i32().expect("expected i32")),
                             buf,
                             |v, b| prost::encoding::encode_varint(from_sint32(v) as u64, b),
                             |v| prost::encoding::encoded_len_varint(from_sint32(v) as u64),
                         ),
-                        ty::Type::Scalar(ty::Scalar::Sint64) => encode_packed_list(
+                        FieldDescriptorKind::Sint64 => encode_packed_list(
                             tag,
                             values.iter().map(|v| v.as_i64().expect("expected i64")),
                             buf,
                             |v, b| prost::encoding::encode_varint(from_sint64(v) as u64, b),
                             |v| prost::encoding::encoded_len_varint(from_sint64(v) as u64),
                         ),
-                        ty::Type::Scalar(ty::Scalar::Fixed32) => encode_packed_list(
+                        FieldDescriptorKind::Fixed32 => encode_packed_list(
                             tag,
                             values.iter().map(|v| v.as_u32().expect("expected u32")),
                             buf,
                             |v, b| b.put_u32_le(v),
                             |_| 4,
                         ),
-                        ty::Type::Scalar(ty::Scalar::Fixed64) => encode_packed_list(
+                        FieldDescriptorKind::Fixed64 => encode_packed_list(
                             tag,
                             values.iter().map(|v| v.as_u64().expect("expected u64")),
                             buf,
                             |v, b| b.put_u64_le(v),
                             |_| 8,
                         ),
-                        ty::Type::Scalar(ty::Scalar::Sfixed32) => encode_packed_list(
+                        FieldDescriptorKind::Sfixed32 => encode_packed_list(
                             tag,
                             values.iter().map(|v| v.as_i32().expect("expected i32")),
                             buf,
                             |v, b| b.put_i32_le(v),
                             |_| 4,
                         ),
-                        ty::Type::Scalar(ty::Scalar::Sfixed64) => encode_packed_list(
+                        FieldDescriptorKind::Sfixed64 => encode_packed_list(
                             tag,
                             values.iter().map(|v| v.as_i64().expect("expected i64")),
                             buf,
                             |v, b| b.put_i64_le(v),
                             |_| 8,
                         ),
-                        ty::Type::Scalar(ty::Scalar::Bool) => encode_packed_list(
+                        FieldDescriptorKind::Bool => encode_packed_list(
                             tag,
                             values.iter().map(|v| v.as_bool().expect("expected bool")),
                             buf,
@@ -253,24 +231,24 @@ impl DynamicValue {
                     }
                 } else {
                     for value in values {
-                        value.encode_field(type_map, tag, &type_map[list.ty], is_group, buf);
+                        value.encode_field(field_desc, buf);
                     }
                 }
             }
-            (DynamicValue::Map(values), ty::Type::Map(map)) => {
-                let map_entry = &type_map[map.entry_ty].as_message().unwrap();
-                let key_ty = map_entry.fields[&ty::MAP_ENTRY_VALUE_TAG].ty;
-                let value_ty = &type_map[map_entry.fields[&ty::MAP_ENTRY_KEY_TAG].ty];
+            (DynamicValue::Map(values), FieldDescriptorKind::Message(map_entry))
+                if field_desc.is_map() =>
+            {
+                let key_desc = map_entry.get_field(MAP_ENTRY_VALUE_TAG).unwrap();
+                let value_desc = map_entry.get_field(MAP_ENTRY_KEY_TAG).unwrap();
 
                 for (key, value) in values {
-                    let len = key.encoded_len(ty::MAP_ENTRY_KEY_TAG, key_ty)
-                        + value.encoded_len(type_map, ty::MAP_ENTRY_VALUE_TAG, value_ty, false);
+                    let len = key.encoded_len(&key_desc) + value.encoded_len(&value_desc);
 
                     prost::encoding::encode_key(tag, WireType::LengthDelimited, buf);
                     prost::encoding::encode_varint(len as u64, buf);
 
-                    key.encode_field(ty::MAP_ENTRY_KEY_TAG, key_ty, buf);
-                    value.encode_field(type_map, ty::MAP_ENTRY_VALUE_TAG, value_ty, false, buf);
+                    key.encode_field(&key_desc, buf);
+                    value.encode_field(&value_desc, buf);
                 }
             }
             _ => unreachable!("mismatch between DynamicMessage value and type"),
@@ -279,95 +257,107 @@ impl DynamicValue {
 
     fn merge_field<B>(
         &mut self,
-        type_map: &TypeMap,
-        wire_type: WireType,
         field_desc: &FieldDescriptor,
+        wire_type: WireType,
         buf: &mut B,
         ctx: DecodeContext,
     ) -> Result<(), DecodeError>
     where
         B: Buf,
     {
-        match (self, field_desc.ty()) {
-            (DynamicValue::Bool(value), ty::Type::Scalar(ty::Scalar::Bool)) => {
+        match (self, field_desc.kind()) {
+            (DynamicValue::Bool(value), FieldDescriptorKind::Bool) => {
                 prost::encoding::bool::merge(wire_type, value, buf, ctx)
             }
-            (DynamicValue::I32(value), ty::Type::Scalar(ty::Scalar::Int32)) => {
+            (DynamicValue::I32(value), FieldDescriptorKind::Int32) => {
                 prost::encoding::int32::merge(wire_type, value, buf, ctx)
             }
-            (DynamicValue::I32(value), ty::Type::Scalar(ty::Scalar::Sint32)) => {
+            (DynamicValue::I32(value), FieldDescriptorKind::Sint32) => {
                 prost::encoding::sint32::merge(wire_type, value, buf, ctx)
             }
-            (DynamicValue::I32(value), ty::Type::Scalar(ty::Scalar::Sfixed32)) => {
+            (DynamicValue::I32(value), FieldDescriptorKind::Sfixed32) => {
                 prost::encoding::sfixed32::merge(wire_type, value, buf, ctx)
             }
-            (DynamicValue::I64(value), ty::Type::Scalar(ty::Scalar::Int64)) => {
+            (DynamicValue::I64(value), FieldDescriptorKind::Int64) => {
                 prost::encoding::int64::merge(wire_type, value, buf, ctx)
             }
-            (DynamicValue::I64(value), ty::Type::Scalar(ty::Scalar::Sint64)) => {
+            (DynamicValue::I64(value), FieldDescriptorKind::Sint64) => {
                 prost::encoding::sint64::merge(wire_type, value, buf, ctx)
             }
-            (DynamicValue::I64(value), ty::Type::Scalar(ty::Scalar::Sfixed64)) => {
+            (DynamicValue::I64(value), FieldDescriptorKind::Sfixed64) => {
                 prost::encoding::sfixed64::merge(wire_type, value, buf, ctx)
             }
-            (DynamicValue::U32(value), ty::Type::Scalar(ty::Scalar::Uint32)) => {
+            (DynamicValue::U32(value), FieldDescriptorKind::Uint32) => {
                 prost::encoding::uint32::merge(wire_type, value, buf, ctx)
             }
-            (DynamicValue::U32(value), ty::Type::Scalar(ty::Scalar::Fixed32)) => {
+            (DynamicValue::U32(value), FieldDescriptorKind::Fixed32) => {
                 prost::encoding::fixed32::merge(wire_type, value, buf, ctx)
             }
-            (DynamicValue::U64(value), ty::Type::Scalar(ty::Scalar::Uint64)) => {
+            (DynamicValue::U64(value), FieldDescriptorKind::Uint64) => {
                 prost::encoding::uint64::merge(wire_type, value, buf, ctx)
             }
-            (DynamicValue::U64(value), ty::Type::Scalar(ty::Scalar::Fixed64)) => {
+            (DynamicValue::U64(value), FieldDescriptorKind::Fixed64) => {
                 prost::encoding::fixed64::merge(wire_type, value, buf, ctx)
             }
-            (DynamicValue::F32(value), ty::Type::Scalar(ty::Scalar::Float)) => {
+            (DynamicValue::F32(value), FieldDescriptorKind::Float) => {
                 prost::encoding::float::merge(wire_type, value, buf, ctx)
             }
-            (DynamicValue::F64(value), ty::Type::Scalar(ty::Scalar::Double)) => {
+            (DynamicValue::F64(value), FieldDescriptorKind::Double) => {
                 prost::encoding::double::merge(wire_type, value, buf, ctx)
             }
-            (DynamicValue::String(value), ty::Type::Scalar(ty::Scalar::String)) => {
+            (DynamicValue::String(value), FieldDescriptorKind::String) => {
                 prost::encoding::string::merge(wire_type, value, buf, ctx)
             }
-            (DynamicValue::Bytes(value), ty::Type::Scalar(ty::Scalar::Bytes)) => {
+            (DynamicValue::Bytes(value), FieldDescriptorKind::Bytes) => {
                 prost::encoding::bytes::merge(wire_type, value, buf, ctx)
             }
-            (DynamicValue::EnumNumber(value), ty::Type::Enum(_)) => {
+            (DynamicValue::EnumNumber(value), FieldDescriptorKind::Enum(_)) => {
                 prost::encoding::int32::merge(wire_type, value, buf, ctx)
             }
-            (DynamicValue::Message(message), ty::Type::Message(_)) => {
+            (DynamicValue::Message(message), FieldDescriptorKind::Message(_)) => {
                 if field_desc.is_group() {
                     prost::encoding::group::merge(field_desc.tag(), wire_type, message, buf, ctx)
                 } else {
                     prost::encoding::message::merge(wire_type, message, buf, ctx)
                 }
             }
-            (DynamicValue::List(values), ty::Type::List(list)) => {
-                if list.packed && wire_type == WireType::LengthDelimited {
-                    let packed_wire_type = match &type_map[list.ty] {
-                        ty::Type::Enum(_) => WireType::Varint,
-                        ty::Type::Scalar(scalar) => scalar.wire_type(),
+            (DynamicValue::List(values), _) if field_desc.is_list() => {
+                if field_desc.is_packed() && wire_type == WireType::LengthDelimited {
+                    let packed_wire_type = match field_desc.kind() {
+                        FieldDescriptorKind::Double
+                        | FieldDescriptorKind::Fixed64
+                        | FieldDescriptorKind::Sfixed64 => WireType::SixtyFourBit,
+                        FieldDescriptorKind::Float
+                        | FieldDescriptorKind::Fixed32
+                        | FieldDescriptorKind::Sfixed32 => WireType::ThirtyTwoBit,
+                        FieldDescriptorKind::Enum(_)
+                        | FieldDescriptorKind::Int32
+                        | FieldDescriptorKind::Int64
+                        | FieldDescriptorKind::Uint32
+                        | FieldDescriptorKind::Uint64
+                        | FieldDescriptorKind::Sint32
+                        | FieldDescriptorKind::Sint64
+                        | FieldDescriptorKind::Bool => WireType::Varint,
                         _ => unreachable!("invalid entry type for packed list"),
                     };
                     prost::encoding::merge_loop(values, buf, ctx, |values, buf, ctx| {
-                        let mut value = DynamicValue::default_value(field_desc);
-                        value.merge_field(type_map, packed_wire_type, field_desc, buf, ctx)?;
+                        let mut value = DynamicValue::default_value_inner(field_desc);
+                        value.merge_field(field_desc, packed_wire_type, buf, ctx)?;
                         values.push(value);
                         Ok(())
                     })
                 } else {
-                    let mut value = DynamicValue::default_value(field_desc);
-                    value.merge_field(type_map, wire_type, field_desc, buf, ctx)?;
+                    let mut value = DynamicValue::default_value_inner(field_desc);
+                    value.merge_field(field_desc, wire_type, buf, ctx)?;
                     values.push(value);
                     Ok(())
                 }
             }
-            (DynamicValue::Map(values), ty::Type::Map(_)) => {
-                let map_entry_desc = field_desc.map_entry_descriptor().unwrap();
-                let key_desc = map_entry_desc.get_field(ty::MAP_ENTRY_KEY_TAG).unwrap();
-                let value_desc = map_entry_desc.get_field(ty::MAP_ENTRY_VALUE_TAG).unwrap();
+            (DynamicValue::Map(values), FieldDescriptorKind::Message(map_entry))
+                if field_desc.is_map() =>
+            {
+                let key_desc = map_entry.get_field(MAP_ENTRY_KEY_TAG).unwrap();
+                let value_desc = map_entry.get_field(MAP_ENTRY_VALUE_TAG).unwrap();
 
                 let mut key = MapKey::default_value(&key_desc);
                 let mut value = DynamicValue::default_value(&value_desc);
@@ -378,11 +368,9 @@ impl DynamicValue {
                     |(key, value), buf, ctx| {
                         let (tag, wire_type) = prost::encoding::decode_key(buf)?;
                         match tag {
-                            ty::MAP_ENTRY_KEY_TAG => {
-                                key.merge_field(wire_type, key_desc.ty_id(), buf, ctx)
-                            }
-                            ty::MAP_ENTRY_VALUE_TAG => {
-                                value.merge_field(type_map, wire_type, &value_desc, buf, ctx)
+                            MAP_ENTRY_KEY_TAG => key.merge_field(&key_desc, wire_type, buf, ctx),
+                            MAP_ENTRY_VALUE_TAG => {
+                                value.merge_field(&value_desc, wire_type, buf, ctx)
                             }
                             _ => prost::encoding::skip_field(wire_type, tag, buf, ctx),
                         }
@@ -396,134 +384,135 @@ impl DynamicValue {
         }
     }
 
-    fn encoded_len(&self, type_map: &TypeMap, tag: u32, ty: &ty::Type, is_group: bool) -> usize {
-        match (self, ty) {
-            (DynamicValue::Bool(value), ty::Type::Scalar(ty::Scalar::Bool)) => {
+    fn encoded_len(&self, field_desc: &FieldDescriptor) -> usize {
+        let tag = field_desc.tag();
+        match (self, field_desc.kind()) {
+            (DynamicValue::Bool(value), FieldDescriptorKind::Bool) => {
                 prost::encoding::bool::encoded_len(tag, value)
             }
-            (DynamicValue::I32(value), ty::Type::Scalar(ty::Scalar::Int32)) => {
+            (DynamicValue::I32(value), FieldDescriptorKind::Int32) => {
                 prost::encoding::int32::encoded_len(tag, value)
             }
-            (DynamicValue::I32(value), ty::Type::Scalar(ty::Scalar::Sint32)) => {
+            (DynamicValue::I32(value), FieldDescriptorKind::Sint32) => {
                 prost::encoding::sint32::encoded_len(tag, value)
             }
-            (DynamicValue::I32(value), ty::Type::Scalar(ty::Scalar::Sfixed32)) => {
+            (DynamicValue::I32(value), FieldDescriptorKind::Sfixed32) => {
                 prost::encoding::sfixed32::encoded_len(tag, value)
             }
-            (DynamicValue::I64(value), ty::Type::Scalar(ty::Scalar::Int64)) => {
+            (DynamicValue::I64(value), FieldDescriptorKind::Int64) => {
                 prost::encoding::int64::encoded_len(tag, value)
             }
-            (DynamicValue::I64(value), ty::Type::Scalar(ty::Scalar::Sint64)) => {
+            (DynamicValue::I64(value), FieldDescriptorKind::Sint64) => {
                 prost::encoding::sint64::encoded_len(tag, value)
             }
-            (DynamicValue::I64(value), ty::Type::Scalar(ty::Scalar::Sfixed64)) => {
+            (DynamicValue::I64(value), FieldDescriptorKind::Sfixed64) => {
                 prost::encoding::sfixed64::encoded_len(tag, value)
             }
-            (DynamicValue::U32(value), ty::Type::Scalar(ty::Scalar::Uint32)) => {
+            (DynamicValue::U32(value), FieldDescriptorKind::Uint32) => {
                 prost::encoding::uint32::encoded_len(tag, value)
             }
-            (DynamicValue::U32(value), ty::Type::Scalar(ty::Scalar::Fixed32)) => {
+            (DynamicValue::U32(value), FieldDescriptorKind::Fixed32) => {
                 prost::encoding::fixed32::encoded_len(tag, value)
             }
-            (DynamicValue::U64(value), ty::Type::Scalar(ty::Scalar::Uint64)) => {
+            (DynamicValue::U64(value), FieldDescriptorKind::Uint64) => {
                 prost::encoding::uint64::encoded_len(tag, value)
             }
-            (DynamicValue::U64(value), ty::Type::Scalar(ty::Scalar::Fixed64)) => {
+            (DynamicValue::U64(value), FieldDescriptorKind::Fixed64) => {
                 prost::encoding::fixed64::encoded_len(tag, value)
             }
-            (DynamicValue::F32(value), ty::Type::Scalar(ty::Scalar::Float)) => {
+            (DynamicValue::F32(value), FieldDescriptorKind::Float) => {
                 prost::encoding::float::encoded_len(tag, value)
             }
-            (DynamicValue::F64(value), ty::Type::Scalar(ty::Scalar::Double)) => {
+            (DynamicValue::F64(value), FieldDescriptorKind::Double) => {
                 prost::encoding::double::encoded_len(tag, value)
             }
-            (DynamicValue::String(value), ty::Type::Scalar(ty::Scalar::String)) => {
+            (DynamicValue::String(value), FieldDescriptorKind::String) => {
                 prost::encoding::string::encoded_len(tag, value)
             }
-            (DynamicValue::Bytes(value), ty::Type::Scalar(ty::Scalar::Bytes)) => {
+            (DynamicValue::Bytes(value), FieldDescriptorKind::Bytes) => {
                 prost::encoding::bytes::encoded_len(tag, value)
             }
-            (DynamicValue::EnumNumber(value), ty::Type::Enum(_)) => {
+            (DynamicValue::EnumNumber(value), FieldDescriptorKind::Enum(_)) => {
                 prost::encoding::int32::encoded_len(tag, value)
             }
-            (DynamicValue::Message(message), ty::Type::Message(_)) => {
-                if is_group {
+            (DynamicValue::Message(message), FieldDescriptorKind::Message(_)) => {
+                if field_desc.is_group() {
                     prost::encoding::group::encoded_len(tag, message)
                 } else {
                     prost::encoding::message::encoded_len(tag, message)
                 }
             }
-            (DynamicValue::List(values), ty::Type::List(list)) => {
-                if list.packed {
-                    match &type_map[list.ty] {
-                        ty::Type::Enum(_) => packed_list_encoded_len(
+            (DynamicValue::List(values), _) if field_desc.is_list() => {
+                if field_desc.is_packed() {
+                    match field_desc.kind() {
+                        FieldDescriptorKind::Enum(_) => packed_list_encoded_len(
                             tag,
                             values
                                 .iter()
                                 .map(|v| v.as_enum_number().expect("expected enum number")),
                             |v| prost::encoding::encoded_len_varint(v as u64),
                         ),
-                        ty::Type::Scalar(ty::Scalar::Double) => packed_list_encoded_len(
+                        FieldDescriptorKind::Double => packed_list_encoded_len(
                             tag,
                             values.iter().map(|v| v.as_f64().expect("expected double")),
                             |_| 8,
                         ),
-                        ty::Type::Scalar(ty::Scalar::Float) => packed_list_encoded_len(
+                        FieldDescriptorKind::Float => packed_list_encoded_len(
                             tag,
                             values.iter().map(|v| v.as_f32().expect("expected float")),
                             |_| 4,
                         ),
-                        ty::Type::Scalar(ty::Scalar::Int32) => packed_list_encoded_len(
+                        FieldDescriptorKind::Int32 => packed_list_encoded_len(
                             tag,
                             values.iter().map(|v| v.as_i32().expect("expected i32")),
                             |v| prost::encoding::encoded_len_varint(v as u64),
                         ),
-                        ty::Type::Scalar(ty::Scalar::Int64) => packed_list_encoded_len(
+                        FieldDescriptorKind::Int64 => packed_list_encoded_len(
                             tag,
                             values.iter().map(|v| v.as_i64().expect("expected i64")),
                             |v| prost::encoding::encoded_len_varint(v as u64),
                         ),
-                        ty::Type::Scalar(ty::Scalar::Uint32) => packed_list_encoded_len(
+                        FieldDescriptorKind::Uint32 => packed_list_encoded_len(
                             tag,
                             values.iter().map(|v| v.as_u32().expect("expected u32")),
                             |v| prost::encoding::encoded_len_varint(v as u64),
                         ),
-                        ty::Type::Scalar(ty::Scalar::Uint64) => packed_list_encoded_len(
+                        FieldDescriptorKind::Uint64 => packed_list_encoded_len(
                             tag,
                             values.iter().map(|v| v.as_u64().expect("expected u64")),
                             |v| prost::encoding::encoded_len_varint(v as u64),
                         ),
-                        ty::Type::Scalar(ty::Scalar::Sint32) => packed_list_encoded_len(
+                        FieldDescriptorKind::Sint32 => packed_list_encoded_len(
                             tag,
                             values.iter().map(|v| v.as_i32().expect("expected i32")),
                             |v| prost::encoding::encoded_len_varint(from_sint32(v) as u64),
                         ),
-                        ty::Type::Scalar(ty::Scalar::Sint64) => packed_list_encoded_len(
+                        FieldDescriptorKind::Sint64 => packed_list_encoded_len(
                             tag,
                             values.iter().map(|v| v.as_i64().expect("expected i64")),
                             |v| prost::encoding::encoded_len_varint(from_sint64(v) as u64),
                         ),
-                        ty::Type::Scalar(ty::Scalar::Fixed32) => packed_list_encoded_len(
+                        FieldDescriptorKind::Fixed32 => packed_list_encoded_len(
                             tag,
                             values.iter().map(|v| v.as_u32().expect("expected u32")),
                             |_| 4,
                         ),
-                        ty::Type::Scalar(ty::Scalar::Fixed64) => packed_list_encoded_len(
+                        FieldDescriptorKind::Fixed64 => packed_list_encoded_len(
                             tag,
                             values.iter().map(|v| v.as_u64().expect("expected u64")),
                             |_| 8,
                         ),
-                        ty::Type::Scalar(ty::Scalar::Sfixed32) => packed_list_encoded_len(
+                        FieldDescriptorKind::Sfixed32 => packed_list_encoded_len(
                             tag,
                             values.iter().map(|v| v.as_i32().expect("expected i32")),
                             |_| 4,
                         ),
-                        ty::Type::Scalar(ty::Scalar::Sfixed64) => packed_list_encoded_len(
+                        FieldDescriptorKind::Sfixed64 => packed_list_encoded_len(
                             tag,
                             values.iter().map(|v| v.as_i64().expect("expected i64")),
                             |_| 8,
                         ),
-                        ty::Type::Scalar(ty::Scalar::Bool) => packed_list_encoded_len(
+                        FieldDescriptorKind::Bool => packed_list_encoded_len(
                             tag,
                             values.iter().map(|v| v.as_bool().expect("expected bool")),
                             |v| prost::encoding::encoded_len_varint(v as u64),
@@ -533,21 +522,21 @@ impl DynamicValue {
                 } else {
                     values
                         .iter()
-                        .map(|value| value.encoded_len(type_map, tag, &type_map[list.ty], is_group))
+                        .map(|value| value.encoded_len(field_desc))
                         .sum()
                 }
             }
-            (DynamicValue::Map(values), ty::Type::Map(map)) => {
-                let map_entry = &type_map[map.entry_ty].as_message().unwrap();
-                let key_ty = map_entry.fields[&ty::MAP_ENTRY_VALUE_TAG].ty;
-                let value_ty = &type_map[map_entry.fields[&ty::MAP_ENTRY_KEY_TAG].ty];
+            (DynamicValue::Map(values), FieldDescriptorKind::Message(map_entry))
+                if field_desc.is_map() =>
+            {
+                let key_desc = map_entry.get_field(MAP_ENTRY_VALUE_TAG).unwrap();
+                let value_desc = map_entry.get_field(MAP_ENTRY_KEY_TAG).unwrap();
 
                 let key_len = prost::encoding::key_len(tag);
                 values
                     .iter()
                     .map(|(key, value)| {
-                        let len = key.encoded_len(ty::MAP_ENTRY_KEY_TAG, key_ty)
-                            + value.encoded_len(type_map, ty::MAP_ENTRY_VALUE_TAG, value_ty, false);
+                        let len = key.encoded_len(&key_desc) + value.encoded_len(&value_desc);
 
                         key_len + prost::encoding::encoded_len_varint(len as u64) + len
                     })
@@ -559,59 +548,46 @@ impl DynamicValue {
 }
 
 impl MapKey {
-    fn default_value(desc: &FieldDescriptor) -> Self {
-        match desc.ty() {
-            ty::Type::Scalar(scalar) => match scalar {
-                ty::Scalar::Int32 | ty::Scalar::Sint32 | ty::Scalar::Sfixed32 => MapKey::I32(0),
-                ty::Scalar::Int64 | ty::Scalar::Sint64 | ty::Scalar::Sfixed64 => MapKey::I64(0),
-                ty::Scalar::Uint32 | ty::Scalar::Fixed32 => MapKey::U32(0),
-                ty::Scalar::Uint64 | ty::Scalar::Fixed64 => MapKey::U64(0),
-                ty::Scalar::Bool => MapKey::Bool(false),
-                _ => panic!("invalid type for map key"),
-            },
-            _ => panic!("invalid type for map key"),
-        }
-    }
-
-    fn encode_field<B>(&self, tag: u32, ty: ty::TypeId, buf: &mut B)
+    fn encode_field<B>(&self, field_desc: &FieldDescriptor, buf: &mut B)
     where
         B: BufMut,
     {
-        match (self, ty) {
-            (MapKey::Bool(value), ty::TypeId::BOOL) => {
+        let tag = field_desc.tag();
+        match (self, field_desc.kind()) {
+            (MapKey::Bool(value), FieldDescriptorKind::Bool) => {
                 prost::encoding::bool::encode(tag, value, buf)
             }
-            (MapKey::I32(value), ty::TypeId::INT32) => {
+            (MapKey::I32(value), FieldDescriptorKind::Int32) => {
                 prost::encoding::int32::encode(tag, value, buf)
             }
-            (MapKey::I32(value), ty::TypeId::SINT32) => {
+            (MapKey::I32(value), FieldDescriptorKind::Sint32) => {
                 prost::encoding::sint32::encode(tag, value, buf)
             }
-            (MapKey::I32(value), ty::TypeId::SFIXED32) => {
+            (MapKey::I32(value), FieldDescriptorKind::Sfixed32) => {
                 prost::encoding::sfixed32::encode(tag, value, buf)
             }
-            (MapKey::I64(value), ty::TypeId::INT64) => {
+            (MapKey::I64(value), FieldDescriptorKind::Int64) => {
                 prost::encoding::int64::encode(tag, value, buf)
             }
-            (MapKey::I64(value), ty::TypeId::SINT64) => {
+            (MapKey::I64(value), FieldDescriptorKind::Sint64) => {
                 prost::encoding::sint64::encode(tag, value, buf)
             }
-            (MapKey::I64(value), ty::TypeId::SFIXED64) => {
+            (MapKey::I64(value), FieldDescriptorKind::Sfixed64) => {
                 prost::encoding::sfixed64::encode(tag, value, buf)
             }
-            (MapKey::U32(value), ty::TypeId::UINT32) => {
+            (MapKey::U32(value), FieldDescriptorKind::Uint32) => {
                 prost::encoding::uint32::encode(tag, value, buf)
             }
-            (MapKey::U32(value), ty::TypeId::FIXED32) => {
+            (MapKey::U32(value), FieldDescriptorKind::Fixed32) => {
                 prost::encoding::fixed32::encode(tag, value, buf)
             }
-            (MapKey::U64(value), ty::TypeId::UINT64) => {
+            (MapKey::U64(value), FieldDescriptorKind::Uint64) => {
                 prost::encoding::uint64::encode(tag, value, buf)
             }
-            (MapKey::U64(value), ty::TypeId::FIXED64) => {
+            (MapKey::U64(value), FieldDescriptorKind::Fixed64) => {
                 prost::encoding::fixed64::encode(tag, value, buf)
             }
-            (MapKey::String(value), ty::TypeId::STRING) => {
+            (MapKey::String(value), FieldDescriptorKind::String) => {
                 prost::encoding::string::encode(tag, value, buf)
             }
             _ => unreachable!("mismatch between DynamicMessage value and type"),
@@ -620,91 +596,92 @@ impl MapKey {
 
     fn merge_field<B>(
         &mut self,
+        field_desc: &FieldDescriptor,
         wire_type: WireType,
-        ty: ty::TypeId,
         buf: &mut B,
         ctx: DecodeContext,
     ) -> Result<(), DecodeError>
     where
         B: Buf,
     {
-        match (self, ty) {
-            (MapKey::Bool(value), ty::TypeId::BOOL) => {
+        match (self, field_desc.kind()) {
+            (MapKey::Bool(value), FieldDescriptorKind::Bool) => {
                 prost::encoding::bool::merge(wire_type, value, buf, ctx)
             }
-            (MapKey::I32(value), ty::TypeId::INT32) => {
+            (MapKey::I32(value), FieldDescriptorKind::Int32) => {
                 prost::encoding::int32::merge(wire_type, value, buf, ctx)
             }
-            (MapKey::I32(value), ty::TypeId::SINT32) => {
+            (MapKey::I32(value), FieldDescriptorKind::Sint32) => {
                 prost::encoding::sint32::merge(wire_type, value, buf, ctx)
             }
-            (MapKey::I32(value), ty::TypeId::SFIXED32) => {
+            (MapKey::I32(value), FieldDescriptorKind::Sfixed32) => {
                 prost::encoding::sfixed32::merge(wire_type, value, buf, ctx)
             }
-            (MapKey::I64(value), ty::TypeId::INT64) => {
+            (MapKey::I64(value), FieldDescriptorKind::Int64) => {
                 prost::encoding::int64::merge(wire_type, value, buf, ctx)
             }
-            (MapKey::I64(value), ty::TypeId::SINT64) => {
+            (MapKey::I64(value), FieldDescriptorKind::Sint64) => {
                 prost::encoding::sint64::merge(wire_type, value, buf, ctx)
             }
-            (MapKey::I64(value), ty::TypeId::SFIXED64) => {
+            (MapKey::I64(value), FieldDescriptorKind::Sfixed64) => {
                 prost::encoding::sfixed64::merge(wire_type, value, buf, ctx)
             }
-            (MapKey::U32(value), ty::TypeId::UINT32) => {
+            (MapKey::U32(value), FieldDescriptorKind::Uint32) => {
                 prost::encoding::uint32::merge(wire_type, value, buf, ctx)
             }
-            (MapKey::U32(value), ty::TypeId::FIXED32) => {
+            (MapKey::U32(value), FieldDescriptorKind::Fixed32) => {
                 prost::encoding::fixed32::merge(wire_type, value, buf, ctx)
             }
-            (MapKey::U64(value), ty::TypeId::UINT64) => {
+            (MapKey::U64(value), FieldDescriptorKind::Uint64) => {
                 prost::encoding::uint64::merge(wire_type, value, buf, ctx)
             }
-            (MapKey::U64(value), ty::TypeId::FIXED64) => {
+            (MapKey::U64(value), FieldDescriptorKind::Fixed64) => {
                 prost::encoding::fixed64::merge(wire_type, value, buf, ctx)
             }
-            (MapKey::String(value), ty::TypeId::STRING) => {
+            (MapKey::String(value), FieldDescriptorKind::String) => {
                 prost::encoding::string::merge(wire_type, value, buf, ctx)
             }
             _ => unreachable!("mismatch between DynamicMessage value and type"),
         }
     }
 
-    fn encoded_len(&self, tag: u32, ty: ty::TypeId) -> usize {
-        match (self, ty) {
-            (MapKey::Bool(value), ty::TypeId::BOOL) => {
+    fn encoded_len(&self, field_desc: &FieldDescriptor) -> usize {
+        let tag = field_desc.tag();
+        match (self, field_desc.kind()) {
+            (MapKey::Bool(value), FieldDescriptorKind::Bool) => {
                 prost::encoding::bool::encoded_len(tag, value)
             }
-            (MapKey::I32(value), ty::TypeId::INT32) => {
+            (MapKey::I32(value), FieldDescriptorKind::Int32) => {
                 prost::encoding::int32::encoded_len(tag, value)
             }
-            (MapKey::I32(value), ty::TypeId::SINT32) => {
+            (MapKey::I32(value), FieldDescriptorKind::Sint32) => {
                 prost::encoding::sint32::encoded_len(tag, value)
             }
-            (MapKey::I32(value), ty::TypeId::SFIXED32) => {
+            (MapKey::I32(value), FieldDescriptorKind::Sfixed32) => {
                 prost::encoding::sfixed32::encoded_len(tag, value)
             }
-            (MapKey::I64(value), ty::TypeId::INT64) => {
+            (MapKey::I64(value), FieldDescriptorKind::Int64) => {
                 prost::encoding::int64::encoded_len(tag, value)
             }
-            (MapKey::I64(value), ty::TypeId::SINT64) => {
+            (MapKey::I64(value), FieldDescriptorKind::Sint64) => {
                 prost::encoding::sint64::encoded_len(tag, value)
             }
-            (MapKey::I64(value), ty::TypeId::SFIXED64) => {
+            (MapKey::I64(value), FieldDescriptorKind::Sfixed64) => {
                 prost::encoding::sfixed64::encoded_len(tag, value)
             }
-            (MapKey::U32(value), ty::TypeId::UINT32) => {
+            (MapKey::U32(value), FieldDescriptorKind::Uint32) => {
                 prost::encoding::uint32::encoded_len(tag, value)
             }
-            (MapKey::U32(value), ty::TypeId::FIXED32) => {
+            (MapKey::U32(value), FieldDescriptorKind::Fixed32) => {
                 prost::encoding::fixed32::encoded_len(tag, value)
             }
-            (MapKey::U64(value), ty::TypeId::UINT64) => {
+            (MapKey::U64(value), FieldDescriptorKind::Uint64) => {
                 prost::encoding::uint64::encoded_len(tag, value)
             }
-            (MapKey::U64(value), ty::TypeId::FIXED64) => {
+            (MapKey::U64(value), FieldDescriptorKind::Fixed64) => {
                 prost::encoding::fixed64::encoded_len(tag, value)
             }
-            (MapKey::String(value), ty::TypeId::STRING) => {
+            (MapKey::String(value), FieldDescriptorKind::String) => {
                 prost::encoding::string::encoded_len(tag, value)
             }
             _ => unreachable!("mismatch between DynamicMessage value and type"),

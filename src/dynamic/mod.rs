@@ -4,7 +4,7 @@ use std::collections::{BTreeMap, HashMap};
 
 use prost::bytes::Bytes;
 
-use crate::{descriptor::ty, Descriptor, FieldDescriptor};
+use crate::{descriptor::FieldDescriptorKind, Descriptor, FieldDescriptor};
 
 #[derive(Debug, Clone)]
 pub struct DynamicMessage {
@@ -54,30 +54,34 @@ impl DynamicMessage {
 }
 
 impl DynamicValue {
-    pub fn default_value(desc: &FieldDescriptor) -> Self {
-        match desc.ty() {
-            ty::Type::Message(_) => {
-                DynamicValue::Message(DynamicMessage::new(desc.message_descriptor().unwrap()))
-            }
+    pub fn default_value(field_desc: &FieldDescriptor) -> Self {
+        if field_desc.is_list() {
+            DynamicValue::List(Vec::default())
+        } else if field_desc.is_map() {
+            DynamicValue::Map(HashMap::default())
+        } else {
+            Self::default_value_inner(field_desc)
+        }
+    }
+
+    fn default_value_inner(field_desc: &FieldDescriptor) -> Self {
+        match field_desc.kind() {
+            FieldDescriptorKind::Message(desc) => DynamicValue::Message(DynamicMessage::new(desc)),
             // TODO this is not correct for proto2 enums, which can have a non-zero default value.
-            ty::Type::Enum(_) => DynamicValue::EnumNumber(0),
-            ty::Type::Scalar(scalar) => match scalar {
-                ty::Scalar::Double => DynamicValue::F64(0.0),
-                ty::Scalar::Float => DynamicValue::F32(0.0),
-                ty::Scalar::Int32 | ty::Scalar::Sint32 | ty::Scalar::Sfixed32 => {
-                    DynamicValue::I32(0)
-                }
-                ty::Scalar::Int64 | ty::Scalar::Sint64 | ty::Scalar::Sfixed64 => {
-                    DynamicValue::I64(0)
-                }
-                ty::Scalar::Uint32 | ty::Scalar::Fixed32 => DynamicValue::U32(0),
-                ty::Scalar::Uint64 | ty::Scalar::Fixed64 => DynamicValue::U64(0),
-                ty::Scalar::Bool => DynamicValue::Bool(false),
-                ty::Scalar::String => DynamicValue::String(String::default()),
-                ty::Scalar::Bytes => DynamicValue::Bytes(Bytes::default()),
-            },
-            ty::Type::List(_) => DynamicValue::List(Vec::default()),
-            ty::Type::Map(_) => DynamicValue::Map(HashMap::default()),
+            FieldDescriptorKind::Enum(_) => DynamicValue::EnumNumber(0),
+            FieldDescriptorKind::Double => DynamicValue::F64(0.0),
+            FieldDescriptorKind::Float => DynamicValue::F32(0.0),
+            FieldDescriptorKind::Int32
+            | FieldDescriptorKind::Sint32
+            | FieldDescriptorKind::Sfixed32 => DynamicValue::I32(0),
+            FieldDescriptorKind::Int64
+            | FieldDescriptorKind::Sint64
+            | FieldDescriptorKind::Sfixed64 => DynamicValue::I64(0),
+            FieldDescriptorKind::Uint32 | FieldDescriptorKind::Fixed32 => DynamicValue::U32(0),
+            FieldDescriptorKind::Uint64 | FieldDescriptorKind::Fixed64 => DynamicValue::U64(0),
+            FieldDescriptorKind::Bool => DynamicValue::Bool(false),
+            FieldDescriptorKind::String => DynamicValue::String(String::default()),
+            FieldDescriptorKind::Bytes => DynamicValue::Bytes(Bytes::default()),
         }
     }
 
@@ -148,6 +152,36 @@ impl DynamicValue {
         match self {
             DynamicValue::Bytes(value) => Some(value),
             _ => None,
+        }
+    }
+}
+
+impl MapKey {
+    pub fn default_value(desc: &FieldDescriptor) -> Self {
+        match desc.kind() {
+            FieldDescriptorKind::Int32
+            | FieldDescriptorKind::Sint32
+            | FieldDescriptorKind::Sfixed32 => MapKey::I32(0),
+            FieldDescriptorKind::Int64
+            | FieldDescriptorKind::Sint64
+            | FieldDescriptorKind::Sfixed64 => MapKey::I64(0),
+            FieldDescriptorKind::Uint32 | FieldDescriptorKind::Fixed32 => MapKey::U32(0),
+            FieldDescriptorKind::Uint64 | FieldDescriptorKind::Fixed64 => MapKey::U64(0),
+            FieldDescriptorKind::Bool => MapKey::Bool(false),
+            _ => panic!("invalid type for map key"),
+        }
+    }
+}
+
+impl From<MapKey> for DynamicValue {
+    fn from(value: MapKey) -> Self {
+        match value {
+            MapKey::Bool(value) => DynamicValue::Bool(value),
+            MapKey::I32(value) => DynamicValue::I32(value),
+            MapKey::I64(value) => DynamicValue::I64(value),
+            MapKey::U32(value) => DynamicValue::U32(value),
+            MapKey::U64(value) => DynamicValue::U64(value),
+            MapKey::String(value) => DynamicValue::String(value),
         }
     }
 }
