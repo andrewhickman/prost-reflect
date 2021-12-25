@@ -139,6 +139,10 @@ impl Value {
         }
     }
 
+    pub fn is_default(&self, field_desc: &FieldDescriptor) -> bool {
+        *self == Value::default_value(field_desc)
+    }
+
     pub fn as_bool(&self) -> Option<bool> {
         match *self {
             Value::Bool(value) => Some(value),
@@ -225,6 +229,10 @@ impl MapKey {
             FieldDescriptorKind::String => MapKey::String(String::default()),
             _ => panic!("invalid type for map key"),
         }
+    }
+
+    pub fn is_default(&self, field_desc: &FieldDescriptorKind) -> bool {
+        *self == MapKey::default_value(field_desc)
     }
 }
 

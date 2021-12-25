@@ -53,6 +53,7 @@ pub(in crate::descriptor) struct MessageField {
     pub is_group: bool,
     pub cardinality: Cardinality,
     pub is_packed: bool,
+    pub has_presence: bool,
     pub ty: TypeId,
 }
 
@@ -129,20 +130,31 @@ impl TypeMap {
                 let ty = self.add_message_field(field_proto, protos)?;
 
                 let tag = field_proto.number() as u32;
+
+                let cardinality = match field_proto.label() {
+                    Label::Optional => Cardinality::Optional,
+                    Label::Required => Cardinality::Required,
+                    Label::Repeated => Cardinality::Repeated,
+                };
+
+                let is_packed = self[ty].is_packable()
+                    && (field_proto
+                        .options
+                        .as_ref()
+                        .map_or(syntax == Syntax::Proto3, |options| options.packed()));
+
+                let has_presence = field_proto.proto3_optional()
+                    || (cardinality == Cardinality::Optional
+                        && (field_proto.r#type() == ProtoType::Message
+                            || syntax == Syntax::Proto2));
+
                 let field = MessageField {
                     name: field_proto.name().to_owned(),
                     json_name: field_proto.json_name().to_owned(),
                     is_group: field_proto.r#type() == ProtoType::Group,
-                    cardinality: match field_proto.label() {
-                        Label::Optional => Cardinality::Optional,
-                        Label::Required => Cardinality::Required,
-                        Label::Repeated => Cardinality::Repeated,
-                    },
-                    is_packed: self[ty].is_packable()
-                        && (field_proto
-                            .options
-                            .as_ref()
-                            .map_or(syntax == Syntax::Proto3, |options| options.packed())),
+                    cardinality,
+                    is_packed,
+                    has_presence,
                     ty,
                 };
 

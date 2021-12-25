@@ -58,6 +58,10 @@ impl Value {
     where
         B: BufMut,
     {
+        if !field_desc.has_presence() && self.is_default(field_desc) {
+            return;
+        }
+
         let tag = field_desc.tag();
         match (self, field_desc.kind()) {
             (Value::Bool(value), FieldDescriptorKind::Bool) => {
@@ -378,6 +382,10 @@ impl Value {
     }
 
     fn encoded_len(&self, field_desc: &FieldDescriptor) -> usize {
+        if !field_desc.has_presence() && self.is_default(field_desc) {
+            return 0;
+        }
+
         let tag = field_desc.tag();
         match (self, field_desc.kind()) {
             (Value::Bool(value), FieldDescriptorKind::Bool) => {
@@ -435,7 +443,6 @@ impl Value {
                     prost::encoding::message::encoded_len(tag, message)
                 }
             }
-            (Value::Message(None), FieldDescriptorKind::Message(_)) => 0,
             (Value::List(values), _) if field_desc.is_list() => {
                 if field_desc.is_packed() {
                     match field_desc.kind() {
@@ -546,6 +553,10 @@ impl MapKey {
     where
         B: BufMut,
     {
+        if !field_desc.has_presence() && self.is_default(&field_desc.kind()) {
+            return;
+        }
+
         let tag = field_desc.tag();
         match (self, field_desc.kind()) {
             (MapKey::Bool(value), FieldDescriptorKind::Bool) => {
@@ -640,6 +651,10 @@ impl MapKey {
     }
 
     fn encoded_len(&self, field_desc: &FieldDescriptor) -> usize {
+        if !field_desc.has_presence() && self.is_default(&field_desc.kind()) {
+            return 0;
+        }
+
         let tag = field_desc.tag();
         match (self, field_desc.kind()) {
             (MapKey::Bool(value), FieldDescriptorKind::Bool) => {

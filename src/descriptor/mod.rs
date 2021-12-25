@@ -360,6 +360,10 @@ impl FieldDescriptor {
         self.message_field_ty().cardinality
     }
 
+    pub fn has_presence(&self) -> bool {
+        self.message_field_ty().has_presence
+    }
+
     pub fn kind(&self) -> FieldDescriptorKind {
         let ty = self.message_field_ty().ty;
         match &self.message.file_set.inner.type_map[ty] {
