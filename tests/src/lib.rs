@@ -1,11 +1,14 @@
 #![cfg(test)]
 
+mod arbitrary;
+
 use std::{
     collections::{BTreeMap, HashMap},
     fmt::Debug,
 };
 
 use once_cell::sync::Lazy;
+use proptest::{prelude::*, test_runner::TestCaseError};
 use prost::Message;
 use prost_dynamic::{DynamicMessage, FileDescriptor};
 use prost_types::FileDescriptorSet;
@@ -43,7 +46,8 @@ fn roundtrip_scalars() {
             bytes: b"6".to_vec(),
         },
         ".test.Scalars",
-    );
+    )
+    .unwrap();
 }
 
 #[test]
@@ -67,7 +71,8 @@ fn roundtrip_scalar_arrays() {
             bytes: vec![b"27".to_vec(), b"28".to_vec()],
         },
         ".test.ScalarArrays",
-    );
+    )
+    .unwrap();
 }
 
 #[test]
@@ -125,7 +130,8 @@ fn roundtrip_complex_type() {
             my_enum: vec![0, 1, 2, 3],
         },
         ".test.ComplexType",
-    );
+    )
+    .unwrap();
 }
 
 #[test]
@@ -182,10 +188,33 @@ fn roundtrip_well_known_types() {
             empty: Some(()),
         },
         ".test.WellKnownTypes",
-    );
+    )
+    .unwrap();
 }
 
-fn roundtrip<T>(message: &T, message_name: &str)
+proptest! {
+    #[test]
+    fn roundtrip_arb_scalars(message: Scalars) {
+        roundtrip(&message, ".test.Scalars")?;
+    }
+
+    #[test]
+    fn roundtrip_arb_scalar_arrays(message: ScalarArrays) {
+        roundtrip(&message, ".test.ScalarArrays")?;
+    }
+
+    #[test]
+    fn roundtrip_arb_complex_type(message: ComplexType) {
+        roundtrip(&message, ".test.ComplexType")?;
+    }
+
+    #[test]
+    fn roundtrip_arb_well_known_types(message: WellKnownTypes) {
+        roundtrip(&message, ".test.WellKnownTypes")?;
+    }
+}
+
+fn roundtrip<T>(message: &T, message_name: &str) -> Result<(), TestCaseError>
 where
     T: PartialEq + Debug + Message + Default,
 {
@@ -200,5 +229,6 @@ where
     let dynamic_bytes = dynamic_message.encode_to_vec();
 
     let roundtripped_message = T::decode(dynamic_bytes.as_slice()).unwrap();
-    assert_eq!(message, &roundtripped_message);
+    prop_assert_eq!(message, &roundtripped_message);
+    Ok(())
 }

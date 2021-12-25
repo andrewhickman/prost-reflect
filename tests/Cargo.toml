@@ -13,11 +13,13 @@ build = "build.rs"
 [lib]
 doctest = false
 
-[dependencies]
-prost-dynamic = { path = ".." }
+[dev-dependencies]
 once_cell = "1.9.0"
-prost-types = "0.9.0"
+proptest = "1.0.0"
+proptest-derive = "0.3.0"
 prost = "0.9.0"
+prost-dynamic = { path = ".." }
+prost-types = "0.9.0"
 
 [build-dependencies]
 prost-build = "0.9.0"

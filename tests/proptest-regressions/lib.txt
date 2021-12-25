@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 90431bfd23e601febb80832e4e0066d5cf068fe261fdd8697fe3c4ebc6e92337 # shrinks to message = WellKnownTypes { timestamp: None, duration: None, r#struct: None, float: None, double: None, int32: None, int64: None, uint32: None, uint64: None, bool: None, string: None, bytes: None, mask: None, list: Some(ListValue { values: [Value { kind: Some(ListValue(ListValue { values: [Value { kind: Some(ListValue(ListValue { values: [Value { kind: Some(NumberValue(NaN)) }] })) }] })) }] }), null: NullValue, empty: None }
