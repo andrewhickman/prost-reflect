@@ -1,6 +1,6 @@
 use prost_types::{FileDescriptorProto, MethodDescriptorProto, ServiceDescriptorProto};
 
-use super::{ty, DescriptorError, FileDescriptor, MessageDescriptor};
+use super::{make_full_name, parse_name, ty, DescriptorError, FileDescriptor, MessageDescriptor};
 
 /// A protobuf service definition.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -11,7 +11,7 @@ pub struct ServiceDescriptor {
 
 #[derive(Debug)]
 pub(super) struct ServiceDescriptorInner {
-    name: String,
+    full_name: String,
     methods: Vec<MethodDescriptorInner>,
 }
 
@@ -24,7 +24,7 @@ pub struct MethodDescriptor {
 
 #[derive(Debug)]
 struct MethodDescriptorInner {
-    name: String,
+    full_name: String,
     request_ty: ty::TypeId,
     response_ty: ty::TypeId,
 }
@@ -48,14 +48,19 @@ impl ServiceDescriptor {
         self.index
     }
 
-    /// Gets a reference to the [`FileDescriptor`] this service is part of.
+    /// Gets a reference to the [`FileDescriptor`] this service is defined in.
     pub fn parent_file(&self) -> &FileDescriptor {
         &self.file_descriptor
     }
 
-    /// Gets the name of the service.
+    /// Gets the short name of the service, e.g. `MyService`.
     pub fn name(&self) -> &str {
-        self.inner().name.as_ref()
+        parse_name(self.full_name())
+    }
+
+    /// Gets the full name of the service, e.g. `my.package.Service`.
+    pub fn full_name(&self) -> &str {
+        &self.inner().full_name
     }
 
     /// Gets an iterator over the methods defined in this service.
@@ -77,17 +82,21 @@ impl ServiceDescriptorInner {
         raw_service: &ServiceDescriptorProto,
         type_map: &ty::TypeMap,
     ) -> Result<ServiceDescriptorInner, DescriptorError> {
+        let full_name = make_full_name(raw_file.package(), raw_service.name());
         let methods = raw_service
             .method
             .iter()
             .map(|raw_method| {
-                MethodDescriptorInner::from_raw(raw_file, raw_service, raw_method, type_map)
+                MethodDescriptorInner::from_raw(
+                    &full_name,
+                    raw_file,
+                    raw_service,
+                    raw_method,
+                    type_map,
+                )
             })
             .collect::<Result<_, DescriptorError>>()?;
-        Ok(ServiceDescriptorInner {
-            name: raw_service.name().into(),
-            methods,
-        })
+        Ok(ServiceDescriptorInner { full_name, methods })
     }
 }
 
@@ -117,12 +126,16 @@ impl MethodDescriptor {
         self.service.parent_file()
     }
 
-    /// Gets the name of the method.
+    /// Gets the short name of the method, e.g. `method`.
     pub fn name(&self) -> &str {
-        self.inner().name.as_ref()
+        parse_name(self.full_name())
     }
 
-    /// Gets the request message type of this method.
+    /// Gets the full name of the method, e.g. `my.package.MyService.my_method`.
+    pub fn full_name(&self) -> &str {
+        &self.inner().full_name
+    }
+
     pub fn request(&self) -> MessageDescriptor {
         MessageDescriptor {
             file_set: self.parent_file().clone(),
@@ -130,7 +143,6 @@ impl MethodDescriptor {
         }
     }
 
-    /// Gets the response message type of this method.
     pub fn response(&self) -> MessageDescriptor {
         MessageDescriptor {
             file_set: self.parent_file().clone(),
@@ -145,6 +157,7 @@ impl MethodDescriptor {
 
 impl MethodDescriptorInner {
     fn from_raw(
+        namespace: &str,
         _raw_file: &FileDescriptorProto,
         _raw_service: &ServiceDescriptorProto,
         raw_method: &MethodDescriptorProto,
@@ -154,7 +167,7 @@ impl MethodDescriptorInner {
         let response_ty = type_map.get_by_name(raw_method.output_type())?;
 
         Ok(MethodDescriptorInner {
-            name: raw_method.name().to_owned(),
+            full_name: make_full_name(namespace, raw_method.name()),
             request_ty,
             response_ty,
         })

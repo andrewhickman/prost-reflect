@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+message MyMessage {
+  oneof my_oneof {
+    int32 my_field = 1;
+  }
+
+  message MyNestedMessage {}
+  enum MyNestedEnum {
+    MY_NESTED_VALUE = 0;
+  }
+}
+
+enum MyEnum {
+  MY_VALUE = 0;
+}
+
+service MyService {
+  rpc MyMethod(MyMessage) returns (MyMessage);
+}

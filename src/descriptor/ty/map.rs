@@ -39,14 +39,18 @@ impl TypeMap {
         TypeId(index)
     }
 
-    pub fn add_with_name(&mut self, name: String, ty: Type) -> TypeId {
+    pub fn add_with_name(&mut self, mut name: String, ty: Type) -> TypeId {
+        if name.starts_with('.') {
+            name.remove(0);
+        }
+
         let id = self.add(ty);
         self.named_types.insert(name, id);
         id
     }
 
     pub fn try_get_by_name(&self, name: &str) -> Option<TypeId> {
-        self.named_types.get(name).copied()
+        self.named_types.get(name.trim_start_matches('.')).copied()
     }
 
     pub fn get_by_name(&self, name: &str) -> Result<TypeId, DescriptorError> {

@@ -2,7 +2,7 @@ use std::{env, io, path::PathBuf};
 
 fn main() -> io::Result<()> {
     prost_build::Config::new()
-        .type_attribute(".", "#[derive(::proptest_derive::Arbitrary)]")
+        .type_attribute(".test", "#[derive(::proptest_derive::Arbitrary)]")
         .field_attribute(
             ".test.WellKnownTypes.timestamp",
             "#[proptest(strategy = \"::proptest::option::of(crate::arbitrary::timestamp())\")]",
@@ -31,6 +31,14 @@ fn main() -> io::Result<()> {
             PathBuf::from(env::var("OUT_DIR").expect("OUT_DIR environment variable not set"))
                 .join("file_descriptor_set.bin"),
         )
-        .compile_protos(&["src/test.proto", "src/test2.proto"], &["src/"])?;
+        .compile_protos(
+            &[
+                "src/test.proto",
+                "src/test2.proto",
+                "src/desc.proto",
+                "src/desc_no_package.proto",
+            ],
+            &["src/"],
+        )?;
     Ok(())
 }

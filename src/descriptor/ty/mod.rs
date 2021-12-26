@@ -6,7 +6,9 @@ use prost::bytes::Bytes;
 use prost_types::{DescriptorProto, EnumDescriptorProto, FieldDescriptorProto, FileDescriptorSet};
 
 use crate::{
-    descriptor::{Cardinality, MAP_ENTRY_KEY_TAG, MAP_ENTRY_VALUE_TAG},
+    descriptor::{
+        make_full_name, parse_namespace, Cardinality, MAP_ENTRY_KEY_TAG, MAP_ENTRY_VALUE_TAG,
+    },
     DescriptorError,
 };
 
@@ -40,8 +42,7 @@ pub(in crate::descriptor) enum Scalar {
 
 #[derive(Debug)]
 pub(in crate::descriptor) struct Message {
-    #[allow(unused)]
-    pub name: String,
+    pub full_name: String,
     pub is_map_entry: bool,
     pub fields: BTreeMap<u32, MessageField>,
     pub field_names: HashMap<String, u32>,
@@ -51,12 +52,14 @@ pub(in crate::descriptor) struct Message {
 #[derive(Debug)]
 pub(in crate::descriptor) struct Oneof {
     pub name: String,
+    pub full_name: String,
     pub fields: Vec<u32>,
 }
 
 #[derive(Debug)]
 pub(in crate::descriptor) struct MessageField {
     pub name: String,
+    pub full_name: String,
     pub json_name: String,
     pub is_group: bool,
     pub cardinality: Cardinality,
@@ -69,15 +72,15 @@ pub(in crate::descriptor) struct MessageField {
 
 #[derive(Debug)]
 pub(in crate::descriptor) struct Enum {
-    #[allow(unused)]
-    pub name: String,
-    pub values: Vec<EnumValue>,
+    pub full_name: String,
+    pub value_names: HashMap<String, i32>,
+    pub values: BTreeMap<i32, EnumValue>,
 }
 
 #[derive(Debug)]
 pub(in crate::descriptor) struct EnumValue {
     pub name: String,
-    pub number: i32,
+    pub full_name: String,
 }
 
 impl TypeMap {
@@ -123,7 +126,7 @@ impl TypeMap {
             name.to_owned(),
             // Add a dummy value while we handle any recursive references.
             Type::Message(Message {
-                name: Default::default(),
+                full_name: Default::default(),
                 fields: Default::default(),
                 field_names: Default::default(),
                 oneof_decls: Default::default(),
@@ -136,6 +139,7 @@ impl TypeMap {
             .iter()
             .map(|oneof| Oneof {
                 name: oneof.name().to_owned(),
+                full_name: make_full_name(name, oneof.name()),
                 fields: Vec::new(),
             })
             .collect();
@@ -200,8 +204,8 @@ impl TypeMap {
                         Type::Enum(enum_ty) => enum_ty
                             .values
                             .iter()
-                            .find(|v| &v.name == value)
-                            .map(|v| crate::Value::EnumNumber(v.number))
+                            .find(|(_, v)| &v.name == value)
+                            .map(|(&n, _)| crate::Value::EnumNumber(n))
                             .ok_or(()),
                         Type::Message(_) => Err(()),
                     }
@@ -230,6 +234,7 @@ impl TypeMap {
 
                 let field = MessageField {
                     name: field_proto.name().to_owned(),
+                    full_name: make_full_name(name, field_proto.name()),
                     json_name: field_proto.json_name().to_owned(),
                     is_group: field_proto.r#type() == ProtoType::Group,
                     cardinality,
@@ -260,7 +265,7 @@ impl TypeMap {
             fields,
             field_names,
             oneof_decls,
-            name: name.to_owned(),
+            full_name: name.to_owned(),
             is_map_entry,
         });
 
@@ -273,6 +278,8 @@ impl TypeMap {
         protos: &HashMap<String, TyProto>,
     ) -> Result<TypeId, DescriptorError> {
         use prost_types::field_descriptor_proto::Type as ProtoType;
+
+        let type_name = field_proto.type_name().trim_start_matches('.');
 
         let ty = match field_proto.r#type() {
             ProtoType::Double => self.get_scalar(Scalar::Double),
@@ -291,17 +298,13 @@ impl TypeMap {
             ProtoType::Sint32 => self.get_scalar(Scalar::Sint32),
             ProtoType::Sint64 => self.get_scalar(Scalar::Sint64),
             ProtoType::Enum | ProtoType::Message | ProtoType::Group => {
-                match protos.get(field_proto.type_name()) {
-                    None => return Err(DescriptorError::type_not_found(field_proto.type_name())),
+                match protos.get(type_name) {
+                    None => return Err(DescriptorError::type_not_found(type_name)),
                     Some(&TyProto::Message {
                         message_proto,
                         syntax,
-                    }) => {
-                        self.add_message(field_proto.type_name(), message_proto, syntax, protos)?
-                    }
-                    Some(TyProto::Enum { enum_proto }) => {
-                        self.add_enum(field_proto.type_name(), enum_proto)?
-                    }
+                    }) => self.add_message(type_name, message_proto, syntax, protos)?,
+                    Some(TyProto::Enum { enum_proto }) => self.add_enum(type_name, enum_proto)?,
                 }
             }
         };
@@ -318,14 +321,28 @@ impl TypeMap {
             return Ok(id);
         }
 
+        let package_name = parse_namespace(name);
+
+        let value_names = enum_proto
+            .value
+            .iter()
+            .map(|value| (value.name().to_owned(), value.number()))
+            .collect();
+
         let ty = Enum {
-            name: name.to_owned(),
+            full_name: name.to_owned(),
+            value_names,
             values: enum_proto
                 .value
                 .iter()
-                .map(|value_proto| EnumValue {
-                    name: value_proto.name().to_owned(),
-                    number: value_proto.number(),
+                .map(|value_proto| {
+                    (
+                        value_proto.number(),
+                        EnumValue {
+                            name: value_proto.name().to_owned(),
+                            full_name: make_full_name(package_name, value_proto.name()),
+                        },
+                    )
                 })
                 .collect(),
         };
@@ -418,13 +435,10 @@ fn iter_tys(raw: &FileDescriptorSet) -> Result<HashMap<String, TyProto<'_>>, Des
             Some(s) => return Err(DescriptorError::unknown_syntax(s)),
         };
 
-        let namespace = match file.package() {
-            "" => String::default(),
-            package => format!(".{}", package),
-        };
+        let namespace = file.package();
 
         for message_proto in &file.message_type {
-            let full_name = format!("{}.{}", namespace, message_proto.name());
+            let full_name = make_full_name(namespace, message_proto.name());
             iter_message(&full_name, &mut result, message_proto, syntax)?;
             if result
                 .insert(
@@ -440,7 +454,7 @@ fn iter_tys(raw: &FileDescriptorSet) -> Result<HashMap<String, TyProto<'_>>, Des
             }
         }
         for enum_proto in &file.enum_type {
-            let full_name = format!("{}.{}", namespace, enum_proto.name());
+            let full_name = make_full_name(namespace, enum_proto.name());
             if result
                 .insert(full_name.clone(), TyProto::Enum { enum_proto })
                 .is_some()
@@ -460,7 +474,7 @@ fn iter_message<'a>(
     syntax: Syntax,
 ) -> Result<(), DescriptorError> {
     for message_proto in &raw.nested_type {
-        let full_name = format!("{}.{}", namespace, message_proto.name());
+        let full_name = make_full_name(namespace, message_proto.name());
         iter_message(&full_name, result, message_proto, syntax)?;
         if result
             .insert(
@@ -477,7 +491,7 @@ fn iter_message<'a>(
     }
 
     for enum_proto in &raw.enum_type {
-        let full_name = format!("{}.{}", namespace, enum_proto.name());
+        let full_name = make_full_name(namespace, enum_proto.name());
         if result
             .insert(full_name.clone(), TyProto::Enum { enum_proto })
             .is_some()

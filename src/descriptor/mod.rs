@@ -144,9 +144,9 @@ impl FileDescriptor {
         (0..self.inner.services.len()).map(move |index| ServiceDescriptor::new(self.clone(), index))
     }
 
-    /// Gets a [`MessageDescriptor`] by its fully qualified name, for example `.PackageName.MessageName`.
+    /// Gets a [`MessageDescriptor`] by its fully qualified name, for example `PackageName.MessageName`.
     pub fn get_message_by_name(&self, name: &str) -> Option<MessageDescriptor> {
-        let ty = self.inner.type_map.get_by_name(name).ok()?;
+        let ty = self.inner.type_map.try_get_by_name(name)?;
         if !self.inner.type_map[ty].is_message() {
             return None;
         }
@@ -156,9 +156,9 @@ impl FileDescriptor {
         })
     }
 
-    /// Gets an [`EnumDescriptor`] by its fully qualified name, for example `.PackageName.MessageName`.
+    /// Gets an [`EnumDescriptor`] by its fully qualified name, for example `PackageName.EnumName`.
     pub fn get_enum_by_name(&self, name: &str) -> Option<EnumDescriptor> {
-        let ty = self.inner.type_map.get_by_name(name).ok()?;
+        let ty = self.inner.type_map.try_get_by_name(name)?;
         if !self.inner.type_map[ty].is_enum() {
             return None;
         }
@@ -189,6 +189,16 @@ impl MessageDescriptor {
     /// Gets a reference to the [`FileDescriptor`] this message is defined in.
     pub fn parent_file(&self) -> &FileDescriptor {
         &self.file_set
+    }
+
+    /// Gets the short name of the message type, e.g. `MyMessage`.
+    pub fn name(&self) -> &str {
+        parse_name(self.full_name())
+    }
+
+    /// Gets the full name of the message type, e.g. `my.package.MyMessage`.
+    pub fn full_name(&self) -> &str {
+        &self.message_ty().full_name
     }
 
     pub fn fields(&self) -> impl ExactSizeIterator<Item = FieldDescriptor> + '_ {
@@ -241,20 +251,28 @@ impl MessageDescriptor {
 }
 
 impl FieldDescriptor {
+    /// Gets a reference to the [`FileDescriptor`] this field is defined in.
     pub fn parent_file(&self) -> &FileDescriptor {
         self.message.parent_file()
     }
 
+    /// Gets a reference to the [`MessageDescriptor`] this field is defined in.
     pub fn parent_message(&self) -> &MessageDescriptor {
         &self.message
     }
 
-    pub fn tag(&self) -> u32 {
-        self.field
-    }
-
+    /// Gets the short name of the message type, e.g. `my_field`.
     pub fn name(&self) -> &str {
         &self.message_field_ty().name
+    }
+
+    /// Gets the full name of the message field, e.g. `my.package.MyMessage.my_field`.
+    pub fn full_name(&self) -> &str {
+        &self.message_field_ty().full_name
+    }
+
+    pub fn tag(&self) -> u32 {
+        self.field
     }
 
     pub fn json_name(&self) -> &str {
@@ -348,17 +366,52 @@ impl FieldDescriptorKind {
 }
 
 impl EnumDescriptor {
+    /// Gets a reference to the [`FileDescriptor`] this enum type is defined in.
+    pub fn parent_file(&self) -> &FileDescriptor {
+        &self.file_set
+    }
+
+    /// Gets the short name of the enum type, e.g. `MyEnum`.
+    pub fn name(&self) -> &str {
+        parse_name(self.full_name())
+    }
+
+    /// Gets the full name of the enum, e.g. `my.package.MyEnum`.
+    pub fn full_name(&self) -> &str {
+        &self.enum_ty().full_name
+    }
+
     pub fn default_value(&self) -> EnumValueDescriptor {
         self.values().next().unwrap()
+    }
+
+    pub fn get_value_by_name(&self, name: &str) -> Option<EnumValueDescriptor> {
+        self.enum_ty()
+            .value_names
+            .get(name)
+            .map(|&number| EnumValueDescriptor {
+                parent: self.clone(),
+                number,
+            })
+    }
+
+    pub fn get_value(&self, number: i32) -> Option<EnumValueDescriptor> {
+        self.enum_ty()
+            .values
+            .get(&number)
+            .map(|_| EnumValueDescriptor {
+                parent: self.clone(),
+                number,
+            })
     }
 
     pub fn values(&self) -> impl ExactSizeIterator<Item = EnumValueDescriptor> + '_ {
         self.enum_ty()
             .values
-            .iter()
-            .map(move |v| EnumValueDescriptor {
+            .keys()
+            .map(move |&number| EnumValueDescriptor {
                 parent: self.clone(),
-                number: v.number,
+                number,
             })
     }
 
@@ -368,26 +421,54 @@ impl EnumDescriptor {
 }
 
 impl EnumValueDescriptor {
+    /// Gets a reference to the [`FileDescriptor`] this enum value is defined in.
+    pub fn parent_file(&self) -> &FileDescriptor {
+        self.parent.parent_file()
+    }
+
+    /// Gets a reference to the [`EnumDescriptor`] this enum value is defined in.
     pub fn parent_enum(&self) -> &EnumDescriptor {
         &self.parent
+    }
+
+    /// Gets the short name of the enum value, e.g. `MY_VALUE`.
+    pub fn name(&self) -> &str {
+        &self.enum_value_ty().name
+    }
+
+    /// Gets the full name of the enum, e.g. `my.package.MY_VALUE`.
+    pub fn full_name(&self) -> &str {
+        &self.enum_value_ty().full_name
     }
 
     pub fn number(&self) -> i32 {
         self.number
     }
+
+    fn enum_value_ty(&self) -> &ty::EnumValue {
+        self.parent.enum_ty().values.get(&self.number).unwrap()
+    }
 }
 
 impl OneofDescriptor {
+    /// Gets a reference to the [`FileDescriptor`] this oneof is defined in.
     pub fn parent_file(&self) -> &FileDescriptor {
         self.message.parent_file()
     }
 
+    /// Gets a reference to the [`MessageDescriptor`] this message is defined in.
     pub fn parent_message(&self) -> &MessageDescriptor {
         &self.message
     }
 
+    /// Gets the short name of the oneof, e.g. `my_oneof`.
     pub fn name(&self) -> &str {
         &self.oneof_ty().name
+    }
+
+    /// Gets the full name of the oneof, e.g. `my.package.MyMessage.my_oneof`.
+    pub fn full_name(&self) -> &str {
+        &self.oneof_ty().full_name
     }
 
     pub fn fields(&self) -> impl ExactSizeIterator<Item = FieldDescriptor> + '_ {
@@ -402,5 +483,28 @@ impl OneofDescriptor {
 
     fn oneof_ty(&self) -> &ty::Oneof {
         &self.message.message_ty().oneof_decls[self.index]
+    }
+}
+
+fn make_full_name(namespace: &str, name: &str) -> String {
+    let namespace = namespace.trim_start_matches('.');
+    if namespace.is_empty() {
+        name.to_owned()
+    } else {
+        format!("{}.{}", namespace, name)
+    }
+}
+
+fn parse_namespace(full_name: &str) -> &str {
+    match full_name.rsplit_once('.') {
+        Some((namespace, _)) => namespace,
+        None => "",
+    }
+}
+
+fn parse_name(full_name: &str) -> &str {
+    match full_name.rsplit_once('.') {
+        Some((_, name)) => name,
+        None => full_name,
     }
 }
