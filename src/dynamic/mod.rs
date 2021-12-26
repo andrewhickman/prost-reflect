@@ -7,11 +7,11 @@ use std::{
 
 use prost::bytes::Bytes;
 
-use crate::{descriptor::FieldDescriptorKind, Descriptor, FieldDescriptor};
+use crate::{descriptor::FieldDescriptorKind, FieldDescriptor, MessageDescriptor};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct DynamicMessage {
-    desc: Descriptor,
+    desc: MessageDescriptor,
     fields: BTreeMap<u32, DynamicMessageField>,
 }
 
@@ -54,7 +54,7 @@ pub enum MapKey {
 }
 
 impl DynamicMessage {
-    pub fn new(desc: Descriptor) -> Self {
+    pub fn new(desc: MessageDescriptor) -> Self {
         DynamicMessage {
             fields: desc
                 .fields()
@@ -64,7 +64,7 @@ impl DynamicMessage {
         }
     }
 
-    pub fn descriptor(&self) -> Descriptor {
+    pub fn descriptor(&self) -> MessageDescriptor {
         self.desc.clone()
     }
 

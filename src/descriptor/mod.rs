@@ -34,7 +34,7 @@ struct FileDescriptorInner {
 
 /// A protobuf message definition.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Descriptor {
+pub struct MessageDescriptor {
     file_set: FileDescriptor,
     ty: ty::TypeId,
 }
@@ -42,7 +42,7 @@ pub struct Descriptor {
 /// A protobuf message definition.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FieldDescriptor {
-    message: Descriptor,
+    message: MessageDescriptor,
     field: u32,
 }
 
@@ -64,7 +64,7 @@ pub enum FieldDescriptorKind {
     Bool,
     String,
     Bytes,
-    Message(Descriptor),
+    Message(MessageDescriptor),
     Enum(EnumDescriptor),
 }
 
@@ -94,7 +94,7 @@ pub struct EnumValueDescriptor {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OneofDescriptor {
-    message: Descriptor,
+    message: MessageDescriptor,
     index: usize,
 }
 
@@ -145,9 +145,9 @@ impl FileDescriptor {
     }
 
     /// Gets a protobuf message by its fully qualified name, for example `.PackageName.MessageName`.
-    pub fn get_message_by_name(&self, name: &str) -> Option<Descriptor> {
+    pub fn get_message_by_name(&self, name: &str) -> Option<MessageDescriptor> {
         let ty = self.inner.type_map.get_by_name(name).ok()?;
-        Some(Descriptor {
+        Some(MessageDescriptor {
             file_set: self.clone(),
             ty,
         })
@@ -170,7 +170,7 @@ impl PartialEq for FileDescriptor {
 
 impl Eq for FileDescriptor {}
 
-impl Descriptor {
+impl MessageDescriptor {
     /// Gets a reference to the [`FileDescriptor`] this message is defined in.
     pub fn file_descriptor(&self) -> &FileDescriptor {
         &self.file_set
@@ -269,7 +269,7 @@ impl FieldDescriptor {
     pub fn kind(&self) -> FieldDescriptorKind {
         let ty = self.message_field_ty().ty;
         match &self.message.file_set.inner.type_map[ty] {
-            ty::Type::Message(_) => FieldDescriptorKind::Message(Descriptor {
+            ty::Type::Message(_) => FieldDescriptorKind::Message(MessageDescriptor {
                 file_set: self.message.file_set.clone(),
                 ty,
             }),
@@ -316,7 +316,7 @@ impl FieldDescriptor {
 }
 
 impl FieldDescriptorKind {
-    pub fn as_message(&self) -> Option<&Descriptor> {
+    pub fn as_message(&self) -> Option<&MessageDescriptor> {
         match self {
             FieldDescriptorKind::Message(desc) => Some(desc),
             _ => None,
@@ -351,7 +351,7 @@ impl EnumValueDescriptor {
 }
 
 impl OneofDescriptor {
-    pub fn message_descriptor(&self) -> &Descriptor {
+    pub fn message_descriptor(&self) -> &MessageDescriptor {
         &self.message
     }
 

@@ -1,6 +1,6 @@
 use prost_types::{FileDescriptorProto, MethodDescriptorProto, ServiceDescriptorProto};
 
-use super::{ty, Descriptor, DescriptorError, FileDescriptor};
+use super::{ty, DescriptorError, FileDescriptor, MessageDescriptor};
 
 /// A protobuf service definition.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -123,16 +123,16 @@ impl MethodDescriptor {
     }
 
     /// Gets the request message type of this method.
-    pub fn request(&self) -> Descriptor {
-        Descriptor {
+    pub fn request(&self) -> MessageDescriptor {
+        MessageDescriptor {
             file_set: self.file_descriptor().clone(),
             ty: self.inner().request_ty,
         }
     }
 
     /// Gets the response message type of this method.
-    pub fn response(&self) -> Descriptor {
-        Descriptor {
+    pub fn response(&self) -> MessageDescriptor {
+        MessageDescriptor {
             file_set: self.file_descriptor().clone(),
             ty: self.inner().response_ty,
         }
