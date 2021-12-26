@@ -10,7 +10,7 @@ use std::{
 use once_cell::sync::Lazy;
 use proptest::{prelude::*, test_runner::TestCaseError};
 use prost::{bytes::Bytes, Message};
-use prost_dynamic::{DynamicMessage, FileDescriptor, MapKey, Value};
+use prost_reflect::{DynamicMessage, FileDescriptor, MapKey, Value};
 use prost_types::FileDescriptorSet;
 
 include!(concat!(env!("OUT_DIR"), "/test.rs"));
