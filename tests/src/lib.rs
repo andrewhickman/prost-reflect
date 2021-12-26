@@ -81,6 +81,51 @@ fn test_descriptor_methods() {
 }
 
 #[test]
+fn clear_message() {
+    let mut dynamic = to_dynamic(
+        &Scalars {
+            double: 1.1,
+            float: 2.2,
+            int32: 3,
+            int64: 4,
+            uint32: 5,
+            uint64: 6,
+            sint32: 7,
+            sint64: 8,
+            fixed32: 9,
+            fixed64: 10,
+            sfixed32: 11,
+            sfixed64: 12,
+            r#bool: true,
+            string: "5".to_owned(),
+            bytes: b"6".to_vec(),
+        },
+        ".test.Scalars",
+    );
+
+    dynamic.clear();
+
+    assert!(!dynamic.has_field_by_name("double"));
+    assert!(!dynamic.has_field_by_name("float"));
+    assert!(!dynamic.has_field_by_name("int32"));
+    assert!(!dynamic.has_field_by_name("int64"));
+    assert!(!dynamic.has_field_by_name("uint32"));
+    assert!(!dynamic.has_field_by_name("uint64"));
+    assert!(!dynamic.has_field_by_name("sint32"));
+    assert!(!dynamic.has_field_by_name("sint64"));
+    assert!(!dynamic.has_field_by_name("fixed32"));
+    assert!(!dynamic.has_field_by_name("fixed64"));
+    assert!(!dynamic.has_field_by_name("sfixed32"));
+    assert!(!dynamic.has_field_by_name("sfixed64"));
+    assert!(!dynamic.has_field_by_name("bool"));
+    assert!(!dynamic.has_field_by_name("string"));
+    assert!(!dynamic.has_field_by_name("bytes"));
+
+    let encoded_bytes = dynamic.encode_to_vec();
+    assert!(encoded_bytes.is_empty());
+}
+
+#[test]
 fn test_descriptor_names_no_package() {
     let message_desc = TEST_FILE_DESCRIPTOR
         .get_message_by_name("MyMessage")
