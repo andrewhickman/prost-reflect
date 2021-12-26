@@ -101,7 +101,16 @@ pub enum Cardinality {
 
 /// A protobuf enum descriptor.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct EnumDescriptor {}
+pub struct EnumDescriptor {
+    file_set: FileDescriptor,
+    ty: ty::TypeId,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EnumValueDescriptor {
+    parent: EnumDescriptor,
+    number: i32,
+}
 
 /// An error that may occur while creating a [`FileDescriptor`].
 #[derive(Debug)]
@@ -111,10 +120,24 @@ pub struct DescriptorError {
 
 #[derive(Debug)]
 enum DescriptorErrorKind {
-    TypeNotFound { name: String },
-    TypeAlreadyExists { name: String },
-    UnknownSyntax { syntax: String },
-    InvalidMapEntry { name: String },
+    TypeNotFound {
+        name: String,
+    },
+    TypeAlreadyExists {
+        name: String,
+    },
+    UnknownSyntax {
+        syntax: String,
+    },
+    InvalidMapEntry {
+        name: String,
+    },
+    InvalidDefaultValue {
+        name: String,
+        field: String,
+        value: String,
+    },
+    EmptyEnum,
 }
 
 impl FileDescriptor {
@@ -378,7 +401,10 @@ impl FieldDescriptor {
                 file_set: self.message.file_set.clone(),
                 ty,
             }),
-            ty::Type::Enum(_) => FieldDescriptorKind::Enum(EnumDescriptor {}),
+            ty::Type::Enum(_) => FieldDescriptorKind::Enum(EnumDescriptor {
+                file_set: self.message.file_set.clone(),
+                ty,
+            }),
             ty::Type::Scalar(scalar) => match scalar {
                 ty::Scalar::Double => FieldDescriptorKind::Double,
                 ty::Scalar::Float => FieldDescriptorKind::Float,
@@ -399,8 +425,47 @@ impl FieldDescriptor {
         }
     }
 
+    pub(crate) fn default_value(&self) -> Option<&crate::Value> {
+        self.message_field_ty().default_value.as_ref()
+    }
+
     fn message_field_ty(&self) -> &ty::MessageField {
         &self.message.message_ty().fields[&self.field]
+    }
+}
+
+impl FieldDescriptorKind {
+    pub fn as_message(&self) -> Option<&Descriptor> {
+        match self {
+            FieldDescriptorKind::Message(desc) => Some(desc),
+            _ => None,
+        }
+    }
+}
+
+impl EnumDescriptor {
+    pub fn default_value(&self) -> EnumValueDescriptor {
+        self.values().next().unwrap()
+    }
+
+    pub fn values(&self) -> impl ExactSizeIterator<Item = EnumValueDescriptor> + '_ {
+        self.enum_ty()
+            .values
+            .iter()
+            .map(move |v| EnumValueDescriptor {
+                parent: self.clone(),
+                number: v.number,
+            })
+    }
+
+    fn enum_ty(&self) -> &ty::Enum {
+        self.file_set.inner.type_map[self.ty].as_enum().unwrap()
+    }
+}
+
+impl EnumValueDescriptor {
+    pub fn number(&self) -> i32 {
+        self.number
     }
 }
 
@@ -425,15 +490,14 @@ impl fmt::Display for DescriptorError {
             DescriptorErrorKind::InvalidMapEntry { name } => {
                 write!(f, "the map entry message '{}' is invalid", name)
             }
-        }
-    }
-}
-
-impl FieldDescriptorKind {
-    pub fn as_message(&self) -> Option<&Descriptor> {
-        match self {
-            FieldDescriptorKind::Message(desc) => Some(desc),
-            _ => None,
+            DescriptorErrorKind::InvalidDefaultValue { name, field, value } => {
+                write!(
+                    f,
+                    "the default value '{}' for field '{}' of message '{}' is invalid",
+                    value, field, name
+                )
+            }
+            DescriptorErrorKind::EmptyEnum => write!(f, "enums must have at least one value"),
         }
     }
 }
@@ -468,6 +532,26 @@ impl DescriptorError {
             kind: DescriptorErrorKind::InvalidMapEntry {
                 name: name.to_string(),
             },
+        }
+    }
+
+    fn invalid_default_value(
+        name: impl ToString,
+        field: impl ToString,
+        value: impl ToString,
+    ) -> Self {
+        DescriptorError {
+            kind: DescriptorErrorKind::InvalidDefaultValue {
+                name: name.to_string(),
+                field: field.to_string(),
+                value: value.to_string(),
+            },
+        }
+    }
+
+    fn empty_enum() -> Self {
+        DescriptorError {
+            kind: DescriptorErrorKind::EmptyEnum,
         }
     }
 }

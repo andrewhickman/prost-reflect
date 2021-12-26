@@ -1,6 +1,9 @@
 mod message;
 
-use std::collections::{BTreeMap, HashMap};
+use std::{
+    borrow::Cow,
+    collections::{BTreeMap, HashMap},
+};
 
 use prost::bytes::Bytes;
 
@@ -98,8 +101,11 @@ impl DynamicMessageField {
         }
     }
 
-    pub fn get(&self) -> Option<&Value> {
-        self.value.as_ref()
+    pub fn get(&self) -> Cow<'_, Value> {
+        match &self.value {
+            Some(value) => Cow::Borrowed(value),
+            None => Cow::Owned(Value::default_value(&self.desc)),
+        }
     }
 
     pub fn set(&mut self, value: Value) {
@@ -122,6 +128,8 @@ impl Value {
             Value::List(Vec::default())
         } else if field_desc.is_map() {
             Value::Map(HashMap::default())
+        } else if let Some(default_value) = field_desc.default_value() {
+            default_value.clone()
         } else {
             Self::default_value_for_kind(&field_desc.kind())
         }
@@ -130,8 +138,9 @@ impl Value {
     fn default_value_for_kind(kind: &FieldDescriptorKind) -> Self {
         match kind {
             FieldDescriptorKind::Message(desc) => Value::Message(DynamicMessage::new(desc.clone())),
-            // TODO this is not correct for proto2 enums, which can have a non-zero default value.
-            FieldDescriptorKind::Enum(_) => Value::EnumNumber(0),
+            FieldDescriptorKind::Enum(enum_ty) => {
+                Value::EnumNumber(enum_ty.default_value().number())
+            }
             FieldDescriptorKind::Double => Value::F64(0.0),
             FieldDescriptorKind::Float => Value::F32(0.0),
             FieldDescriptorKind::Int32

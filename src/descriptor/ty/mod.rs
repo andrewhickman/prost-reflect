@@ -2,6 +2,7 @@ mod map;
 
 use std::collections::{BTreeMap, HashMap};
 
+use prost::bytes::Bytes;
 use prost_types::{DescriptorProto, EnumDescriptorProto, FieldDescriptorProto, FileDescriptorSet};
 
 use crate::{
@@ -54,23 +55,21 @@ pub(in crate::descriptor) struct MessageField {
     pub cardinality: Cardinality,
     pub is_packed: bool,
     pub supports_presence: bool,
+    pub default_value: Option<crate::Value>,
     pub ty: TypeId,
 }
 
 #[derive(Debug)]
 pub(in crate::descriptor) struct Enum {
     #[allow(unused)]
-    name: String,
-    #[allow(unused)]
-    values: Vec<EnumValue>,
+    pub name: String,
+    pub values: Vec<EnumValue>,
 }
 
 #[derive(Debug)]
 pub(in crate::descriptor) struct EnumValue {
-    #[allow(unused)]
-    name: String,
-    #[allow(unused)]
-    number: i32,
+    pub name: String,
+    pub number: i32,
 }
 
 impl TypeMap {
@@ -149,6 +148,52 @@ impl TypeMap {
                         && (field_proto.r#type() == ProtoType::Message
                             || syntax == Syntax::Proto2));
 
+                let default_value = match &field_proto.default_value {
+                    Some(value) => match &self[ty] {
+                        Type::Scalar(Scalar::Double) => {
+                            value.parse().map(crate::Value::F64).map_err(|_| ())
+                        }
+                        Type::Scalar(Scalar::Float) => {
+                            value.parse().map(crate::Value::F32).map_err(|_| ())
+                        }
+                        Type::Scalar(Scalar::Int32)
+                        | Type::Scalar(Scalar::Sint32)
+                        | Type::Scalar(Scalar::Sfixed32) => {
+                            value.parse().map(crate::Value::I32).map_err(|_| ())
+                        }
+                        Type::Scalar(Scalar::Int64)
+                        | Type::Scalar(Scalar::Sint64)
+                        | Type::Scalar(Scalar::Sfixed64) => {
+                            value.parse().map(crate::Value::I64).map_err(|_| ())
+                        }
+                        Type::Scalar(Scalar::Uint32) | Type::Scalar(Scalar::Fixed32) => {
+                            value.parse().map(crate::Value::U32).map_err(|_| ())
+                        }
+                        Type::Scalar(Scalar::Uint64) | Type::Scalar(Scalar::Fixed64) => {
+                            value.parse().map(crate::Value::U64).map_err(|_| ())
+                        }
+                        Type::Scalar(Scalar::Bool) => {
+                            value.parse().map(crate::Value::Bool).map_err(|_| ())
+                        }
+                        Type::Scalar(Scalar::String) => Ok(crate::Value::String(value.to_owned())),
+                        Type::Scalar(Scalar::Bytes) => {
+                            unescape_c_escape_string(value).map(crate::Value::Bytes)
+                        }
+                        Type::Enum(enum_ty) => enum_ty
+                            .values
+                            .iter()
+                            .find(|v| &v.name == value)
+                            .map(|v| crate::Value::EnumNumber(v.number))
+                            .ok_or(()),
+                        Type::Message(_) => Err(()),
+                    }
+                    .map(Some)
+                    .map_err(|()| {
+                        DescriptorError::invalid_default_value(name, field_proto.name(), value)
+                    })?,
+                    None => None,
+                };
+
                 let field = MessageField {
                     name: field_proto.name().to_owned(),
                     json_name: field_proto.json_name().to_owned(),
@@ -156,6 +201,7 @@ impl TypeMap {
                     cardinality,
                     is_packed,
                     supports_presence,
+                    default_value,
                     ty,
                 };
 
@@ -236,7 +282,7 @@ impl TypeMap {
             return Ok(id);
         }
 
-        let ty = Type::Enum(Enum {
+        let ty = Enum {
             name: name.to_owned(),
             values: enum_proto
                 .value
@@ -246,8 +292,13 @@ impl TypeMap {
                     number: value_proto.number(),
                 })
                 .collect(),
-        });
-        Ok(self.add_with_name(name.to_owned(), ty))
+        };
+
+        if ty.values.is_empty() {
+            return Err(DescriptorError::empty_enum());
+        }
+
+        Ok(self.add_with_name(name.to_owned(), Type::Enum(ty)))
     }
 }
 
@@ -255,6 +306,13 @@ impl Type {
     pub(in crate::descriptor) fn as_message(&self) -> Option<&Message> {
         match self {
             Type::Message(message) => Some(message),
+            _ => None,
+        }
+    }
+
+    pub(in crate::descriptor) fn as_enum(&self) -> Option<&Enum> {
+        match self {
+            Type::Enum(enum_ty) => Some(enum_ty),
             _ => None,
         }
     }
@@ -385,4 +443,97 @@ fn iter_message<'a>(
     }
 
     Ok(())
+}
+
+/// From https://github.com/tokio-rs/prost/blob/c3b7037a7f2c56cef327b41ca32a8c4e9ce5a41c/prost-build/src/code_generator.rs#L887
+/// Based on [`google::protobuf::UnescapeCEscapeString`][1]
+/// [1]: https://github.com/google/protobuf/blob/3.3.x/src/google/protobuf/stubs/strutil.cc#L312-L322
+fn unescape_c_escape_string(s: &str) -> Result<Bytes, ()> {
+    let src = s.as_bytes();
+    let len = src.len();
+    let mut dst = Vec::new();
+
+    let mut p = 0;
+
+    while p < len {
+        if src[p] != b'\\' {
+            dst.push(src[p]);
+            p += 1;
+        } else {
+            p += 1;
+            if p == len {
+                return Err(());
+            }
+            match src[p] {
+                b'a' => {
+                    dst.push(0x07);
+                    p += 1;
+                }
+                b'b' => {
+                    dst.push(0x08);
+                    p += 1;
+                }
+                b'f' => {
+                    dst.push(0x0C);
+                    p += 1;
+                }
+                b'n' => {
+                    dst.push(0x0A);
+                    p += 1;
+                }
+                b'r' => {
+                    dst.push(0x0D);
+                    p += 1;
+                }
+                b't' => {
+                    dst.push(0x09);
+                    p += 1;
+                }
+                b'v' => {
+                    dst.push(0x0B);
+                    p += 1;
+                }
+                b'\\' => {
+                    dst.push(0x5C);
+                    p += 1;
+                }
+                b'?' => {
+                    dst.push(0x3F);
+                    p += 1;
+                }
+                b'\'' => {
+                    dst.push(0x27);
+                    p += 1;
+                }
+                b'"' => {
+                    dst.push(0x22);
+                    p += 1;
+                }
+                b'0'..=b'7' => {
+                    let mut octal = 0;
+                    for _ in 0..3 {
+                        if p < len && src[p] >= b'0' && src[p] <= b'7' {
+                            octal = octal * 8 + (src[p] - b'0');
+                            p += 1;
+                        } else {
+                            break;
+                        }
+                    }
+                    dst.push(octal);
+                }
+                b'x' | b'X' => {
+                    if p + 2 > len {
+                        return Err(());
+                    }
+                    match u8::from_str_radix(&s[p + 1..p + 3], 16) {
+                        Ok(b) => dst.push(b),
+                        _ => return Err(()),
+                    }
+                    p += 3;
+                }
+                _ => return Err(()),
+            }
+        }
+    }
+    Ok(dst.into())
 }
