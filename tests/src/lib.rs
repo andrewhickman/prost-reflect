@@ -49,71 +49,63 @@ fn decode_scalars() {
     );
 
     assert_eq!(
-        dynamic.get_field_by_name("double").unwrap().get().as_ref(),
+        dynamic.get_field_by_name("double").unwrap().as_ref(),
         &Value::F64(1.1)
     );
     assert_eq!(
-        dynamic.get_field_by_name("float").unwrap().get().as_ref(),
+        dynamic.get_field_by_name("float").unwrap().as_ref(),
         &Value::F32(2.2)
     );
     assert_eq!(
-        dynamic.get_field_by_name("int32").unwrap().get().as_ref(),
+        dynamic.get_field_by_name("int32").unwrap().as_ref(),
         &Value::I32(3)
     );
     assert_eq!(
-        dynamic.get_field_by_name("int64").unwrap().get().as_ref(),
+        dynamic.get_field_by_name("int64").unwrap().as_ref(),
         &Value::I64(4)
     );
     assert_eq!(
-        dynamic.get_field_by_name("uint32").unwrap().get().as_ref(),
+        dynamic.get_field_by_name("uint32").unwrap().as_ref(),
         &Value::U32(5)
     );
     assert_eq!(
-        dynamic.get_field_by_name("uint64").unwrap().get().as_ref(),
+        dynamic.get_field_by_name("uint64").unwrap().as_ref(),
         &Value::U64(6)
     );
     assert_eq!(
-        dynamic.get_field_by_name("sint32").unwrap().get().as_ref(),
+        dynamic.get_field_by_name("sint32").unwrap().as_ref(),
         &Value::I32(7)
     );
     assert_eq!(
-        dynamic.get_field_by_name("sint64").unwrap().get().as_ref(),
+        dynamic.get_field_by_name("sint64").unwrap().as_ref(),
         &Value::I64(8)
     );
     assert_eq!(
-        dynamic.get_field_by_name("fixed32").unwrap().get().as_ref(),
+        dynamic.get_field_by_name("fixed32").unwrap().as_ref(),
         &Value::U32(9)
     );
     assert_eq!(
-        dynamic.get_field_by_name("fixed64").unwrap().get().as_ref(),
+        dynamic.get_field_by_name("fixed64").unwrap().as_ref(),
         &Value::U64(10)
     );
     assert_eq!(
-        dynamic
-            .get_field_by_name("sfixed32")
-            .unwrap()
-            .get()
-            .as_ref(),
+        dynamic.get_field_by_name("sfixed32").unwrap().as_ref(),
         &Value::I32(11)
     );
     assert_eq!(
-        dynamic
-            .get_field_by_name("sfixed64")
-            .unwrap()
-            .get()
-            .as_ref(),
+        dynamic.get_field_by_name("sfixed64").unwrap().as_ref(),
         &Value::I64(12)
     );
     assert_eq!(
-        dynamic.get_field_by_name("bool").unwrap().get().as_ref(),
+        dynamic.get_field_by_name("bool").unwrap().as_ref(),
         &Value::Bool(true)
     );
     assert_eq!(
-        dynamic.get_field_by_name("string").unwrap().get().as_ref(),
+        dynamic.get_field_by_name("string").unwrap().as_ref(),
         &Value::String("5".to_owned())
     );
     assert_eq!(
-        dynamic.get_field_by_name("bytes").unwrap().get().as_ref(),
+        dynamic.get_field_by_name("bytes").unwrap().as_ref(),
         &Value::Bytes(Bytes::from_static(b"6"))
     );
 }
@@ -142,74 +134,66 @@ fn decode_scalar_arrays() {
     );
 
     assert_eq!(
-        dynamic.get_field_by_name("double").unwrap().get().as_ref(),
+        dynamic.get_field_by_name("double").unwrap().as_ref(),
         &Value::List(vec![Value::F64(1.1), Value::F64(2.2),])
     );
     assert_eq!(
-        dynamic.get_field_by_name("float").unwrap().get().as_ref(),
+        dynamic.get_field_by_name("float").unwrap().as_ref(),
         &Value::List(vec![Value::F32(3.3f32), Value::F32(4.4f32)])
     );
     assert_eq!(
-        dynamic.get_field_by_name("int32").unwrap().get().as_ref(),
+        dynamic.get_field_by_name("int32").unwrap().as_ref(),
         &Value::List(vec![Value::I32(5), Value::I32(-6)]),
     );
     assert_eq!(
-        dynamic.get_field_by_name("int64").unwrap().get().as_ref(),
+        dynamic.get_field_by_name("int64").unwrap().as_ref(),
         &Value::List(vec![Value::I64(7), Value::I64(-8)]),
     );
     assert_eq!(
-        dynamic.get_field_by_name("uint32").unwrap().get().as_ref(),
+        dynamic.get_field_by_name("uint32").unwrap().as_ref(),
         &Value::List(vec![Value::U32(9), Value::U32(10)]),
     );
     assert_eq!(
-        dynamic.get_field_by_name("uint64").unwrap().get().as_ref(),
+        dynamic.get_field_by_name("uint64").unwrap().as_ref(),
         &Value::List(vec![Value::U64(11), Value::U64(12)]),
     );
     assert_eq!(
-        dynamic.get_field_by_name("sint32").unwrap().get().as_ref(),
+        dynamic.get_field_by_name("sint32").unwrap().as_ref(),
         &Value::List(vec![Value::I32(13), Value::I32(-14)]),
     );
     assert_eq!(
-        dynamic.get_field_by_name("sint64").unwrap().get().as_ref(),
+        dynamic.get_field_by_name("sint64").unwrap().as_ref(),
         &Value::List(vec![Value::I64(15), Value::I64(-16)]),
     );
     assert_eq!(
-        dynamic.get_field_by_name("fixed32").unwrap().get().as_ref(),
+        dynamic.get_field_by_name("fixed32").unwrap().as_ref(),
         &Value::List(vec![Value::U32(17), Value::U32(18)]),
     );
     assert_eq!(
-        dynamic.get_field_by_name("fixed64").unwrap().get().as_ref(),
+        dynamic.get_field_by_name("fixed64").unwrap().as_ref(),
         &Value::List(vec![Value::U64(19), Value::U64(20)]),
     );
     assert_eq!(
-        dynamic
-            .get_field_by_name("sfixed32")
-            .unwrap()
-            .get()
-            .as_ref(),
+        dynamic.get_field_by_name("sfixed32").unwrap().as_ref(),
         &Value::List(vec![Value::I32(21), Value::I32(-22)]),
     );
     assert_eq!(
-        dynamic
-            .get_field_by_name("sfixed64")
-            .unwrap()
-            .get()
-            .as_ref(),
+        dynamic.get_field_by_name("sfixed64").unwrap().as_ref(),
         &Value::List(vec![Value::I64(23), Value::I64(-24)]),
     );
     assert_eq!(
-        dynamic.get_field_by_name("bool").unwrap().get().as_ref(),
+        dynamic.get_field_by_name("bool").unwrap().as_ref(),
         &Value::List(vec![Value::Bool(true), Value::Bool(false)]),
     );
     assert_eq!(
-        dynamic.get_field_by_name("string").unwrap().get().as_ref(),
+        dynamic.get_field_by_name("string").unwrap().as_ref(),
         &Value::List(vec![
             Value::String("25".to_owned()),
             Value::String("26".to_owned())
         ]),
     );
     assert_eq!(
-        dynamic.get_field_by_name("bytes").unwrap().get().as_ref(),
+        dynamic.get_field_by_name("bytes").unwrap().as_ref(),
         &Value::List(vec![
             Value::Bytes(Bytes::from_static(b"27")),
             Value::Bytes(Bytes::from_static(b"28"))
@@ -283,95 +267,54 @@ fn decode_complex_type() {
     }
 
     assert_eq!(
-        dynamic
-            .get_field_by_name("string_map")
-            .unwrap()
-            .get()
-            .as_ref(),
+        dynamic.get_field_by_name("string_map").unwrap().as_ref(),
         &Value::Map(HashMap::from([
             (MapKey::String("1".to_owned()), {
                 let mut msg = empty_scalars();
-                msg.get_field_by_name_mut("double")
-                    .unwrap()
-                    .set(Value::F64(1.1));
-                msg.get_field_by_name_mut("float")
-                    .unwrap()
-                    .set(Value::F32(2.2));
-                msg.get_field_by_name_mut("int32")
-                    .unwrap()
-                    .set(Value::I32(3));
+                msg.set_field_by_name("double", Value::F64(1.1));
+                msg.set_field_by_name("float", Value::F32(2.2));
+                msg.set_field_by_name("int32", Value::I32(3));
                 Value::Message(msg)
             }),
             (MapKey::String("2".to_owned()), {
                 let mut msg = empty_scalars();
-                msg.get_field_by_name_mut("int64")
-                    .unwrap()
-                    .set(Value::I64(4));
-                msg.get_field_by_name_mut("uint32")
-                    .unwrap()
-                    .set(Value::U32(5));
-                msg.get_field_by_name_mut("uint64")
-                    .unwrap()
-                    .set(Value::U64(6));
+                msg.set_field_by_name("int64", Value::I64(4));
+                msg.set_field_by_name("uint32", Value::U32(5));
+                msg.set_field_by_name("uint64", Value::U64(6));
                 Value::Message(msg)
             })
         ])),
     );
     assert_eq!(
-        dynamic.get_field_by_name("int_map").unwrap().get().as_ref(),
+        dynamic.get_field_by_name("int_map").unwrap().as_ref(),
         &Value::Map(HashMap::from([
             (MapKey::I32(3), {
                 let mut msg = empty_scalars();
-                msg.get_field_by_name_mut("sint32")
-                    .unwrap()
-                    .set(Value::I32(7));
-                msg.get_field_by_name_mut("sint64")
-                    .unwrap()
-                    .set(Value::I64(8));
-                msg.get_field_by_name_mut("fixed32")
-                    .unwrap()
-                    .set(Value::U32(9));
+                msg.set_field_by_name("sint32", Value::I32(7));
+                msg.set_field_by_name("sint64", Value::I64(8));
+                msg.set_field_by_name("fixed32", Value::U32(9));
                 Value::Message(msg)
             }),
             (MapKey::I32(4), {
                 let mut msg = empty_scalars();
-                msg.get_field_by_name_mut("sint64")
-                    .unwrap()
-                    .set(Value::I64(8));
-                msg.get_field_by_name_mut("fixed32")
-                    .unwrap()
-                    .set(Value::U32(9));
-                msg.get_field_by_name_mut("fixed64")
-                    .unwrap()
-                    .set(Value::U64(10));
+                msg.set_field_by_name("sint64", Value::I64(8));
+                msg.set_field_by_name("fixed32", Value::U32(9));
+                msg.set_field_by_name("fixed64", Value::U64(10));
                 Value::Message(msg)
             })
         ])),
     );
+    assert_eq!(dynamic.get_field_by_name("nested").unwrap().as_ref(), {
+        let mut msg = empty_scalars();
+        msg.set_field_by_name("sfixed32", Value::I32(11));
+        msg.set_field_by_name("sfixed64", Value::I64(12));
+        msg.set_field_by_name("bool", Value::Bool(true));
+        msg.set_field_by_name("string", Value::String("5".to_owned()));
+        msg.set_field_by_name("bytes", Value::Bytes(Bytes::from_static(b"6")));
+        &Value::Message(msg)
+    });
     assert_eq!(
-        dynamic.get_field_by_name("nested").unwrap().get().as_ref(),
-        {
-            let mut msg = empty_scalars();
-            msg.get_field_by_name_mut("sfixed32")
-                .unwrap()
-                .set(Value::I32(11));
-            msg.get_field_by_name_mut("sfixed64")
-                .unwrap()
-                .set(Value::I64(12));
-            msg.get_field_by_name_mut("bool")
-                .unwrap()
-                .set(Value::Bool(true));
-            msg.get_field_by_name_mut("string")
-                .unwrap()
-                .set(Value::String("5".to_owned()));
-            msg.get_field_by_name_mut("bytes")
-                .unwrap()
-                .set(Value::Bytes(Bytes::from_static(b"6")));
-            &Value::Message(msg)
-        }
-    );
-    assert_eq!(
-        dynamic.get_field_by_name("my_enum").unwrap().get().as_ref(),
+        dynamic.get_field_by_name("my_enum").unwrap().as_ref(),
         &Value::List(vec![
             Value::EnumNumber(0),
             Value::EnumNumber(1),
@@ -390,71 +333,63 @@ fn decode_default_values() {
     );
 
     assert_eq!(
-        dynamic.get_field_by_name("double").unwrap().get().as_ref(),
+        dynamic.get_field_by_name("double").unwrap().as_ref(),
         &Value::F64(1.1)
     );
     assert_eq!(
-        dynamic.get_field_by_name("float").unwrap().get().as_ref(),
+        dynamic.get_field_by_name("float").unwrap().as_ref(),
         &Value::F32(2.2)
     );
     assert_eq!(
-        dynamic.get_field_by_name("int32").unwrap().get().as_ref(),
+        dynamic.get_field_by_name("int32").unwrap().as_ref(),
         &Value::I32(-3)
     );
     assert_eq!(
-        dynamic.get_field_by_name("int64").unwrap().get().as_ref(),
+        dynamic.get_field_by_name("int64").unwrap().as_ref(),
         &Value::I64(4)
     );
     assert_eq!(
-        dynamic.get_field_by_name("uint32").unwrap().get().as_ref(),
+        dynamic.get_field_by_name("uint32").unwrap().as_ref(),
         &Value::U32(5)
     );
     assert_eq!(
-        dynamic.get_field_by_name("uint64").unwrap().get().as_ref(),
+        dynamic.get_field_by_name("uint64").unwrap().as_ref(),
         &Value::U64(6)
     );
     assert_eq!(
-        dynamic.get_field_by_name("sint32").unwrap().get().as_ref(),
+        dynamic.get_field_by_name("sint32").unwrap().as_ref(),
         &Value::I32(-7)
     );
     assert_eq!(
-        dynamic.get_field_by_name("sint64").unwrap().get().as_ref(),
+        dynamic.get_field_by_name("sint64").unwrap().as_ref(),
         &Value::I64(8)
     );
     assert_eq!(
-        dynamic.get_field_by_name("fixed32").unwrap().get().as_ref(),
+        dynamic.get_field_by_name("fixed32").unwrap().as_ref(),
         &Value::U32(9)
     );
     assert_eq!(
-        dynamic.get_field_by_name("fixed64").unwrap().get().as_ref(),
+        dynamic.get_field_by_name("fixed64").unwrap().as_ref(),
         &Value::U64(10)
     );
     assert_eq!(
-        dynamic
-            .get_field_by_name("sfixed32")
-            .unwrap()
-            .get()
-            .as_ref(),
+        dynamic.get_field_by_name("sfixed32").unwrap().as_ref(),
         &Value::I32(-11)
     );
     assert_eq!(
-        dynamic
-            .get_field_by_name("sfixed64")
-            .unwrap()
-            .get()
-            .as_ref(),
+        dynamic.get_field_by_name("sfixed64").unwrap().as_ref(),
         &Value::I64(12)
     );
     assert_eq!(
-        dynamic.get_field_by_name("bool").unwrap().get().as_ref(),
+        dynamic.get_field_by_name("bool").unwrap().as_ref(),
         &Value::Bool(true)
     );
     assert_eq!(
-        dynamic.get_field_by_name("string").unwrap().get().as_ref(),
+        dynamic.get_field_by_name("string").unwrap().as_ref(),
         &Value::String("hello".to_owned())
     );
     assert_eq!(
-        dynamic.get_field_by_name("bytes").unwrap().get().as_ref(),
+        dynamic.get_field_by_name("bytes").unwrap().as_ref(),
         &Value::Bytes(Bytes::from_static(
             b"\0\x01\x07\x08\x0C\n\r\t\x0B\\\'\"\xFE"
         ))
@@ -463,14 +398,34 @@ fn decode_default_values() {
         dynamic
             .get_field_by_name("defaulted_enum")
             .unwrap()
-            .get()
             .as_ref(),
         &Value::EnumNumber(3)
     );
     assert_eq!(
-        dynamic.get_field_by_name("enum").unwrap().get().as_ref(),
+        dynamic.get_field_by_name("enum").unwrap().as_ref(),
         &Value::EnumNumber(2)
     );
+}
+
+#[test]
+fn set_oneof() {
+    let mut dynamic = DynamicMessage::new(
+        TEST_FILE_DESCRIPTOR
+            .get_message_by_name(".test.MessageWithOneof")
+            .unwrap(),
+    );
+
+    assert_eq!(
+        dynamic.descriptor().oneofs().next().unwrap().name(),
+        "test_oneof"
+    );
+
+    dynamic.set_field_by_name("oneof_field_1", Value::String("hello".to_owned()));
+    assert!(dynamic.has_field_by_name("oneof_field_1"));
+
+    dynamic.set_field_by_name("oneof_field_2", Value::I32(5));
+    assert!(dynamic.has_field_by_name("oneof_field_2"));
+    assert!(!dynamic.has_field_by_name("oneof_field_1"));
 }
 
 #[test]

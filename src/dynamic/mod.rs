@@ -16,7 +16,7 @@ pub struct DynamicMessage {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct DynamicMessageField {
+struct DynamicMessageField {
     desc: FieldDescriptor,
     value: Option<Value>,
 }
@@ -68,24 +68,52 @@ impl DynamicMessage {
         self.desc.clone()
     }
 
-    pub fn get_field(&self, tag: u32) -> Option<&DynamicMessageField> {
-        self.fields.get(&tag)
+    pub fn has_field(&self, tag: u32) -> bool {
+        self.fields
+            .get(&tag)
+            .map_or(false, |field| field.is_populated())
     }
 
-    pub fn get_field_mut(&mut self, tag: u32) -> Option<&mut DynamicMessageField> {
-        self.fields.get_mut(&tag)
+    pub fn get_field(&self, tag: u32) -> Option<Cow<'_, Value>> {
+        self.fields.get(&tag).map(|field| field.get())
     }
 
-    pub fn get_field_by_name(&self, name: &str) -> Option<&DynamicMessageField> {
+    pub fn set_field(&mut self, tag: u32, value: Value) {
+        if let Some(field) = self.fields.get_mut(&tag) {
+            field.set(value);
+
+            if let Some(oneof) = field.desc.containing_oneof() {
+                for oneof_field in oneof.fields() {
+                    if oneof_field.tag() != tag {
+                        self.clear_field(oneof_field.tag());
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn clear_field(&mut self, tag: u32) {
+        if let Some(field) = self.fields.get_mut(&tag) {
+            field.clear();
+        }
+    }
+
+    pub fn has_field_by_name(&self, name: &str) -> bool {
+        self.desc
+            .get_field_by_name(name)
+            .map_or(false, |field_desc| self.has_field(field_desc.tag()))
+    }
+
+    pub fn get_field_by_name(&self, name: &str) -> Option<Cow<'_, Value>> {
         self.desc
             .get_field_by_name(name)
             .map(|field_desc| self.get_field(field_desc.tag()).expect("field not set"))
     }
 
-    pub fn get_field_by_name_mut(&mut self, name: &str) -> Option<&mut DynamicMessageField> {
-        self.desc
-            .get_field_by_name(name)
-            .map(move |field_desc| self.get_field_mut(field_desc.tag()).expect("field not set"))
+    pub fn set_field_by_name(&mut self, name: &str, value: Value) {
+        if let Some(field_desc) = self.desc.get_field_by_name(name) {
+            self.set_field(field_desc.tag(), value)
+        }
     }
 }
 
@@ -101,14 +129,18 @@ impl DynamicMessageField {
         }
     }
 
-    pub fn descriptor(&self) -> &FieldDescriptor {
-        &self.desc
-    }
-
     pub fn get(&self) -> Cow<'_, Value> {
         match &self.value {
             Some(value) => Cow::Borrowed(value),
             None => Cow::Owned(Value::default_value(&self.desc)),
+        }
+    }
+
+    pub fn is_populated(&self) -> bool {
+        if self.desc.supports_presence() {
+            self.value.is_some()
+        } else {
+            !self.value.as_ref().unwrap().is_default(&self.desc)
         }
     }
 

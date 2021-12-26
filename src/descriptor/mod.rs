@@ -186,6 +186,13 @@ impl Descriptor {
             })
     }
 
+    pub fn oneofs(&self) -> impl ExactSizeIterator<Item = OneofDescriptor> + '_ {
+        (0..self.message_ty().oneof_decls.len()).map(move |index| OneofDescriptor {
+            message: self.clone(),
+            index,
+        })
+    }
+
     pub fn get_field(&self, number: u32) -> Option<FieldDescriptor> {
         if self.message_ty().fields.contains_key(&number) {
             Some(FieldDescriptor {
