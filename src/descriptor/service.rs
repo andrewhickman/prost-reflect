@@ -49,7 +49,7 @@ impl ServiceDescriptor {
     }
 
     /// Gets a reference to the [`FileDescriptor`] this service is part of.
-    pub fn file_descriptor(&self) -> &FileDescriptor {
+    pub fn parent_file(&self) -> &FileDescriptor {
         &self.file_descriptor
     }
 
@@ -67,7 +67,7 @@ impl ServiceDescriptor {
     }
 
     fn inner(&self) -> &ServiceDescriptorInner {
-        &self.file_descriptor().inner.services[self.index]
+        &self.parent_file().inner.services[self.index]
     }
 }
 
@@ -108,13 +108,13 @@ impl MethodDescriptor {
     }
 
     /// Gets a reference to the [`ServiceDescriptor`] this method is defined in.
-    pub fn service_descriptor(&self) -> &ServiceDescriptor {
+    pub fn parent_service(&self) -> &ServiceDescriptor {
         &self.service
     }
 
     /// Gets a reference to the [`FileDescriptor`] this method is defined in.
-    pub fn file_descriptor(&self) -> &FileDescriptor {
-        self.service.file_descriptor()
+    pub fn parent_file(&self) -> &FileDescriptor {
+        self.service.parent_file()
     }
 
     /// Gets the name of the method.
@@ -125,7 +125,7 @@ impl MethodDescriptor {
     /// Gets the request message type of this method.
     pub fn request(&self) -> MessageDescriptor {
         MessageDescriptor {
-            file_set: self.file_descriptor().clone(),
+            file_set: self.parent_file().clone(),
             ty: self.inner().request_ty,
         }
     }
@@ -133,7 +133,7 @@ impl MethodDescriptor {
     /// Gets the response message type of this method.
     pub fn response(&self) -> MessageDescriptor {
         MessageDescriptor {
-            file_set: self.file_descriptor().clone(),
+            file_set: self.parent_file().clone(),
             ty: self.inner().response_ty,
         }
     }

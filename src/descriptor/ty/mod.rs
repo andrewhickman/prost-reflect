@@ -339,11 +339,19 @@ impl TypeMap {
 }
 
 impl Type {
+    pub(in crate::descriptor) fn is_message(&self) -> bool {
+        self.as_message().is_some()
+    }
+
     pub(in crate::descriptor) fn as_message(&self) -> Option<&Message> {
         match self {
             Type::Message(message) => Some(message),
             _ => None,
         }
+    }
+
+    pub(in crate::descriptor) fn is_enum(&self) -> bool {
+        self.as_enum().is_some()
     }
 
     pub(in crate::descriptor) fn as_enum(&self) -> Option<&Enum> {

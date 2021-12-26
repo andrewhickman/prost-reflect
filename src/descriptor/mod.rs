@@ -19,7 +19,7 @@ pub(crate) const MAP_ENTRY_VALUE_TAG: u32 = 2;
 /// A wrapper around a [`FileDescriptorSet`], which provides convenient APIs for the
 /// protobuf message definitions.
 ///
-/// This type is immutable once constructed and uses reference counting internally, so it is
+/// This type is immutable once constructed, and uses reference counting internally so it is
 /// cheap to clone.
 #[derive(Clone)]
 pub struct FileDescriptor {
@@ -144,10 +144,25 @@ impl FileDescriptor {
         (0..self.inner.services.len()).map(move |index| ServiceDescriptor::new(self.clone(), index))
     }
 
-    /// Gets a protobuf message by its fully qualified name, for example `.PackageName.MessageName`.
+    /// Gets a [`MessageDescriptor`] by its fully qualified name, for example `.PackageName.MessageName`.
     pub fn get_message_by_name(&self, name: &str) -> Option<MessageDescriptor> {
         let ty = self.inner.type_map.get_by_name(name).ok()?;
+        if !self.inner.type_map[ty].is_message() {
+            return None;
+        }
         Some(MessageDescriptor {
+            file_set: self.clone(),
+            ty,
+        })
+    }
+
+    /// Gets an [`EnumDescriptor`] by its fully qualified name, for example `.PackageName.MessageName`.
+    pub fn get_enum_by_name(&self, name: &str) -> Option<EnumDescriptor> {
+        let ty = self.inner.type_map.get_by_name(name).ok()?;
+        if !self.inner.type_map[ty].is_enum() {
+            return None;
+        }
+        Some(EnumDescriptor {
             file_set: self.clone(),
             ty,
         })
@@ -172,7 +187,7 @@ impl Eq for FileDescriptor {}
 
 impl MessageDescriptor {
     /// Gets a reference to the [`FileDescriptor`] this message is defined in.
-    pub fn file_descriptor(&self) -> &FileDescriptor {
+    pub fn parent_file(&self) -> &FileDescriptor {
         &self.file_set
     }
 
@@ -226,6 +241,14 @@ impl MessageDescriptor {
 }
 
 impl FieldDescriptor {
+    pub fn parent_file(&self) -> &FileDescriptor {
+        self.message.parent_file()
+    }
+
+    pub fn parent_message(&self) -> &MessageDescriptor {
+        &self.message
+    }
+
     pub fn tag(&self) -> u32 {
         self.field
     }
@@ -345,13 +368,21 @@ impl EnumDescriptor {
 }
 
 impl EnumValueDescriptor {
+    pub fn parent_enum(&self) -> &EnumDescriptor {
+        &self.parent
+    }
+
     pub fn number(&self) -> i32 {
         self.number
     }
 }
 
 impl OneofDescriptor {
-    pub fn message_descriptor(&self) -> &MessageDescriptor {
+    pub fn parent_file(&self) -> &FileDescriptor {
+        self.message.parent_file()
+    }
+
+    pub fn parent_message(&self) -> &MessageDescriptor {
         &self.message
     }
 
