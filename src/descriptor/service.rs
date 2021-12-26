@@ -27,6 +27,8 @@ struct MethodDescriptorInner {
     full_name: String,
     request_ty: ty::TypeId,
     response_ty: ty::TypeId,
+    server_streaming: bool,
+    client_streaming: bool,
 }
 
 impl ServiceDescriptor {
@@ -63,7 +65,7 @@ impl ServiceDescriptor {
         &self.inner().full_name
     }
 
-    /// Gets an iterator over the methods defined in this service.
+    /// Gets an iterator yielding a [`MethodDescriptor`] for each method defined in this service.
     pub fn methods(&self) -> impl ExactSizeIterator<Item = MethodDescriptor> + '_ {
         (0..self.inner().methods.len()).map(move |index| MethodDescriptor {
             service: self.clone(),
@@ -136,18 +138,30 @@ impl MethodDescriptor {
         &self.inner().full_name
     }
 
-    pub fn request(&self) -> MessageDescriptor {
+    /// Gets the [`MessageDescriptor`] for the input type of this method.
+    pub fn input(&self) -> MessageDescriptor {
         MessageDescriptor {
             file_set: self.parent_file().clone(),
             ty: self.inner().request_ty,
         }
     }
 
-    pub fn response(&self) -> MessageDescriptor {
+    /// Gets the [`MessageDescriptor`] for the output type of this method.
+    pub fn output(&self) -> MessageDescriptor {
         MessageDescriptor {
             file_set: self.parent_file().clone(),
             ty: self.inner().response_ty,
         }
+    }
+
+    /// Returns `true` if the client streams multiple messages.
+    pub fn is_client_streaming(&self) -> bool {
+        self.inner().client_streaming
+    }
+
+    /// Returns `true` if the server streams multiple messages.
+    pub fn is_server_streaming(&self) -> bool {
+        self.inner().server_streaming
     }
 
     fn inner(&self) -> &MethodDescriptorInner {
@@ -170,6 +184,8 @@ impl MethodDescriptorInner {
             full_name: make_full_name(namespace, raw_method.name()),
             request_ty,
             response_ty,
+            client_streaming: raw_method.client_streaming(),
+            server_streaming: raw_method.server_streaming(),
         })
     }
 }

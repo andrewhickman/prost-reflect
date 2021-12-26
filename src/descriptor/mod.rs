@@ -49,22 +49,39 @@ pub struct FieldDescriptor {
 /// The type of a protobuf message field.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Kind {
+    /// The protobuf `double` type.
     Double,
+    /// The protobuf `float` type.
     Float,
+    /// The protobuf `int32` type.
     Int32,
+    /// The protobuf `int64` type.
     Int64,
+    /// The protobuf `uint32` type.
     Uint32,
+    /// The protobuf `uint64` type.
     Uint64,
+    /// The protobuf `sint32` type.
     Sint32,
+    /// The protobuf `sint64` type.
     Sint64,
+    /// The protobuf `fixed32` type.
     Fixed32,
+    /// The protobuf `fixed64` type.
     Fixed64,
+    /// The protobuf `sfixed32` type.
     Sfixed32,
+    /// The protobuf `sfixed64` type.
     Sfixed64,
+    /// The protobuf `bool` type.
     Bool,
+    /// The protobuf `string` type.
     String,
+    /// The protobuf `bytes` type.
     Bytes,
+    /// A protobuf message type.
     Message(MessageDescriptor),
+    /// A protobuf enum type.
     Enum(EnumDescriptor),
 }
 
@@ -79,13 +96,14 @@ pub enum Cardinality {
     Repeated,
 }
 
-/// A protobuf enum descriptor.
+/// A protobuf enum type.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EnumDescriptor {
     file_set: FileDescriptor,
     ty: ty::TypeId,
 }
 
+/// A value in a protobuf enum type.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EnumValueDescriptor {
     parent: EnumDescriptor,
@@ -201,6 +219,7 @@ impl MessageDescriptor {
         &self.message_ty().full_name
     }
 
+    /// Gets an iterator yielding a [`FieldDescriptor`] for each field defined in this message.
     pub fn fields(&self) -> impl ExactSizeIterator<Item = FieldDescriptor> + '_ {
         self.message_ty()
             .fields
@@ -211,6 +230,7 @@ impl MessageDescriptor {
             })
     }
 
+    /// Gets an iterator yielding a [`OneofDescriptor`] for each oneof field defined in this message.
     pub fn oneofs(&self) -> impl ExactSizeIterator<Item = OneofDescriptor> + '_ {
         (0..self.message_ty().oneof_decls.len()).map(move |index| OneofDescriptor {
             message: self.clone(),
@@ -218,17 +238,19 @@ impl MessageDescriptor {
         })
     }
 
-    pub fn get_field(&self, number: u32) -> Option<FieldDescriptor> {
-        if self.message_ty().fields.contains_key(&number) {
+    /// Gets a [`FieldDescriptor`] with the given tag, or `None` if no such field exists.
+    pub fn get_field(&self, tag: u32) -> Option<FieldDescriptor> {
+        if self.message_ty().fields.contains_key(&tag) {
             Some(FieldDescriptor {
                 message: self.clone(),
-                field: number,
+                field: tag,
             })
         } else {
             None
         }
     }
 
+    /// Gets a [`FieldDescriptor`] with the given name, or `None` if no such field exists.
     pub fn get_field_by_name(&self, name: &str) -> Option<FieldDescriptor> {
         self.message_ty()
             .field_names
@@ -239,6 +261,13 @@ impl MessageDescriptor {
             })
     }
 
+    /// Returns `true` if this is an auto-generated message type to
+    /// represent the entry type for a map field.
+    //
+    /// If this method returns `true`, [`fields`][Self::fields] is guaranteed
+    /// yield the following two fields:
+    ///   • a "key" field with a field number of 1
+    ///   • a "value" field with a field number of 2
     pub fn is_map_entry(&self) -> bool {
         self.message_ty().is_map_entry
     }
@@ -381,10 +410,12 @@ impl EnumDescriptor {
         &self.enum_ty().full_name
     }
 
+    /// Gets the default value for the enum type.
     pub fn default_value(&self) -> EnumValueDescriptor {
         self.values().next().unwrap()
     }
 
+    /// Gets a [`EnumValueDescriptor`] for the enum value with the given name, or `None` if no such value exists.
     pub fn get_value_by_name(&self, name: &str) -> Option<EnumValueDescriptor> {
         self.enum_ty()
             .value_names
@@ -395,6 +426,7 @@ impl EnumDescriptor {
             })
     }
 
+    /// Gets a [`EnumValueDescriptor`] for the enum value with the given number, or `None` if no such value exists.
     pub fn get_value(&self, number: i32) -> Option<EnumValueDescriptor> {
         self.enum_ty()
             .values
@@ -405,6 +437,7 @@ impl EnumDescriptor {
             })
     }
 
+    /// Gets an iterator yielding a [`EnumValueDescriptor`] for each value in this enum.
     pub fn values(&self) -> impl ExactSizeIterator<Item = EnumValueDescriptor> + '_ {
         self.enum_ty()
             .values
@@ -471,6 +504,7 @@ impl OneofDescriptor {
         &self.oneof_ty().full_name
     }
 
+    /// Gets an iterator yield a [`FieldDescriptor`] for each field of the parent message this oneof contains.
     pub fn fields(&self) -> impl ExactSizeIterator<Item = FieldDescriptor> + '_ {
         self.oneof_ty()
             .fields
