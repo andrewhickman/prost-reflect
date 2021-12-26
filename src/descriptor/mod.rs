@@ -48,7 +48,7 @@ pub struct FieldDescriptor {
 
 /// The type of a protobuf message field.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum FieldDescriptorKind {
+pub enum Kind {
     Double,
     Float,
     Int32,
@@ -294,7 +294,7 @@ impl FieldDescriptor {
     pub fn is_map(&self) -> bool {
         self.cardinality() == Cardinality::Repeated
             && match self.kind() {
-                FieldDescriptorKind::Message(message) => message.is_map_entry(),
+                Kind::Message(message) => message.is_map_entry(),
                 _ => false,
             }
     }
@@ -307,33 +307,33 @@ impl FieldDescriptor {
         self.message_field_ty().supports_presence
     }
 
-    pub fn kind(&self) -> FieldDescriptorKind {
+    pub fn kind(&self) -> Kind {
         let ty = self.message_field_ty().ty;
         match &self.message.file_set.inner.type_map[ty] {
-            ty::Type::Message(_) => FieldDescriptorKind::Message(MessageDescriptor {
+            ty::Type::Message(_) => Kind::Message(MessageDescriptor {
                 file_set: self.message.file_set.clone(),
                 ty,
             }),
-            ty::Type::Enum(_) => FieldDescriptorKind::Enum(EnumDescriptor {
+            ty::Type::Enum(_) => Kind::Enum(EnumDescriptor {
                 file_set: self.message.file_set.clone(),
                 ty,
             }),
             ty::Type::Scalar(scalar) => match scalar {
-                ty::Scalar::Double => FieldDescriptorKind::Double,
-                ty::Scalar::Float => FieldDescriptorKind::Float,
-                ty::Scalar::Int32 => FieldDescriptorKind::Int32,
-                ty::Scalar::Int64 => FieldDescriptorKind::Int64,
-                ty::Scalar::Uint32 => FieldDescriptorKind::Uint32,
-                ty::Scalar::Uint64 => FieldDescriptorKind::Uint64,
-                ty::Scalar::Sint32 => FieldDescriptorKind::Sint32,
-                ty::Scalar::Sint64 => FieldDescriptorKind::Sint64,
-                ty::Scalar::Fixed32 => FieldDescriptorKind::Fixed32,
-                ty::Scalar::Fixed64 => FieldDescriptorKind::Fixed64,
-                ty::Scalar::Sfixed32 => FieldDescriptorKind::Sfixed32,
-                ty::Scalar::Sfixed64 => FieldDescriptorKind::Sfixed64,
-                ty::Scalar::Bool => FieldDescriptorKind::Bool,
-                ty::Scalar::String => FieldDescriptorKind::String,
-                ty::Scalar::Bytes => FieldDescriptorKind::Bytes,
+                ty::Scalar::Double => Kind::Double,
+                ty::Scalar::Float => Kind::Float,
+                ty::Scalar::Int32 => Kind::Int32,
+                ty::Scalar::Int64 => Kind::Int64,
+                ty::Scalar::Uint32 => Kind::Uint32,
+                ty::Scalar::Uint64 => Kind::Uint64,
+                ty::Scalar::Sint32 => Kind::Sint32,
+                ty::Scalar::Sint64 => Kind::Sint64,
+                ty::Scalar::Fixed32 => Kind::Fixed32,
+                ty::Scalar::Fixed64 => Kind::Fixed64,
+                ty::Scalar::Sfixed32 => Kind::Sfixed32,
+                ty::Scalar::Sfixed64 => Kind::Sfixed64,
+                ty::Scalar::Bool => Kind::Bool,
+                ty::Scalar::String => Kind::String,
+                ty::Scalar::Bytes => Kind::Bytes,
             },
         }
     }
@@ -356,10 +356,10 @@ impl FieldDescriptor {
     }
 }
 
-impl FieldDescriptorKind {
+impl Kind {
     pub fn as_message(&self) -> Option<&MessageDescriptor> {
         match self {
-            FieldDescriptorKind::Message(desc) => Some(desc),
+            Kind::Message(desc) => Some(desc),
             _ => None,
         }
     }

@@ -7,7 +7,7 @@ use std::{
 
 use prost::bytes::Bytes;
 
-use crate::{descriptor::FieldDescriptorKind, FieldDescriptor, MessageDescriptor};
+use crate::{descriptor::Kind, FieldDescriptor, MessageDescriptor};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct DynamicMessage {
@@ -171,25 +171,19 @@ impl Value {
         }
     }
 
-    fn default_value_for_kind(kind: &FieldDescriptorKind) -> Self {
+    fn default_value_for_kind(kind: &Kind) -> Self {
         match kind {
-            FieldDescriptorKind::Message(desc) => Value::Message(DynamicMessage::new(desc.clone())),
-            FieldDescriptorKind::Enum(enum_ty) => {
-                Value::EnumNumber(enum_ty.default_value().number())
-            }
-            FieldDescriptorKind::Double => Value::F64(0.0),
-            FieldDescriptorKind::Float => Value::F32(0.0),
-            FieldDescriptorKind::Int32
-            | FieldDescriptorKind::Sint32
-            | FieldDescriptorKind::Sfixed32 => Value::I32(0),
-            FieldDescriptorKind::Int64
-            | FieldDescriptorKind::Sint64
-            | FieldDescriptorKind::Sfixed64 => Value::I64(0),
-            FieldDescriptorKind::Uint32 | FieldDescriptorKind::Fixed32 => Value::U32(0),
-            FieldDescriptorKind::Uint64 | FieldDescriptorKind::Fixed64 => Value::U64(0),
-            FieldDescriptorKind::Bool => Value::Bool(false),
-            FieldDescriptorKind::String => Value::String(String::default()),
-            FieldDescriptorKind::Bytes => Value::Bytes(Bytes::default()),
+            Kind::Message(desc) => Value::Message(DynamicMessage::new(desc.clone())),
+            Kind::Enum(enum_ty) => Value::EnumNumber(enum_ty.default_value().number()),
+            Kind::Double => Value::F64(0.0),
+            Kind::Float => Value::F32(0.0),
+            Kind::Int32 | Kind::Sint32 | Kind::Sfixed32 => Value::I32(0),
+            Kind::Int64 | Kind::Sint64 | Kind::Sfixed64 => Value::I64(0),
+            Kind::Uint32 | Kind::Fixed32 => Value::U32(0),
+            Kind::Uint64 | Kind::Fixed64 => Value::U64(0),
+            Kind::Bool => Value::Bool(false),
+            Kind::String => Value::String(String::default()),
+            Kind::Bytes => Value::Bytes(Bytes::default()),
         }
     }
 
@@ -269,23 +263,19 @@ impl Value {
 }
 
 impl MapKey {
-    pub fn default_value(kind: &FieldDescriptorKind) -> Self {
+    pub fn default_value(kind: &Kind) -> Self {
         match *kind {
-            FieldDescriptorKind::Int32
-            | FieldDescriptorKind::Sint32
-            | FieldDescriptorKind::Sfixed32 => MapKey::I32(0),
-            FieldDescriptorKind::Int64
-            | FieldDescriptorKind::Sint64
-            | FieldDescriptorKind::Sfixed64 => MapKey::I64(0),
-            FieldDescriptorKind::Uint32 | FieldDescriptorKind::Fixed32 => MapKey::U32(0),
-            FieldDescriptorKind::Uint64 | FieldDescriptorKind::Fixed64 => MapKey::U64(0),
-            FieldDescriptorKind::Bool => MapKey::Bool(false),
-            FieldDescriptorKind::String => MapKey::String(String::default()),
+            Kind::Int32 | Kind::Sint32 | Kind::Sfixed32 => MapKey::I32(0),
+            Kind::Int64 | Kind::Sint64 | Kind::Sfixed64 => MapKey::I64(0),
+            Kind::Uint32 | Kind::Fixed32 => MapKey::U32(0),
+            Kind::Uint64 | Kind::Fixed64 => MapKey::U64(0),
+            Kind::Bool => MapKey::Bool(false),
+            Kind::String => MapKey::String(String::default()),
             _ => panic!("invalid type for map key"),
         }
     }
 
-    pub fn is_default(&self, field_desc: &FieldDescriptorKind) -> bool {
+    pub fn is_default(&self, field_desc: &Kind) -> bool {
         *self == MapKey::default_value(field_desc)
     }
 }
