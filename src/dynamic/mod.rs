@@ -1,4 +1,6 @@
 mod message;
+#[cfg(feature = "serde")]
+mod serde;
 
 use std::{
     borrow::Cow,
