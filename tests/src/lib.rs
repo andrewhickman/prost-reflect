@@ -641,6 +641,11 @@ fn roundtrip_well_known_types() {
 }
 
 proptest! {
+    #![proptest_config(ProptestConfig {
+        cases: 32,
+        .. ProptestConfig::default()
+    })]
+
     #[test]
     fn roundtrip_arb_scalars(message: Scalars) {
         roundtrip(&message, ".test.Scalars")?;

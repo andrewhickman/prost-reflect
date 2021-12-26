@@ -90,7 +90,7 @@ impl DynamicMessage {
 }
 
 impl DynamicMessageField {
-    fn new(desc: FieldDescriptor) -> Self {
+    pub fn new(desc: FieldDescriptor) -> Self {
         DynamicMessageField {
             value: if desc.supports_presence() {
                 None
@@ -99,6 +99,10 @@ impl DynamicMessageField {
             },
             desc,
         }
+    }
+
+    pub fn descriptor(&self) -> &FieldDescriptor {
+        &self.desc
     }
 
     pub fn get(&self) -> Cow<'_, Value> {
