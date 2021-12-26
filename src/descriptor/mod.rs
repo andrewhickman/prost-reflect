@@ -300,26 +300,36 @@ impl FieldDescriptor {
         &self.message_field_ty().full_name
     }
 
+    /// Gets the unique number for this message field.
     pub fn number(&self) -> u32 {
         self.field
     }
 
+    /// Gets the name used for JSON serialization.
+    ///
+    /// This is usually the camel-cased form of the field name.
     pub fn json_name(&self) -> &str {
         &self.message_field_ty().json_name
     }
 
+    /// Whether this field is encoded using the proto2 group encoding.
     pub fn is_group(&self) -> bool {
         self.message_field_ty().is_group
     }
 
+    /// Whether this field is a list type.
+    ///
+    /// Equivalent to checking that the cardinality is `Repeated` and that
+    /// [`is_map`][Self::is_map] returns `false`.
     pub fn is_list(&self) -> bool {
         self.cardinality() == Cardinality::Repeated && !self.is_map()
     }
 
-    pub fn is_packed(&self) -> bool {
-        self.message_field_ty().is_packed
-    }
-
+    /// Whether this field is a map type.
+    ///
+    /// Equivalent to checking that the cardinality is `Repeated` and that
+    /// the field type is a message where [`is_map_entry`][MessageDescriptor::is_map_entry]
+    /// returns `true`.
     pub fn is_map(&self) -> bool {
         self.cardinality() == Cardinality::Repeated
             && match self.kind() {
@@ -328,14 +338,27 @@ impl FieldDescriptor {
             }
     }
 
+    /// Whether this field is a list encoded using [packed encoding](https://developers.google.com/protocol-buffers/docs/encoding#packed).
+    pub fn is_packed(&self) -> bool {
+        self.message_field_ty().is_packed
+    }
+
+    /// The cardinality of this field.
     pub fn cardinality(&self) -> Cardinality {
         self.message_field_ty().cardinality
     }
 
+    /// Whether this field supports distinguishing between an unpopulated field and
+    /// the default value.
+    ///
+    /// For proto2 messages this returns `true` for all non-repeated fields.
+    /// For proto3 this returns `true` for message fields, and fields contained
+    /// in a `oneof`.
     pub fn supports_presence(&self) -> bool {
         self.message_field_ty().supports_presence
     }
 
+    /// Gets the [`Kind`] of this field.
     pub fn kind(&self) -> Kind {
         let ty = self.message_field_ty().ty;
         match &self.message.file_set.inner.type_map[ty] {
@@ -367,6 +390,8 @@ impl FieldDescriptor {
         }
     }
 
+    /// Gets a [`OneofDescriptor`] representing the oneof containing this field,
+    /// or `None` if this field is not contained in a oneof.
     pub fn containing_oneof(&self) -> Option<OneofDescriptor> {
         self.message_field_ty()
             .oneof_index
@@ -386,9 +411,20 @@ impl FieldDescriptor {
 }
 
 impl Kind {
+    /// Gets a reference to the [`MessageDescriptor`] if this is a message type,
+    /// or `None` otherwise.
     pub fn as_message(&self) -> Option<&MessageDescriptor> {
         match self {
             Kind::Message(desc) => Some(desc),
+            _ => None,
+        }
+    }
+
+    /// Gets a reference to the [`EnumDescriptor`] if this is an enum type,
+    /// or `None` otherwise.
+    pub fn as_enum(&self) -> Option<&EnumDescriptor> {
+        match self {
+            Kind::Enum(desc) => Some(desc),
             _ => None,
         }
     }
@@ -474,6 +510,7 @@ impl EnumValueDescriptor {
         &self.enum_value_ty().full_name
     }
 
+    /// Gets the number representing this enum value.
     pub fn number(&self) -> i32 {
         self.number
     }

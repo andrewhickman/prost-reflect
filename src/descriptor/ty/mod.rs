@@ -166,7 +166,7 @@ impl TypeMap {
 
                 let supports_presence = field_proto.proto3_optional()
                     || field_proto.oneof_index.is_some()
-                    || (cardinality == Cardinality::Optional
+                    || (cardinality != Cardinality::Repeated
                         && (field_proto.r#type() == ProtoType::Message
                             || syntax == Syntax::Proto2));
 
