@@ -110,6 +110,7 @@ pub struct EnumValueDescriptor {
     number: i32,
 }
 
+/// A oneof field in a protobuf message.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OneofDescriptor {
     message: MessageDescriptor,
@@ -266,8 +267,8 @@ impl MessageDescriptor {
     //
     /// If this method returns `true`, [`fields`][Self::fields] is guaranteed
     /// yield the following two fields:
-    ///   • a "key" field with a field number of 1
-    ///   • a "value" field with a field number of 2
+    /// * A "key" field with a field number of 1
+    /// * A "value" field with a field number of 2
     pub fn is_map_entry(&self) -> bool {
         self.message_ty().is_map_entry
     }
