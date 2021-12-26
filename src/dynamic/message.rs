@@ -37,7 +37,7 @@ impl Message for DynamicMessage {
             let field_value = &mut field.value;
             let field_desc = &field.desc;
             field_value
-                .get_or_insert_with(|| Value::default_value(field_desc))
+                .get_or_insert_with(|| Value::default_value_for_field(field_desc))
                 .merge_field(field_desc, wire_type, buf, ctx)
         } else {
             prost::encoding::skip_field(wire_type, tag, buf, ctx)
@@ -66,7 +66,7 @@ impl Value {
     where
         B: BufMut,
     {
-        if !field_desc.supports_presence() && self.is_default(field_desc) {
+        if !field_desc.supports_presence() && self.is_default_for_field(field_desc) {
             return;
         }
 
@@ -317,13 +317,13 @@ impl Value {
                         _ => unreachable!("invalid entry type for packed list"),
                     };
                     prost::encoding::merge_loop(values, buf, ctx, |values, buf, ctx| {
-                        let mut value = Value::default_value_for_kind(&field_kind);
+                        let mut value = Value::default_value(&field_kind);
                         value.merge_field(field_desc, packed_wire_type, buf, ctx)?;
                         values.push(value);
                         Ok(())
                     })
                 } else {
-                    let mut value = Value::default_value_for_kind(&field_kind);
+                    let mut value = Value::default_value(&field_kind);
                     value.merge_field(field_desc, wire_type, buf, ctx)?;
                     values.push(value);
                     Ok(())
@@ -334,7 +334,7 @@ impl Value {
                 let value_desc = map_entry.get_field(MAP_ENTRY_VALUE_TAG).unwrap();
 
                 let mut key = MapKey::default_value(&key_desc.kind());
-                let mut value = Value::default_value(&value_desc);
+                let mut value = Value::default_value_for_field(&value_desc);
                 prost::encoding::merge_loop(
                     &mut (&mut key, &mut value),
                     buf,
@@ -362,7 +362,7 @@ impl Value {
     }
 
     fn encoded_len(&self, field_desc: &FieldDescriptor) -> usize {
-        if !field_desc.supports_presence() && self.is_default(field_desc) {
+        if !field_desc.supports_presence() && self.is_default_for_field(field_desc) {
             return 0;
         }
 

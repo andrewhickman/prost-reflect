@@ -123,7 +123,7 @@ impl DynamicMessageField {
             value: if desc.supports_presence() {
                 None
             } else {
-                Some(Value::default_value(&desc))
+                Some(Value::default_value_for_field(&desc))
             },
             desc,
         }
@@ -132,7 +132,7 @@ impl DynamicMessageField {
     pub fn get(&self) -> Cow<'_, Value> {
         match &self.value {
             Some(value) => Cow::Borrowed(value),
-            None => Cow::Owned(Value::default_value(&self.desc)),
+            None => Cow::Owned(Value::default_value_for_field(&self.desc)),
         }
     }
 
@@ -140,7 +140,11 @@ impl DynamicMessageField {
         if self.desc.supports_presence() {
             self.value.is_some()
         } else {
-            !self.value.as_ref().unwrap().is_default(&self.desc)
+            !self
+                .value
+                .as_ref()
+                .unwrap()
+                .is_default_for_field(&self.desc)
         }
     }
 
@@ -153,13 +157,14 @@ impl DynamicMessageField {
         self.value = if self.desc.supports_presence() {
             None
         } else {
-            Some(Value::default_value(&self.desc))
+            Some(Value::default_value_for_field(&self.desc))
         };
     }
 }
 
 impl Value {
-    pub fn default_value(field_desc: &FieldDescriptor) -> Self {
+    /// Returns the default value for the given protobuf field.
+    pub fn default_value_for_field(field_desc: &FieldDescriptor) -> Self {
         if field_desc.is_list() {
             Value::List(Vec::default())
         } else if field_desc.is_map() {
@@ -167,11 +172,12 @@ impl Value {
         } else if let Some(default_value) = field_desc.default_value() {
             default_value.clone()
         } else {
-            Self::default_value_for_kind(&field_desc.kind())
+            Self::default_value(&field_desc.kind())
         }
     }
 
-    fn default_value_for_kind(kind: &Kind) -> Self {
+    /// Returns the default value for the given protobuf type `kind`.
+    pub fn default_value(kind: &Kind) -> Self {
         match kind {
             Kind::Message(desc) => Value::Message(DynamicMessage::new(desc.clone())),
             Kind::Enum(enum_ty) => Value::EnumNumber(enum_ty.default_value().number()),
@@ -187,10 +193,17 @@ impl Value {
         }
     }
 
-    pub fn is_default(&self, field_desc: &FieldDescriptor) -> bool {
-        *self == Value::default_value(field_desc)
+    /// Returns `true` if this is the default value for the given protobuf field.
+    pub fn is_default_for_field(&self, field_desc: &FieldDescriptor) -> bool {
+        *self == Value::default_value_for_field(field_desc)
     }
 
+    /// Returns `true` if this is the default value for the given protobuf type `kind`.
+    pub fn is_default(&self, kind: &Kind) -> bool {
+        *self == Value::default_value(kind)
+    }
+
+    /// Returns the value if it is a `Value::Bool`, or `None` if it is any other type.
     pub fn as_bool(&self) -> Option<bool> {
         match *self {
             Value::Bool(value) => Some(value),
@@ -198,6 +211,15 @@ impl Value {
         }
     }
 
+    /// Returns a mutable reference to the value if it is a `Value::Bool`, or `None` if it is any other type.
+    pub fn as_bool_mut(&mut self) -> Option<&mut bool> {
+        match self {
+            Value::Bool(value) => Some(value),
+            _ => None,
+        }
+    }
+
+    /// Returns the value if it is a `Value::U32`, or `None` if it is any other type.
     pub fn as_u32(&self) -> Option<u32> {
         match *self {
             Value::U32(value) => Some(value),
@@ -205,6 +227,15 @@ impl Value {
         }
     }
 
+    /// Returns a mutable reference to the value if it is a `Value::U32`, or `None` if it is any other type.
+    pub fn as_u32_mut(&mut self) -> Option<&mut u32> {
+        match self {
+            Value::U32(value) => Some(value),
+            _ => None,
+        }
+    }
+
+    /// Returns the value if it is a `Value::U64`, or `None` if it is any other type.
     pub fn as_u64(&self) -> Option<u64> {
         match *self {
             Value::U64(value) => Some(value),
@@ -212,6 +243,15 @@ impl Value {
         }
     }
 
+    /// Returns a mutable reference to the value if it is a `Value::U64`, or `None` if it is any other type.
+    pub fn as_u64_mut(&mut self) -> Option<&mut u64> {
+        match self {
+            Value::U64(value) => Some(value),
+            _ => None,
+        }
+    }
+
+    /// Returns the value if it is a `Value::I64`, or `None` if it is any other type.
     pub fn as_i64(&self) -> Option<i64> {
         match *self {
             Value::I64(value) => Some(value),
@@ -219,6 +259,15 @@ impl Value {
         }
     }
 
+    /// Returns a mutable reference to the value if it is a `Value::I64`, or `None` if it is any other type.
+    pub fn as_i64_mut(&mut self) -> Option<&mut i64> {
+        match self {
+            Value::I64(value) => Some(value),
+            _ => None,
+        }
+    }
+
+    /// Returns the value if it is a `Value::I32`, or `None` if it is any other type.
     pub fn as_i32(&self) -> Option<i32> {
         match *self {
             Value::I32(value) => Some(value),
@@ -226,6 +275,15 @@ impl Value {
         }
     }
 
+    /// Returns a mutable reference to the value if it is a `Value::I32`, or `None` if it is any other type.
+    pub fn as_i32_mut(&mut self) -> Option<&mut i32> {
+        match self {
+            Value::I32(value) => Some(value),
+            _ => None,
+        }
+    }
+
+    /// Returns the value if it is a `Value::F32`, or `None` if it is any other type.
     pub fn as_f32(&self) -> Option<f32> {
         match *self {
             Value::F32(value) => Some(value),
@@ -233,6 +291,15 @@ impl Value {
         }
     }
 
+    /// Returns a mutable reference to the value if it is a `Value::F32`, or `None` if it is any other type.
+    pub fn as_f32_mut(&mut self) -> Option<&mut f32> {
+        match self {
+            Value::F32(value) => Some(value),
+            _ => None,
+        }
+    }
+
+    /// Returns the value if it is a `Value::F64`, or `None` if it is any other type.
     pub fn as_f64(&self) -> Option<f64> {
         match *self {
             Value::F64(value) => Some(value),
@@ -240,6 +307,15 @@ impl Value {
         }
     }
 
+    /// Returns a mutable reference to the value if it is a `Value::F64`, or `None` if it is any other type.
+    pub fn as_f64_mut(&mut self) -> Option<&mut f64> {
+        match self {
+            Value::F64(value) => Some(value),
+            _ => None,
+        }
+    }
+
+    /// Returns the value if it is a `Value::EnumNumber`, or `None` if it is any other type.
     pub fn as_enum_number(&self) -> Option<i32> {
         match *self {
             Value::EnumNumber(value) => Some(value),
@@ -247,6 +323,15 @@ impl Value {
         }
     }
 
+    /// Returns a mutable reference to the value if it is a `Value::EnumNumber`, or `None` if it is any other type.
+    pub fn as_enum_number_mut(&mut self) -> Option<&mut i32> {
+        match self {
+            Value::EnumNumber(value) => Some(value),
+            _ => None,
+        }
+    }
+
+    /// Returns the value if it is a `Value::String`, or `None` if it is any other type.
     pub fn as_str(&self) -> Option<&str> {
         match self {
             Value::String(value) => Some(value),
@@ -254,7 +339,24 @@ impl Value {
         }
     }
 
+    /// Returns a mutable reference to the value if it is a `Value::String`, or `None` if it is any other type.
+    pub fn as_string_mut(&mut self) -> Option<&mut String> {
+        match self {
+            Value::String(value) => Some(value),
+            _ => None,
+        }
+    }
+
+    /// Returns the value if it is a `Value::Bytes`, or `None` if it is any other type.
     pub fn as_bytes(&self) -> Option<&Bytes> {
+        match self {
+            Value::Bytes(value) => Some(value),
+            _ => None,
+        }
+    }
+
+    /// Returns a mutable reference to the value if it is a `Value::Bytes`, or `None` if it is any other type.
+    pub fn as_bytes_mut(&mut self) -> Option<&mut Bytes> {
         match self {
             Value::Bytes(value) => Some(value),
             _ => None,
@@ -263,6 +365,11 @@ impl Value {
 }
 
 impl MapKey {
+    /// Returns the default value for the given protobuf type `kind`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `kind` is not a valid map key type (an integral type or string).
     pub fn default_value(kind: &Kind) -> Self {
         match *kind {
             Kind::Int32 | Kind::Sint32 | Kind::Sfixed32 => MapKey::I32(0),
@@ -275,8 +382,109 @@ impl MapKey {
         }
     }
 
-    pub fn is_default(&self, field_desc: &Kind) -> bool {
-        *self == MapKey::default_value(field_desc)
+    /// Returns `true` if this is the default value for the given protobuf type `kind`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `kind` is not a valid map key type (an integral type or string).
+    pub fn is_default(&self, kind: &Kind) -> bool {
+        *self == MapKey::default_value(kind)
+    }
+
+    /// Returns the value if it is a `MapKey::Bool`, or `None` if it is any other type.
+    pub fn as_bool(&self) -> Option<bool> {
+        match *self {
+            MapKey::Bool(value) => Some(value),
+            _ => None,
+        }
+    }
+
+    /// Returns a mutable reference to the value if it is a `MapKey::Bool`, or `None` if it is any other type.
+    pub fn as_bool_mut(&mut self) -> Option<&mut bool> {
+        match self {
+            MapKey::Bool(value) => Some(value),
+            _ => None,
+        }
+    }
+
+    /// Returns the value if it is a `MapKey::U32`, or `None` if it is any other type.
+    pub fn as_u32(&self) -> Option<u32> {
+        match *self {
+            MapKey::U32(value) => Some(value),
+            _ => None,
+        }
+    }
+
+    /// Returns a mutable reference to the value if it is a `MapKey::U32`, or `None` if it is any other type.
+    pub fn as_u32_mut(&mut self) -> Option<&mut u32> {
+        match self {
+            MapKey::U32(value) => Some(value),
+            _ => None,
+        }
+    }
+
+    /// Returns the value if it is a `MapKey::U64`, or `None` if it is any other type.
+    pub fn as_u64(&self) -> Option<u64> {
+        match *self {
+            MapKey::U64(value) => Some(value),
+            _ => None,
+        }
+    }
+
+    /// Returns a mutable reference to the value if it is a `MapKey::U64`, or `None` if it is any other type.
+    pub fn as_u64_mut(&mut self) -> Option<&mut u64> {
+        match self {
+            MapKey::U64(value) => Some(value),
+            _ => None,
+        }
+    }
+
+    /// Returns the value if it is a `MapKey::I64`, or `None` if it is any other type.
+    pub fn as_i64(&self) -> Option<i64> {
+        match *self {
+            MapKey::I64(value) => Some(value),
+            _ => None,
+        }
+    }
+
+    /// Returns a mutable reference to the value if it is a `MapKey::I64`, or `None` if it is any other type.
+    pub fn as_i64_mut(&mut self) -> Option<&mut i64> {
+        match self {
+            MapKey::I64(value) => Some(value),
+            _ => None,
+        }
+    }
+
+    /// Returns the value if it is a `MapKey::I32`, or `None` if it is any other type.
+    pub fn as_i32(&self) -> Option<i32> {
+        match *self {
+            MapKey::I32(value) => Some(value),
+            _ => None,
+        }
+    }
+
+    /// Returns a mutable reference to the value if it is a `MapKey::I32`, or `None` if it is any other type.
+    pub fn as_i32_mut(&mut self) -> Option<&mut i32> {
+        match self {
+            MapKey::I32(value) => Some(value),
+            _ => None,
+        }
+    }
+
+    /// Returns the value if it is a `MapKey::String`, or `None` if it is any other type.
+    pub fn as_str(&self) -> Option<&str> {
+        match self {
+            MapKey::String(value) => Some(value),
+            _ => None,
+        }
+    }
+
+    /// Returns a mutable reference to the value if it is a `MapKey::String`, or `None` if it is any other type.
+    pub fn as_string_mut(&mut self) -> Option<&mut String> {
+        match self {
+            MapKey::String(value) => Some(value),
+            _ => None,
+        }
     }
 }
 
