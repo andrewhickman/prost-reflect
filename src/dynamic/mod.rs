@@ -103,7 +103,7 @@ impl DynamicMessage {
         DynamicMessage {
             fields: desc
                 .fields()
-                .map(|field_desc| (field_desc.tag(), DynamicMessageField::new(field_desc)))
+                .map(|field_desc| (field_desc.number(), DynamicMessageField::new(field_desc)))
                 .collect(),
             desc,
         }
@@ -115,7 +115,7 @@ impl DynamicMessage {
         self.desc.clone()
     }
 
-    /// Returns `true` if this message has a field set with the tag `tag`.
+    /// Returns `true` if this message has a field set with the number `number`.
     ///
     /// If the field type supports distinguishing whether a value has been set, such as
     /// for messages, then this method returns `true` only if a value has been set. For other
@@ -123,61 +123,61 @@ impl DynamicMessage {
     ///
     /// If this method returns `false`, then the field will not be included in the encoded bytes
     /// of this message.
-    pub fn has_field(&self, tag: u32) -> bool {
+    pub fn has_field(&self, number: u32) -> bool {
         self.fields
-            .get(&tag)
+            .get(&number)
             .map_or(false, |field| field.is_populated())
     }
 
-    /// Gets the value of the field with tag `tag`, or the default value if it is unset.
+    /// Gets the value of the field with number `number`, or the default value if it is unset.
     ///
-    /// If this message has no field with tag `tag`, `None` is returned. Otherwise this method
+    /// If this message has no field with number `number`, `None` is returned. Otherwise this method
     /// will always return `Some`.
-    pub fn get_field(&self, tag: u32) -> Option<Cow<'_, Value>> {
-        self.fields.get(&tag).map(|field| field.get())
+    pub fn get_field(&self, number: u32) -> Option<Cow<'_, Value>> {
+        self.fields.get(&number).map(|field| field.get())
     }
 
-    /// Sets the value of the field with tag `tag`, or the default value if it is unset.
+    /// Sets the value of the field with number `number`, or the default value if it is unset.
     ///
-    /// If no field has tag `tag` this method does nothing.
+    /// If no field has number `number` this method does nothing.
     ///
     /// # Panics
     ///
     /// This method may panic if the value type is not compatible with the field type.
     /// (Note this is not currently implemented, so you may get a panic while encoding or decoding instead)
-    pub fn set_field(&mut self, tag: u32, value: Value) {
-        if let Some(field) = self.fields.get_mut(&tag) {
+    pub fn set_field(&mut self, number: u32, value: Value) {
+        if let Some(field) = self.fields.get_mut(&number) {
             field.set(value);
 
             if let Some(oneof) = field.desc.containing_oneof() {
                 for oneof_field in oneof.fields() {
-                    if oneof_field.tag() != tag {
-                        self.clear_field(oneof_field.tag());
+                    if oneof_field.number() != number {
+                        self.clear_field(oneof_field.number());
                     }
                 }
             }
         }
     }
 
-    /// Clears the field with tag `tag`.
+    /// Clears the field with number `number`.
     ///
     /// After calling this method, `has_field` will return false for the field,
     /// and it will not be included in the encoded bytes of this message.
     ///
-    /// If no field has tag `tag` this method does nothing.
-    pub fn clear_field(&mut self, tag: u32) {
-        if let Some(field) = self.fields.get_mut(&tag) {
+    /// If no field has number `number` this method does nothing.
+    pub fn clear_field(&mut self, number: u32) {
+        if let Some(field) = self.fields.get_mut(&number) {
             field.clear();
         }
     }
 
-    /// Returns `true` if this message has a field set with the tag `tag`.
+    /// Returns `true` if this message has a field set with the number `number`.
     ///
     /// See [`has_field`][Self::has_field] for more details.
     pub fn has_field_by_name(&self, name: &str) -> bool {
         self.desc
             .get_field_by_name(name)
-            .map_or(false, |field_desc| self.has_field(field_desc.tag()))
+            .map_or(false, |field_desc| self.has_field(field_desc.number()))
     }
 
     /// Gets the value of the field with name `name`, or the default value if it is unset.
@@ -186,7 +186,7 @@ impl DynamicMessage {
     pub fn get_field_by_name(&self, name: &str) -> Option<Cow<'_, Value>> {
         self.desc
             .get_field_by_name(name)
-            .map(|field_desc| self.get_field(field_desc.tag()).expect("field not set"))
+            .map(|field_desc| self.get_field(field_desc.number()).expect("field not set"))
     }
 
     /// Sets the value of the field with name `name`, or the default value if it is unset.
@@ -194,7 +194,7 @@ impl DynamicMessage {
     /// See [`set_field`][Self::set_field] for more details.
     pub fn set_field_by_name(&mut self, name: &str, value: Value) {
         if let Some(field_desc) = self.desc.get_field_by_name(name) {
-            self.set_field(field_desc.tag(), value)
+            self.set_field(field_desc.number(), value)
         }
     }
 
@@ -203,7 +203,7 @@ impl DynamicMessage {
     /// See [`clear_field`][Self::clear_field] for more details.
     pub fn clear_field_by_name(&mut self, name: &str) {
         if let Some(field_desc) = self.desc.get_field_by_name(name) {
-            self.clear_field(field_desc.tag());
+            self.clear_field(field_desc.number());
         }
     }
 }

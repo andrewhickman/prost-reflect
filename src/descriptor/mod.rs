@@ -13,8 +13,8 @@ use prost_types::FileDescriptorSet;
 
 use self::service::ServiceDescriptorInner;
 
-pub(crate) const MAP_ENTRY_KEY_TAG: u32 = 1;
-pub(crate) const MAP_ENTRY_VALUE_TAG: u32 = 2;
+pub(crate) const MAP_ENTRY_KEY_NUMBER: u32 = 1;
+pub(crate) const MAP_ENTRY_VALUE_NUMBER: u32 = 2;
 
 /// A wrapper around a [`FileDescriptorSet`], which provides convenient APIs for the
 /// protobuf message definitions.
@@ -238,12 +238,12 @@ impl MessageDescriptor {
         })
     }
 
-    /// Gets a [`FieldDescriptor`] with the given tag, or `None` if no such field exists.
-    pub fn get_field(&self, tag: u32) -> Option<FieldDescriptor> {
-        if self.message_ty().fields.contains_key(&tag) {
+    /// Gets a [`FieldDescriptor`] with the given number, or `None` if no such field exists.
+    pub fn get_field(&self, number: u32) -> Option<FieldDescriptor> {
+        if self.message_ty().fields.contains_key(&number) {
             Some(FieldDescriptor {
                 message: self.clone(),
-                field: tag,
+                field: number,
             })
         } else {
             None
@@ -300,7 +300,7 @@ impl FieldDescriptor {
         &self.message_field_ty().full_name
     }
 
-    pub fn tag(&self) -> u32 {
+    pub fn number(&self) -> u32 {
         self.field
     }
 

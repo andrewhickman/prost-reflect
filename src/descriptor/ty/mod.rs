@@ -7,7 +7,7 @@ use prost_types::{DescriptorProto, EnumDescriptorProto, FieldDescriptorProto, Fi
 
 use crate::{
     descriptor::{
-        make_full_name, parse_namespace, Cardinality, MAP_ENTRY_KEY_TAG, MAP_ENTRY_VALUE_TAG,
+        make_full_name, parse_namespace, Cardinality, MAP_ENTRY_KEY_NUMBER, MAP_ENTRY_VALUE_NUMBER,
     },
     DescriptorError,
 };
@@ -150,7 +150,7 @@ impl TypeMap {
             .map(|field_proto| {
                 let ty = self.add_message_field(field_proto, protos)?;
 
-                let tag = field_proto.number() as u32;
+                let number = field_proto.number() as u32;
 
                 let cardinality = match field_proto.label() {
                     Label::Optional => Cardinality::Optional,
@@ -220,7 +220,7 @@ impl TypeMap {
                     Some(index) => {
                         let index = index as usize;
                         if let Some(oneof) = oneof_decls.get_mut(index) {
-                            oneof.fields.push(tag);
+                            oneof.fields.push(number);
                         } else {
                             return Err(DescriptorError::invalid_oneof_index(
                                 name,
@@ -245,18 +245,18 @@ impl TypeMap {
                     ty,
                 };
 
-                Ok((tag, field))
+                Ok((number, field))
             })
             .collect::<Result<BTreeMap<_, _>, _>>()?;
 
         let field_names = fields
             .iter()
-            .map(|(&tag, field)| (field.name.clone(), tag))
+            .map(|(&number, field)| (field.name.clone(), number))
             .collect();
 
         if is_map_entry
-            && (!fields.contains_key(&MAP_ENTRY_KEY_TAG)
-                || !fields.contains_key(&MAP_ENTRY_VALUE_TAG))
+            && (!fields.contains_key(&MAP_ENTRY_KEY_NUMBER)
+                || !fields.contains_key(&MAP_ENTRY_VALUE_NUMBER))
         {
             return Err(DescriptorError::invalid_map_entry(name));
         }

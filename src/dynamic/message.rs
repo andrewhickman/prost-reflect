@@ -5,7 +5,7 @@ use prost::{
 };
 
 use crate::{
-    descriptor::{Kind, MAP_ENTRY_KEY_TAG, MAP_ENTRY_VALUE_TAG},
+    descriptor::{Kind, MAP_ENTRY_KEY_NUMBER, MAP_ENTRY_VALUE_NUMBER},
     DynamicMessage, FieldDescriptor, MapKey, Value,
 };
 
@@ -24,7 +24,7 @@ impl Message for DynamicMessage {
 
     fn merge_field<B>(
         &mut self,
-        tag: u32,
+        number: u32,
         wire_type: WireType,
         buf: &mut B,
         ctx: DecodeContext,
@@ -33,14 +33,14 @@ impl Message for DynamicMessage {
         B: Buf,
         Self: Sized,
     {
-        if let Some(field) = self.fields.get_mut(&tag) {
+        if let Some(field) = self.fields.get_mut(&number) {
             let field_value = &mut field.value;
             let field_desc = &field.desc;
             field_value
                 .get_or_insert_with(|| Value::default_value_for_field(field_desc))
                 .merge_field(field_desc, wire_type, buf, ctx)
         } else {
-            prost::encoding::skip_field(wire_type, tag, buf, ctx)
+            prost::encoding::skip_field(wire_type, number, buf, ctx)
         }
     }
 
@@ -70,44 +70,60 @@ impl Value {
             return;
         }
 
-        let tag = field_desc.tag();
+        let number = field_desc.number();
         match (self, field_desc.kind()) {
-            (Value::Bool(value), Kind::Bool) => prost::encoding::bool::encode(tag, value, buf),
-            (Value::I32(value), Kind::Int32) => prost::encoding::int32::encode(tag, value, buf),
-            (Value::I32(value), Kind::Sint32) => prost::encoding::sint32::encode(tag, value, buf),
+            (Value::Bool(value), Kind::Bool) => prost::encoding::bool::encode(number, value, buf),
+            (Value::I32(value), Kind::Int32) => prost::encoding::int32::encode(number, value, buf),
+            (Value::I32(value), Kind::Sint32) => {
+                prost::encoding::sint32::encode(number, value, buf)
+            }
             (Value::I32(value), Kind::Sfixed32) => {
-                prost::encoding::sfixed32::encode(tag, value, buf)
+                prost::encoding::sfixed32::encode(number, value, buf)
             }
-            (Value::I64(value), Kind::Int64) => prost::encoding::int64::encode(tag, value, buf),
-            (Value::I64(value), Kind::Sint64) => prost::encoding::sint64::encode(tag, value, buf),
+            (Value::I64(value), Kind::Int64) => prost::encoding::int64::encode(number, value, buf),
+            (Value::I64(value), Kind::Sint64) => {
+                prost::encoding::sint64::encode(number, value, buf)
+            }
             (Value::I64(value), Kind::Sfixed64) => {
-                prost::encoding::sfixed64::encode(tag, value, buf)
+                prost::encoding::sfixed64::encode(number, value, buf)
             }
-            (Value::U32(value), Kind::Uint32) => prost::encoding::uint32::encode(tag, value, buf),
-            (Value::U32(value), Kind::Fixed32) => prost::encoding::fixed32::encode(tag, value, buf),
-            (Value::U64(value), Kind::Uint64) => prost::encoding::uint64::encode(tag, value, buf),
-            (Value::U64(value), Kind::Fixed64) => prost::encoding::fixed64::encode(tag, value, buf),
-            (Value::F32(value), Kind::Float) => prost::encoding::float::encode(tag, value, buf),
-            (Value::F64(value), Kind::Double) => prost::encoding::double::encode(tag, value, buf),
+            (Value::U32(value), Kind::Uint32) => {
+                prost::encoding::uint32::encode(number, value, buf)
+            }
+            (Value::U32(value), Kind::Fixed32) => {
+                prost::encoding::fixed32::encode(number, value, buf)
+            }
+            (Value::U64(value), Kind::Uint64) => {
+                prost::encoding::uint64::encode(number, value, buf)
+            }
+            (Value::U64(value), Kind::Fixed64) => {
+                prost::encoding::fixed64::encode(number, value, buf)
+            }
+            (Value::F32(value), Kind::Float) => prost::encoding::float::encode(number, value, buf),
+            (Value::F64(value), Kind::Double) => {
+                prost::encoding::double::encode(number, value, buf)
+            }
             (Value::String(value), Kind::String) => {
-                prost::encoding::string::encode(tag, value, buf)
+                prost::encoding::string::encode(number, value, buf)
             }
-            (Value::Bytes(value), Kind::Bytes) => prost::encoding::bytes::encode(tag, value, buf),
+            (Value::Bytes(value), Kind::Bytes) => {
+                prost::encoding::bytes::encode(number, value, buf)
+            }
             (Value::EnumNumber(value), Kind::Enum(_)) => {
-                prost::encoding::int32::encode(tag, value, buf)
+                prost::encoding::int32::encode(number, value, buf)
             }
             (Value::Message(message), Kind::Message(_)) => {
                 if field_desc.is_group() {
-                    prost::encoding::group::encode(tag, message, buf)
+                    prost::encoding::group::encode(number, message, buf)
                 } else {
-                    prost::encoding::message::encode(tag, message, buf)
+                    prost::encoding::message::encode(number, message, buf)
                 }
             }
             (Value::List(values), _) if field_desc.is_list() => {
                 if field_desc.is_packed() {
                     match field_desc.kind() {
                         Kind::Enum(_) => encode_packed_list(
-                            tag,
+                            number,
                             values
                                 .iter()
                                 .map(|v| v.as_enum_number().expect("expected enum number")),
@@ -116,91 +132,91 @@ impl Value {
                             |v| prost::encoding::encoded_len_varint(v as u64),
                         ),
                         Kind::Double => encode_packed_list(
-                            tag,
+                            number,
                             values.iter().map(|v| v.as_f64().expect("expected double")),
                             buf,
                             |v, b| b.put_f64_le(v),
                             |_| 8,
                         ),
                         Kind::Float => encode_packed_list(
-                            tag,
+                            number,
                             values.iter().map(|v| v.as_f32().expect("expected float")),
                             buf,
                             |v, b| b.put_f32_le(v),
                             |_| 4,
                         ),
                         Kind::Int32 => encode_packed_list(
-                            tag,
+                            number,
                             values.iter().map(|v| v.as_i32().expect("expected i32")),
                             buf,
                             |v, b| prost::encoding::encode_varint(v as u64, b),
                             |v| prost::encoding::encoded_len_varint(v as u64),
                         ),
                         Kind::Int64 => encode_packed_list(
-                            tag,
+                            number,
                             values.iter().map(|v| v.as_i64().expect("expected i64")),
                             buf,
                             |v, b| prost::encoding::encode_varint(v as u64, b),
                             |v| prost::encoding::encoded_len_varint(v as u64),
                         ),
                         Kind::Uint32 => encode_packed_list(
-                            tag,
+                            number,
                             values.iter().map(|v| v.as_u32().expect("expected u32")),
                             buf,
                             |v, b| prost::encoding::encode_varint(v as u64, b),
                             |v| prost::encoding::encoded_len_varint(v as u64),
                         ),
                         Kind::Uint64 => encode_packed_list(
-                            tag,
+                            number,
                             values.iter().map(|v| v.as_u64().expect("expected u64")),
                             buf,
                             |v, b| prost::encoding::encode_varint(v as u64, b),
                             |v| prost::encoding::encoded_len_varint(v as u64),
                         ),
                         Kind::Sint32 => encode_packed_list(
-                            tag,
+                            number,
                             values.iter().map(|v| v.as_i32().expect("expected i32")),
                             buf,
                             |v, b| prost::encoding::encode_varint(from_sint32(v) as u64, b),
                             |v| prost::encoding::encoded_len_varint(from_sint32(v) as u64),
                         ),
                         Kind::Sint64 => encode_packed_list(
-                            tag,
+                            number,
                             values.iter().map(|v| v.as_i64().expect("expected i64")),
                             buf,
                             |v, b| prost::encoding::encode_varint(from_sint64(v) as u64, b),
                             |v| prost::encoding::encoded_len_varint(from_sint64(v) as u64),
                         ),
                         Kind::Fixed32 => encode_packed_list(
-                            tag,
+                            number,
                             values.iter().map(|v| v.as_u32().expect("expected u32")),
                             buf,
                             |v, b| b.put_u32_le(v),
                             |_| 4,
                         ),
                         Kind::Fixed64 => encode_packed_list(
-                            tag,
+                            number,
                             values.iter().map(|v| v.as_u64().expect("expected u64")),
                             buf,
                             |v, b| b.put_u64_le(v),
                             |_| 8,
                         ),
                         Kind::Sfixed32 => encode_packed_list(
-                            tag,
+                            number,
                             values.iter().map(|v| v.as_i32().expect("expected i32")),
                             buf,
                             |v, b| b.put_i32_le(v),
                             |_| 4,
                         ),
                         Kind::Sfixed64 => encode_packed_list(
-                            tag,
+                            number,
                             values.iter().map(|v| v.as_i64().expect("expected i64")),
                             buf,
                             |v, b| b.put_i64_le(v),
                             |_| 8,
                         ),
                         Kind::Bool => encode_packed_list(
-                            tag,
+                            number,
                             values.iter().map(|v| v.as_bool().expect("expected bool")),
                             buf,
                             |v, b| prost::encoding::encode_varint(v as u64, b),
@@ -215,13 +231,13 @@ impl Value {
                 }
             }
             (Value::Map(values), Kind::Message(map_entry)) if field_desc.is_map() => {
-                let key_desc = map_entry.get_field(MAP_ENTRY_KEY_TAG).unwrap();
-                let value_desc = map_entry.get_field(MAP_ENTRY_VALUE_TAG).unwrap();
+                let key_desc = map_entry.get_field(MAP_ENTRY_KEY_NUMBER).unwrap();
+                let value_desc = map_entry.get_field(MAP_ENTRY_VALUE_NUMBER).unwrap();
 
                 for (key, value) in values {
                     let len = key.encoded_len(&key_desc) + value.encoded_len(&value_desc);
 
-                    prost::encoding::encode_key(tag, WireType::LengthDelimited, buf);
+                    prost::encoding::encode_key(number, WireType::LengthDelimited, buf);
                     prost::encoding::encode_varint(len as u64, buf);
 
                     key.encode_field(&key_desc, buf);
@@ -296,7 +312,7 @@ impl Value {
             }
             (Value::Message(message), Kind::Message(_)) => {
                 if field_desc.is_group() {
-                    prost::encoding::group::merge(field_desc.tag(), wire_type, message, buf, ctx)
+                    prost::encoding::group::merge(field_desc.number(), wire_type, message, buf, ctx)
                 } else {
                     prost::encoding::message::merge(wire_type, message, buf, ctx)
                 }
@@ -330,8 +346,8 @@ impl Value {
                 }
             }
             (Value::Map(values), Kind::Message(map_entry)) if field_desc.is_map() => {
-                let key_desc = map_entry.get_field(MAP_ENTRY_KEY_TAG).unwrap();
-                let value_desc = map_entry.get_field(MAP_ENTRY_VALUE_TAG).unwrap();
+                let key_desc = map_entry.get_field(MAP_ENTRY_KEY_NUMBER).unwrap();
+                let value_desc = map_entry.get_field(MAP_ENTRY_VALUE_NUMBER).unwrap();
 
                 let mut key = MapKey::default_value(&key_desc.kind());
                 let mut value = Value::default_value_for_field(&value_desc);
@@ -340,13 +356,13 @@ impl Value {
                     buf,
                     ctx,
                     |(key, value), buf, ctx| {
-                        let (tag, wire_type) = prost::encoding::decode_key(buf)?;
-                        match tag {
-                            MAP_ENTRY_KEY_TAG => key.merge_field(&key_desc, wire_type, buf, ctx),
-                            MAP_ENTRY_VALUE_TAG => {
+                        let (number, wire_type) = prost::encoding::decode_key(buf)?;
+                        match number {
+                            MAP_ENTRY_KEY_NUMBER => key.merge_field(&key_desc, wire_type, buf, ctx),
+                            MAP_ENTRY_VALUE_NUMBER => {
                                 value.merge_field(&value_desc, wire_type, buf, ctx)
                             }
-                            _ => prost::encoding::skip_field(wire_type, tag, buf, ctx),
+                            _ => prost::encoding::skip_field(wire_type, number, buf, ctx),
                         }
                     },
                 )?;
@@ -366,111 +382,127 @@ impl Value {
             return 0;
         }
 
-        let tag = field_desc.tag();
+        let number = field_desc.number();
         match (self, field_desc.kind()) {
-            (Value::Bool(value), Kind::Bool) => prost::encoding::bool::encoded_len(tag, value),
-            (Value::I32(value), Kind::Int32) => prost::encoding::int32::encoded_len(tag, value),
-            (Value::I32(value), Kind::Sint32) => prost::encoding::sint32::encoded_len(tag, value),
+            (Value::Bool(value), Kind::Bool) => prost::encoding::bool::encoded_len(number, value),
+            (Value::I32(value), Kind::Int32) => prost::encoding::int32::encoded_len(number, value),
+            (Value::I32(value), Kind::Sint32) => {
+                prost::encoding::sint32::encoded_len(number, value)
+            }
             (Value::I32(value), Kind::Sfixed32) => {
-                prost::encoding::sfixed32::encoded_len(tag, value)
+                prost::encoding::sfixed32::encoded_len(number, value)
             }
-            (Value::I64(value), Kind::Int64) => prost::encoding::int64::encoded_len(tag, value),
-            (Value::I64(value), Kind::Sint64) => prost::encoding::sint64::encoded_len(tag, value),
+            (Value::I64(value), Kind::Int64) => prost::encoding::int64::encoded_len(number, value),
+            (Value::I64(value), Kind::Sint64) => {
+                prost::encoding::sint64::encoded_len(number, value)
+            }
             (Value::I64(value), Kind::Sfixed64) => {
-                prost::encoding::sfixed64::encoded_len(tag, value)
+                prost::encoding::sfixed64::encoded_len(number, value)
             }
-            (Value::U32(value), Kind::Uint32) => prost::encoding::uint32::encoded_len(tag, value),
-            (Value::U32(value), Kind::Fixed32) => prost::encoding::fixed32::encoded_len(tag, value),
-            (Value::U64(value), Kind::Uint64) => prost::encoding::uint64::encoded_len(tag, value),
-            (Value::U64(value), Kind::Fixed64) => prost::encoding::fixed64::encoded_len(tag, value),
-            (Value::F32(value), Kind::Float) => prost::encoding::float::encoded_len(tag, value),
-            (Value::F64(value), Kind::Double) => prost::encoding::double::encoded_len(tag, value),
+            (Value::U32(value), Kind::Uint32) => {
+                prost::encoding::uint32::encoded_len(number, value)
+            }
+            (Value::U32(value), Kind::Fixed32) => {
+                prost::encoding::fixed32::encoded_len(number, value)
+            }
+            (Value::U64(value), Kind::Uint64) => {
+                prost::encoding::uint64::encoded_len(number, value)
+            }
+            (Value::U64(value), Kind::Fixed64) => {
+                prost::encoding::fixed64::encoded_len(number, value)
+            }
+            (Value::F32(value), Kind::Float) => prost::encoding::float::encoded_len(number, value),
+            (Value::F64(value), Kind::Double) => {
+                prost::encoding::double::encoded_len(number, value)
+            }
             (Value::String(value), Kind::String) => {
-                prost::encoding::string::encoded_len(tag, value)
+                prost::encoding::string::encoded_len(number, value)
             }
-            (Value::Bytes(value), Kind::Bytes) => prost::encoding::bytes::encoded_len(tag, value),
+            (Value::Bytes(value), Kind::Bytes) => {
+                prost::encoding::bytes::encoded_len(number, value)
+            }
             (Value::EnumNumber(value), Kind::Enum(_)) => {
-                prost::encoding::int32::encoded_len(tag, value)
+                prost::encoding::int32::encoded_len(number, value)
             }
             (Value::Message(message), Kind::Message(_)) => {
                 if field_desc.is_group() {
-                    prost::encoding::group::encoded_len(tag, message)
+                    prost::encoding::group::encoded_len(number, message)
                 } else {
-                    prost::encoding::message::encoded_len(tag, message)
+                    prost::encoding::message::encoded_len(number, message)
                 }
             }
             (Value::List(values), _) if field_desc.is_list() => {
                 if field_desc.is_packed() {
                     match field_desc.kind() {
                         Kind::Enum(_) => packed_list_encoded_len(
-                            tag,
+                            number,
                             values
                                 .iter()
                                 .map(|v| v.as_enum_number().expect("expected enum number")),
                             |v| prost::encoding::encoded_len_varint(v as u64),
                         ),
                         Kind::Double => packed_list_encoded_len(
-                            tag,
+                            number,
                             values.iter().map(|v| v.as_f64().expect("expected double")),
                             |_| 8,
                         ),
                         Kind::Float => packed_list_encoded_len(
-                            tag,
+                            number,
                             values.iter().map(|v| v.as_f32().expect("expected float")),
                             |_| 4,
                         ),
                         Kind::Int32 => packed_list_encoded_len(
-                            tag,
+                            number,
                             values.iter().map(|v| v.as_i32().expect("expected i32")),
                             |v| prost::encoding::encoded_len_varint(v as u64),
                         ),
                         Kind::Int64 => packed_list_encoded_len(
-                            tag,
+                            number,
                             values.iter().map(|v| v.as_i64().expect("expected i64")),
                             |v| prost::encoding::encoded_len_varint(v as u64),
                         ),
                         Kind::Uint32 => packed_list_encoded_len(
-                            tag,
+                            number,
                             values.iter().map(|v| v.as_u32().expect("expected u32")),
                             |v| prost::encoding::encoded_len_varint(v as u64),
                         ),
                         Kind::Uint64 => packed_list_encoded_len(
-                            tag,
+                            number,
                             values.iter().map(|v| v.as_u64().expect("expected u64")),
                             |v| prost::encoding::encoded_len_varint(v as u64),
                         ),
                         Kind::Sint32 => packed_list_encoded_len(
-                            tag,
+                            number,
                             values.iter().map(|v| v.as_i32().expect("expected i32")),
                             |v| prost::encoding::encoded_len_varint(from_sint32(v) as u64),
                         ),
                         Kind::Sint64 => packed_list_encoded_len(
-                            tag,
+                            number,
                             values.iter().map(|v| v.as_i64().expect("expected i64")),
                             |v| prost::encoding::encoded_len_varint(from_sint64(v) as u64),
                         ),
                         Kind::Fixed32 => packed_list_encoded_len(
-                            tag,
+                            number,
                             values.iter().map(|v| v.as_u32().expect("expected u32")),
                             |_| 4,
                         ),
                         Kind::Fixed64 => packed_list_encoded_len(
-                            tag,
+                            number,
                             values.iter().map(|v| v.as_u64().expect("expected u64")),
                             |_| 8,
                         ),
                         Kind::Sfixed32 => packed_list_encoded_len(
-                            tag,
+                            number,
                             values.iter().map(|v| v.as_i32().expect("expected i32")),
                             |_| 4,
                         ),
                         Kind::Sfixed64 => packed_list_encoded_len(
-                            tag,
+                            number,
                             values.iter().map(|v| v.as_i64().expect("expected i64")),
                             |_| 8,
                         ),
                         Kind::Bool => packed_list_encoded_len(
-                            tag,
+                            number,
                             values.iter().map(|v| v.as_bool().expect("expected bool")),
                             |v| prost::encoding::encoded_len_varint(v as u64),
                         ),
@@ -484,10 +516,10 @@ impl Value {
                 }
             }
             (Value::Map(values), Kind::Message(map_entry)) if field_desc.is_map() => {
-                let key_desc = map_entry.get_field(MAP_ENTRY_KEY_TAG).unwrap();
-                let value_desc = map_entry.get_field(MAP_ENTRY_VALUE_TAG).unwrap();
+                let key_desc = map_entry.get_field(MAP_ENTRY_KEY_NUMBER).unwrap();
+                let value_desc = map_entry.get_field(MAP_ENTRY_VALUE_NUMBER).unwrap();
 
-                let key_len = prost::encoding::key_len(tag);
+                let key_len = prost::encoding::key_len(number);
                 values
                     .iter()
                     .map(|(key, value)| {
@@ -514,29 +546,37 @@ impl MapKey {
             return;
         }
 
-        let tag = field_desc.tag();
+        let number = field_desc.number();
         match (self, field_desc.kind()) {
-            (MapKey::Bool(value), Kind::Bool) => prost::encoding::bool::encode(tag, value, buf),
-            (MapKey::I32(value), Kind::Int32) => prost::encoding::int32::encode(tag, value, buf),
-            (MapKey::I32(value), Kind::Sint32) => prost::encoding::sint32::encode(tag, value, buf),
+            (MapKey::Bool(value), Kind::Bool) => prost::encoding::bool::encode(number, value, buf),
+            (MapKey::I32(value), Kind::Int32) => prost::encoding::int32::encode(number, value, buf),
+            (MapKey::I32(value), Kind::Sint32) => {
+                prost::encoding::sint32::encode(number, value, buf)
+            }
             (MapKey::I32(value), Kind::Sfixed32) => {
-                prost::encoding::sfixed32::encode(tag, value, buf)
+                prost::encoding::sfixed32::encode(number, value, buf)
             }
-            (MapKey::I64(value), Kind::Int64) => prost::encoding::int64::encode(tag, value, buf),
-            (MapKey::I64(value), Kind::Sint64) => prost::encoding::sint64::encode(tag, value, buf),
+            (MapKey::I64(value), Kind::Int64) => prost::encoding::int64::encode(number, value, buf),
+            (MapKey::I64(value), Kind::Sint64) => {
+                prost::encoding::sint64::encode(number, value, buf)
+            }
             (MapKey::I64(value), Kind::Sfixed64) => {
-                prost::encoding::sfixed64::encode(tag, value, buf)
+                prost::encoding::sfixed64::encode(number, value, buf)
             }
-            (MapKey::U32(value), Kind::Uint32) => prost::encoding::uint32::encode(tag, value, buf),
+            (MapKey::U32(value), Kind::Uint32) => {
+                prost::encoding::uint32::encode(number, value, buf)
+            }
             (MapKey::U32(value), Kind::Fixed32) => {
-                prost::encoding::fixed32::encode(tag, value, buf)
+                prost::encoding::fixed32::encode(number, value, buf)
             }
-            (MapKey::U64(value), Kind::Uint64) => prost::encoding::uint64::encode(tag, value, buf),
+            (MapKey::U64(value), Kind::Uint64) => {
+                prost::encoding::uint64::encode(number, value, buf)
+            }
             (MapKey::U64(value), Kind::Fixed64) => {
-                prost::encoding::fixed64::encode(tag, value, buf)
+                prost::encoding::fixed64::encode(number, value, buf)
             }
             (MapKey::String(value), Kind::String) => {
-                prost::encoding::string::encode(tag, value, buf)
+                prost::encoding::string::encode(number, value, buf)
             }
             (value, ty) => unreachable!(
                 "mismatch between DynamicMessage value {:?} and type {:?}",
@@ -604,29 +644,37 @@ impl MapKey {
             return 0;
         }
 
-        let tag = field_desc.tag();
+        let number = field_desc.number();
         match (self, field_desc.kind()) {
-            (MapKey::Bool(value), Kind::Bool) => prost::encoding::bool::encoded_len(tag, value),
-            (MapKey::I32(value), Kind::Int32) => prost::encoding::int32::encoded_len(tag, value),
-            (MapKey::I32(value), Kind::Sint32) => prost::encoding::sint32::encoded_len(tag, value),
+            (MapKey::Bool(value), Kind::Bool) => prost::encoding::bool::encoded_len(number, value),
+            (MapKey::I32(value), Kind::Int32) => prost::encoding::int32::encoded_len(number, value),
+            (MapKey::I32(value), Kind::Sint32) => {
+                prost::encoding::sint32::encoded_len(number, value)
+            }
             (MapKey::I32(value), Kind::Sfixed32) => {
-                prost::encoding::sfixed32::encoded_len(tag, value)
+                prost::encoding::sfixed32::encoded_len(number, value)
             }
-            (MapKey::I64(value), Kind::Int64) => prost::encoding::int64::encoded_len(tag, value),
-            (MapKey::I64(value), Kind::Sint64) => prost::encoding::sint64::encoded_len(tag, value),
+            (MapKey::I64(value), Kind::Int64) => prost::encoding::int64::encoded_len(number, value),
+            (MapKey::I64(value), Kind::Sint64) => {
+                prost::encoding::sint64::encoded_len(number, value)
+            }
             (MapKey::I64(value), Kind::Sfixed64) => {
-                prost::encoding::sfixed64::encoded_len(tag, value)
+                prost::encoding::sfixed64::encoded_len(number, value)
             }
-            (MapKey::U32(value), Kind::Uint32) => prost::encoding::uint32::encoded_len(tag, value),
+            (MapKey::U32(value), Kind::Uint32) => {
+                prost::encoding::uint32::encoded_len(number, value)
+            }
             (MapKey::U32(value), Kind::Fixed32) => {
-                prost::encoding::fixed32::encoded_len(tag, value)
+                prost::encoding::fixed32::encoded_len(number, value)
             }
-            (MapKey::U64(value), Kind::Uint64) => prost::encoding::uint64::encoded_len(tag, value),
+            (MapKey::U64(value), Kind::Uint64) => {
+                prost::encoding::uint64::encoded_len(number, value)
+            }
             (MapKey::U64(value), Kind::Fixed64) => {
-                prost::encoding::fixed64::encoded_len(tag, value)
+                prost::encoding::fixed64::encoded_len(number, value)
             }
             (MapKey::String(value), Kind::String) => {
-                prost::encoding::string::encoded_len(tag, value)
+                prost::encoding::string::encoded_len(number, value)
             }
             (value, ty) => unreachable!(
                 "mismatch between DynamicMessage value {:?} and type {:?}",
@@ -636,14 +684,14 @@ impl MapKey {
     }
 }
 
-fn encode_packed_list<T, I, B, E, L>(tag: u32, iter: I, buf: &mut B, encode: E, encoded_len: L)
+fn encode_packed_list<T, I, B, E, L>(number: u32, iter: I, buf: &mut B, encode: E, encoded_len: L)
 where
     I: IntoIterator<Item = T> + Clone,
     B: BufMut,
     E: Fn(T, &mut B),
     L: Fn(T) -> usize,
 {
-    prost::encoding::encode_key(tag, WireType::LengthDelimited, buf);
+    prost::encoding::encode_key(number, WireType::LengthDelimited, buf);
     let len: usize = iter.clone().into_iter().map(encoded_len).sum();
     prost::encoding::encode_varint(len as u64, buf);
 
@@ -652,13 +700,13 @@ where
     }
 }
 
-fn packed_list_encoded_len<T, I, L>(tag: u32, iter: I, encoded_len: L) -> usize
+fn packed_list_encoded_len<T, I, L>(number: u32, iter: I, encoded_len: L) -> usize
 where
     I: IntoIterator<Item = T>,
     L: Fn(T) -> usize,
 {
     let len: usize = iter.into_iter().map(encoded_len).sum();
-    prost::encoding::key_len(tag) + prost::encoding::encoded_len_varint(len as u64) + len
+    prost::encoding::key_len(number) + prost::encoding::encoded_len_varint(len as u64) + len
 }
 
 fn from_sint32(value: i32) -> u32 {
