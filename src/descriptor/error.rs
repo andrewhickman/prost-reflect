@@ -26,6 +26,10 @@ enum DescriptorErrorKind {
         value: String,
     },
     EmptyEnum,
+    InvalidOneofIndex {
+        name: String,
+        field: String,
+    },
 }
 
 impl DescriptorError {
@@ -80,6 +84,15 @@ impl DescriptorError {
             kind: DescriptorErrorKind::EmptyEnum,
         }
     }
+
+    pub(crate) fn invalid_oneof_index(name: impl ToString, field: impl ToString) -> Self {
+        DescriptorError {
+            kind: DescriptorErrorKind::InvalidOneofIndex {
+                name: name.to_string(),
+                field: field.to_string(),
+            },
+        }
+    }
 }
 
 impl std::error::Error for DescriptorError {}
@@ -111,6 +124,13 @@ impl fmt::Display for DescriptorError {
                 )
             }
             DescriptorErrorKind::EmptyEnum => write!(f, "enums must have at least one value"),
+            DescriptorErrorKind::InvalidOneofIndex { name, field } => {
+                write!(
+                    f,
+                    "the oneof index for field '{}' of message '{}' is invalid",
+                    field, name
+                )
+            }
         }
     }
 }

@@ -92,6 +92,12 @@ pub struct EnumValueDescriptor {
     number: i32,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OneofDescriptor {
+    message: Descriptor,
+    index: usize,
+}
+
 impl FileDescriptor {
     /// Create a [`FileDescriptor`] from a [`FileDescriptorSet`].
     ///
@@ -284,6 +290,15 @@ impl FieldDescriptor {
         }
     }
 
+    pub fn containing_oneof(&self) -> Option<OneofDescriptor> {
+        self.message_field_ty()
+            .oneof_index
+            .map(|index| OneofDescriptor {
+                message: self.message.clone(),
+                index,
+            })
+    }
+
     pub(crate) fn default_value(&self) -> Option<&crate::Value> {
         self.message_field_ty().default_value.as_ref()
     }
@@ -325,5 +340,29 @@ impl EnumDescriptor {
 impl EnumValueDescriptor {
     pub fn number(&self) -> i32 {
         self.number
+    }
+}
+
+impl OneofDescriptor {
+    pub fn message_descriptor(&self) -> &Descriptor {
+        &self.message
+    }
+
+    pub fn name(&self) -> &str {
+        &self.oneof_ty().name
+    }
+
+    pub fn fields(&self) -> impl ExactSizeIterator<Item = FieldDescriptor> + '_ {
+        self.oneof_ty()
+            .fields
+            .iter()
+            .map(move |&field| FieldDescriptor {
+                message: self.message.clone(),
+                field,
+            })
+    }
+
+    fn oneof_ty(&self) -> &ty::Oneof {
+        &self.message.message_ty().oneof_decls[self.index]
     }
 }

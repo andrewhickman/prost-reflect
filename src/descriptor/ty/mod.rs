@@ -45,6 +45,13 @@ pub(in crate::descriptor) struct Message {
     pub is_map_entry: bool,
     pub fields: BTreeMap<u32, MessageField>,
     pub field_names: HashMap<String, u32>,
+    pub oneof_decls: Vec<Oneof>,
+}
+
+#[derive(Debug)]
+pub(in crate::descriptor) struct Oneof {
+    pub name: String,
+    pub fields: Vec<u32>,
 }
 
 #[derive(Debug)]
@@ -56,6 +63,7 @@ pub(in crate::descriptor) struct MessageField {
     pub is_packed: bool,
     pub supports_presence: bool,
     pub default_value: Option<crate::Value>,
+    pub oneof_index: Option<usize>,
     pub ty: TypeId,
 }
 
@@ -118,9 +126,19 @@ impl TypeMap {
                 name: Default::default(),
                 fields: Default::default(),
                 field_names: Default::default(),
+                oneof_decls: Default::default(),
                 is_map_entry,
             }),
         );
+
+        let mut oneof_decls: Vec<_> = message_proto
+            .oneof_decl
+            .iter()
+            .map(|oneof| Oneof {
+                name: oneof.name().to_owned(),
+                fields: Vec::new(),
+            })
+            .collect();
 
         let fields = message_proto
             .field
@@ -194,6 +212,22 @@ impl TypeMap {
                     None => None,
                 };
 
+                let oneof_index = match field_proto.oneof_index {
+                    Some(index) => {
+                        let index = index as usize;
+                        if let Some(oneof) = oneof_decls.get_mut(index) {
+                            oneof.fields.push(tag);
+                        } else {
+                            return Err(DescriptorError::invalid_oneof_index(
+                                name,
+                                field_proto.name(),
+                            ));
+                        }
+                        Some(index)
+                    }
+                    None => None,
+                };
+
                 let field = MessageField {
                     name: field_proto.name().to_owned(),
                     json_name: field_proto.json_name().to_owned(),
@@ -202,6 +236,7 @@ impl TypeMap {
                     is_packed,
                     supports_presence,
                     default_value,
+                    oneof_index,
                     ty,
                 };
 
@@ -224,6 +259,7 @@ impl TypeMap {
         self[id] = Type::Message(Message {
             fields,
             field_names,
+            oneof_decls,
             name: name.to_owned(),
             is_map_entry,
         });
