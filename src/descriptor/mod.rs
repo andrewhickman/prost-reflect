@@ -1,13 +1,17 @@
 mod error;
+mod service;
 mod ty;
 
-pub use self::error::DescriptorError;
+pub use self::{
+    error::DescriptorError,
+    service::{MethodDescriptor, ServiceDescriptor},
+};
 
 use std::{fmt, sync::Arc};
 
-use prost_types::{
-    FileDescriptorProto, FileDescriptorSet, MethodDescriptorProto, ServiceDescriptorProto,
-};
+use prost_types::FileDescriptorSet;
+
+use self::service::ServiceDescriptorInner;
 
 pub(crate) const MAP_ENTRY_KEY_TAG: u32 = 1;
 pub(crate) const MAP_ENTRY_VALUE_TAG: u32 = 2;
@@ -26,33 +30,6 @@ struct FileDescriptorInner {
     raw: FileDescriptorSet,
     type_map: ty::TypeMap,
     services: Vec<ServiceDescriptorInner>,
-}
-
-/// A protobuf service definition.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ServiceDescriptor {
-    file_set: FileDescriptor,
-    index: usize,
-}
-
-#[derive(Debug)]
-struct ServiceDescriptorInner {
-    name: String,
-    methods: Vec<MethodDescriptorInner>,
-}
-
-/// A method definition for a [`ServiceDescriptor`].
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct MethodDescriptor {
-    service: ServiceDescriptor,
-    index: usize,
-}
-
-#[derive(Debug)]
-struct MethodDescriptorInner {
-    name: String,
-    request_ty: ty::TypeId,
-    response_ty: ty::TypeId,
 }
 
 /// A protobuf message definition.
@@ -139,7 +116,7 @@ impl FileDescriptor {
             .iter()
             .flat_map(|raw_file| {
                 raw_file.service.iter().map(move |raw_service| {
-                    ServiceDescriptor::from_raw(raw_file, raw_service, type_map_ref)
+                    ServiceDescriptorInner::from_raw(raw_file, raw_service, type_map_ref)
                 })
             })
             .collect::<Result<_, _>>()?;
@@ -158,10 +135,7 @@ impl FileDescriptor {
 
     /// Gets an iterator over the services defined in these protobuf files.
     pub fn services(&self) -> impl ExactSizeIterator<Item = ServiceDescriptor> + '_ {
-        (0..self.inner.services.len()).map(move |index| ServiceDescriptor {
-            file_set: self.clone(),
-            index,
-        })
+        (0..self.inner.services.len()).map(move |index| ServiceDescriptor::new(self.clone(), index))
     }
 
     /// Gets a protobuf message by its fully qualified name, for example `.PackageName.MessageName`.
@@ -189,96 +163,6 @@ impl PartialEq for FileDescriptor {
 }
 
 impl Eq for FileDescriptor {}
-
-impl ServiceDescriptor {
-    fn from_raw(
-        raw_file: &FileDescriptorProto,
-        raw_service: &ServiceDescriptorProto,
-        type_map: &ty::TypeMap,
-    ) -> Result<ServiceDescriptorInner, DescriptorError> {
-        let methods = raw_service
-            .method
-            .iter()
-            .map(|raw_method| {
-                MethodDescriptor::from_raw(raw_file, raw_service, raw_method, type_map)
-            })
-            .collect::<Result<_, DescriptorError>>()?;
-        Ok(ServiceDescriptorInner {
-            name: raw_service.name().into(),
-            methods,
-        })
-    }
-
-    /// Gets a reference to the [`FileDescriptor`] this service is part of.
-    pub fn file_descriptor(&self) -> &FileDescriptor {
-        &self.file_set
-    }
-
-    /// Gets the name of the service.
-    pub fn name(&self) -> &str {
-        self.inner().name.as_ref()
-    }
-
-    /// Gets an iterator over the methods defined in this service.
-    pub fn methods(&self) -> impl ExactSizeIterator<Item = MethodDescriptor> + '_ {
-        (0..self.inner().methods.len()).map(move |index| MethodDescriptor {
-            service: self.clone(),
-            index,
-        })
-    }
-
-    fn inner(&self) -> &ServiceDescriptorInner {
-        &self.file_descriptor().inner.services[self.index]
-    }
-}
-
-impl MethodDescriptor {
-    fn from_raw(
-        _raw_file: &FileDescriptorProto,
-        _raw_service: &ServiceDescriptorProto,
-        raw_method: &MethodDescriptorProto,
-        type_map: &ty::TypeMap,
-    ) -> Result<MethodDescriptorInner, DescriptorError> {
-        let request_ty = type_map.get_by_name(raw_method.input_type())?;
-        let response_ty = type_map.get_by_name(raw_method.output_type())?;
-
-        Ok(MethodDescriptorInner {
-            name: raw_method.name().to_owned(),
-            request_ty,
-            response_ty,
-        })
-    }
-
-    /// Gets a reference to the [`FileDescriptor`] this method is defined in.
-    pub fn file_descriptor(&self) -> &FileDescriptor {
-        self.service.file_descriptor()
-    }
-
-    /// Gets the name of the method.
-    pub fn name(&self) -> &str {
-        self.inner().name.as_ref()
-    }
-
-    /// Gets the request message type of this method.
-    pub fn request(&self) -> Descriptor {
-        Descriptor {
-            file_set: self.file_descriptor().clone(),
-            ty: self.inner().request_ty,
-        }
-    }
-
-    /// Gets the response message type of this method.
-    pub fn response(&self) -> Descriptor {
-        Descriptor {
-            file_set: self.file_descriptor().clone(),
-            ty: self.inner().response_ty,
-        }
-    }
-
-    fn inner(&self) -> &MethodDescriptorInner {
-        &self.service.inner().methods[self.index]
-    }
-}
 
 impl Descriptor {
     /// Gets a reference to the [`FileDescriptor`] this message is defined in.
