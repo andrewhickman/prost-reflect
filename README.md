@@ -7,3 +7,5 @@
 [dl]: https://docs.rs/prost-reflect/
 
 # prost-reflect
+
+A protobuf library extending [`prost`](https://crates.io/crates/prost) with reflection support and dynamic messages.
