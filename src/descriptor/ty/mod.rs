@@ -46,6 +46,7 @@ pub(in crate::descriptor) struct Message {
     pub is_map_entry: bool,
     pub fields: BTreeMap<u32, MessageField>,
     pub field_names: HashMap<String, u32>,
+    pub field_json_names: HashMap<String, u32>,
     pub oneof_decls: Vec<Oneof>,
 }
 
@@ -129,6 +130,7 @@ impl TypeMap {
                 full_name: Default::default(),
                 fields: Default::default(),
                 field_names: Default::default(),
+                field_json_names: Default::default(),
                 oneof_decls: Default::default(),
                 is_map_entry,
             }),
@@ -253,6 +255,10 @@ impl TypeMap {
             .iter()
             .map(|(&number, field)| (field.name.clone(), number))
             .collect();
+        let field_json_names = fields
+            .iter()
+            .map(|(&number, field)| (field.json_name.clone(), number))
+            .collect();
 
         if is_map_entry
             && (!fields.contains_key(&MAP_ENTRY_KEY_NUMBER)
@@ -264,6 +270,7 @@ impl TypeMap {
         self[id] = Type::Message(Message {
             fields,
             field_names,
+            field_json_names,
             oneof_decls,
             full_name: name.to_owned(),
             is_map_entry,

@@ -262,6 +262,17 @@ impl MessageDescriptor {
             })
     }
 
+    /// Gets a [`FieldDescriptor`] with the given JSON name, or `None` if no such field exists.
+    pub fn get_field_by_json_name(&self, json_name: &str) -> Option<FieldDescriptor> {
+        self.message_ty()
+            .field_json_names
+            .get(json_name)
+            .map(|&number| FieldDescriptor {
+                message: self.clone(),
+                field: number,
+            })
+    }
+
     /// Returns `true` if this is an auto-generated message type to
     /// represent the entry type for a map field.
     //
