@@ -9,14 +9,14 @@ use crate::{
     EnumDescriptor, FieldDescriptor, Kind, MessageDescriptor,
 };
 
-impl<'de> DeserializeSeed<'de> for MessageDescriptor {
+impl<'a, 'de> DeserializeSeed<'de> for &'a MessageDescriptor {
     type Value = DynamicMessage;
 
     fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
     where
         D: Deserializer<'de>,
     {
-        deserializer.deserialize_map(MessageVisitor(&self))
+        deserializer.deserialize_map(MessageVisitor(self))
     }
 }
 
@@ -78,29 +78,29 @@ impl<'a, 'de: 'a> DeserializeSeed<'de> for FieldDescriptorSeed<'a> {
     {
         if self.0.is_list() {
             deserializer
-                .deserialize_seq(ListVisitor(self.0))
+                .deserialize_any(ListVisitor(self.0))
                 .map(Value::List)
         } else if self.0.is_map() {
             deserializer
-                .deserialize_map(MapVisitor(self.0))
+                .deserialize_any(MapVisitor(self.0))
                 .map(Value::Map)
         } else {
             match self.0.kind() {
-                Kind::Double => deserializer.deserialize_f64(DoubleVisitor).map(Value::F64),
-                Kind::Float => deserializer.deserialize_f32(FloatVisitor).map(Value::F32),
+                Kind::Double => deserializer.deserialize_any(DoubleVisitor).map(Value::F64),
+                Kind::Float => deserializer.deserialize_any(FloatVisitor).map(Value::F32),
                 Kind::Int32 | Kind::Sint32 | Kind::Sfixed32 => {
-                    deserializer.deserialize_i32(Int32Visitor).map(Value::I32)
+                    deserializer.deserialize_any(Int32Visitor).map(Value::I32)
                 }
                 Kind::Int64 | Kind::Sint64 | Kind::Sfixed64 => {
-                    deserializer.deserialize_i64(Int64Visitor).map(Value::I64)
+                    deserializer.deserialize_any(Int64Visitor).map(Value::I64)
                 }
                 Kind::Uint32 | Kind::Fixed32 => {
-                    deserializer.deserialize_u32(Uint32Visitor).map(Value::U32)
+                    deserializer.deserialize_any(Uint32Visitor).map(Value::U32)
                 }
                 Kind::Uint64 | Kind::Fixed64 => {
-                    deserializer.deserialize_u64(Uint64Visitor).map(Value::U64)
+                    deserializer.deserialize_any(Uint64Visitor).map(Value::U64)
                 }
-                Kind::Bool => deserializer.deserialize_bool(BoolVisitor).map(Value::Bool),
+                Kind::Bool => deserializer.deserialize_any(BoolVisitor).map(Value::Bool),
                 Kind::String => deserializer
                     .deserialize_string(StringVisitor)
                     .map(Value::String),
@@ -109,7 +109,7 @@ impl<'a, 'de: 'a> DeserializeSeed<'de> for FieldDescriptorSeed<'a> {
                     .deserialize_map(MessageVisitor(&desc))
                     .map(Value::Message),
                 Kind::Enum(desc) => deserializer
-                    .deserialize_str(EnumVisitor(&desc))
+                    .deserialize_any(EnumVisitor(&desc))
                     .map(Value::EnumNumber),
             }
         }
@@ -230,6 +230,19 @@ impl<'de> Visitor<'de> for DoubleVisitor {
         Ok(v as Self::Value)
     }
 
+    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+    where
+        E: Error,
+    {
+        match f64::from_str(v) {
+            Ok(value) => Ok(value),
+            Err(_) if v == "Infinity" => Ok(f64::INFINITY),
+            Err(_) if v == "-Infinity" => Ok(f64::NEG_INFINITY),
+            Err(_) if v == "NaN" => Ok(f64::NAN),
+            Err(err) => Err(Error::custom(err)),
+        }
+    }
+
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "a 64-bit floating point value")
     }
@@ -270,6 +283,19 @@ impl<'de> Visitor<'de> for FloatVisitor {
         Ok(v as Self::Value)
     }
 
+    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+    where
+        E: Error,
+    {
+        match f32::from_str(v) {
+            Ok(value) => Ok(value),
+            Err(_) if v == "Infinity" => Ok(f32::INFINITY),
+            Err(_) if v == "-Infinity" => Ok(f32::NEG_INFINITY),
+            Err(_) if v == "NaN" => Ok(f32::NAN),
+            Err(err) => Err(Error::custom(err)),
+        }
+    }
+
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "a 32-bit floating point value")
     }
@@ -277,6 +303,14 @@ impl<'de> Visitor<'de> for FloatVisitor {
 
 impl<'de> Visitor<'de> for Int32Visitor {
     type Value = i32;
+
+    #[inline]
+    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+    where
+        E: Error,
+    {
+        v.parse().map_err(Error::custom)
+    }
 
     #[inline]
     fn visit_i32<E>(self, v: i32) -> Result<Self::Value, E>
@@ -311,6 +345,14 @@ impl<'de> Visitor<'de> for Uint32Visitor {
     type Value = u32;
 
     #[inline]
+    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+    where
+        E: Error,
+    {
+        v.parse().map_err(Error::custom)
+    }
+
+    #[inline]
     fn visit_u32<E>(self, v: u32) -> Result<Self::Value, E>
     where
         E: Error,
@@ -335,7 +377,7 @@ impl<'de> Visitor<'de> for Uint32Visitor {
     }
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "a 32-bit unsigned integer")
+        write!(f, "a 32-bit unsigned integer or decimal string")
     }
 }
 
@@ -367,7 +409,7 @@ impl<'de> Visitor<'de> for Int64Visitor {
     }
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "a 64-bit signed integer or string representation")
+        write!(f, "a 64-bit signed integer or decimal string")
     }
 }
 
@@ -399,7 +441,7 @@ impl<'de> Visitor<'de> for Uint64Visitor {
     }
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "a 64-bit unsigned integer or string representation")
+        write!(f, "a 64-bit unsigned integer or decimal string")
     }
 }
 
