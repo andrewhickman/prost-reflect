@@ -29,3 +29,6 @@ prost-types = "0.9.0"
 serde1 = { package = "serde", version = "1.0.132", optional = true }
 
 [dev-dependencies]
+
+[package.metadata.docs.rs]
+all-features = true
