@@ -20,6 +20,53 @@ impl<'de> DeserializeSeed<'de> for MessageDescriptor {
     }
 }
 
+struct OptionalFieldDescriptorSeed<'a>(&'a FieldDescriptor);
+
+impl<'a, 'de: 'a> DeserializeSeed<'de> for OptionalFieldDescriptorSeed<'a> {
+    type Value = Option<Value>;
+
+    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_option(self)
+    }
+}
+
+impl<'a, 'de: 'a> Visitor<'de> for OptionalFieldDescriptorSeed<'a> {
+    type Value = Option<Value>;
+
+    #[inline]
+    fn visit_unit<E>(self) -> Result<Self::Value, E>
+    where
+        E: Error,
+    {
+        Ok(None)
+    }
+
+    #[inline]
+    fn visit_none<E>(self) -> Result<Self::Value, E>
+    where
+        E: Error,
+    {
+        Ok(None)
+    }
+
+    #[inline]
+    fn visit_some<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        FieldDescriptorSeed(self.0)
+            .deserialize(deserializer)
+            .map(Some)
+    }
+
+    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "option")
+    }
+}
+
 struct FieldDescriptorSeed<'a>(&'a FieldDescriptor);
 
 impl<'a, 'de: 'a> DeserializeSeed<'de> for FieldDescriptorSeed<'a> {
@@ -90,6 +137,7 @@ impl<'a, 'de: 'a> Visitor<'de> for ListVisitor<'a> {
         write!(f, "a list")
     }
 
+    #[inline]
     fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
     where
         A: SeqAccess<'de>,
@@ -158,6 +206,7 @@ impl<'a, 'de: 'a> Visitor<'de> for MapVisitor<'a> {
 impl<'de> Visitor<'de> for DoubleVisitor {
     type Value = f64;
 
+    #[inline]
     fn visit_f64<E>(self, v: f64) -> Result<Self::Value, E>
     where
         E: Error,
@@ -165,6 +214,7 @@ impl<'de> Visitor<'de> for DoubleVisitor {
         Ok(v)
     }
 
+    #[inline]
     fn visit_i64<E>(self, v: i64) -> Result<Self::Value, E>
     where
         E: Error,
@@ -172,6 +222,7 @@ impl<'de> Visitor<'de> for DoubleVisitor {
         Ok(v as Self::Value)
     }
 
+    #[inline]
     fn visit_u64<E>(self, v: u64) -> Result<Self::Value, E>
     where
         E: Error,
@@ -187,6 +238,7 @@ impl<'de> Visitor<'de> for DoubleVisitor {
 impl<'de> Visitor<'de> for FloatVisitor {
     type Value = f32;
 
+    #[inline]
     fn visit_f32<E>(self, v: f32) -> Result<Self::Value, E>
     where
         E: Error,
@@ -194,6 +246,7 @@ impl<'de> Visitor<'de> for FloatVisitor {
         Ok(v)
     }
 
+    #[inline]
     fn visit_f64<E>(self, v: f64) -> Result<Self::Value, E>
     where
         E: Error,
@@ -201,6 +254,7 @@ impl<'de> Visitor<'de> for FloatVisitor {
         Ok(v as f32)
     }
 
+    #[inline]
     fn visit_i64<E>(self, v: i64) -> Result<Self::Value, E>
     where
         E: Error,
@@ -208,6 +262,7 @@ impl<'de> Visitor<'de> for FloatVisitor {
         Ok(v as Self::Value)
     }
 
+    #[inline]
     fn visit_u64<E>(self, v: u64) -> Result<Self::Value, E>
     where
         E: Error,
@@ -223,6 +278,7 @@ impl<'de> Visitor<'de> for FloatVisitor {
 impl<'de> Visitor<'de> for Int32Visitor {
     type Value = i32;
 
+    #[inline]
     fn visit_i32<E>(self, v: i32) -> Result<Self::Value, E>
     where
         E: Error,
@@ -230,6 +286,7 @@ impl<'de> Visitor<'de> for Int32Visitor {
         Ok(v)
     }
 
+    #[inline]
     fn visit_i64<E>(self, v: i64) -> Result<Self::Value, E>
     where
         E: Error,
@@ -237,6 +294,7 @@ impl<'de> Visitor<'de> for Int32Visitor {
         v.try_into().map_err(Error::custom)
     }
 
+    #[inline]
     fn visit_u64<E>(self, v: u64) -> Result<Self::Value, E>
     where
         E: Error,
@@ -252,6 +310,7 @@ impl<'de> Visitor<'de> for Int32Visitor {
 impl<'de> Visitor<'de> for Uint32Visitor {
     type Value = u32;
 
+    #[inline]
     fn visit_u32<E>(self, v: u32) -> Result<Self::Value, E>
     where
         E: Error,
@@ -259,6 +318,7 @@ impl<'de> Visitor<'de> for Uint32Visitor {
         Ok(v)
     }
 
+    #[inline]
     fn visit_i64<E>(self, v: i64) -> Result<Self::Value, E>
     where
         E: Error,
@@ -266,6 +326,7 @@ impl<'de> Visitor<'de> for Uint32Visitor {
         v.try_into().map_err(Error::custom)
     }
 
+    #[inline]
     fn visit_u64<E>(self, v: u64) -> Result<Self::Value, E>
     where
         E: Error,
@@ -281,6 +342,7 @@ impl<'de> Visitor<'de> for Uint32Visitor {
 impl<'de> Visitor<'de> for Int64Visitor {
     type Value = i64;
 
+    #[inline]
     fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
     where
         E: Error,
@@ -288,6 +350,7 @@ impl<'de> Visitor<'de> for Int64Visitor {
         v.parse().map_err(Error::custom)
     }
 
+    #[inline]
     fn visit_i64<E>(self, v: i64) -> Result<Self::Value, E>
     where
         E: Error,
@@ -295,6 +358,7 @@ impl<'de> Visitor<'de> for Int64Visitor {
         Ok(v)
     }
 
+    #[inline]
     fn visit_u64<E>(self, v: u64) -> Result<Self::Value, E>
     where
         E: Error,
@@ -310,6 +374,7 @@ impl<'de> Visitor<'de> for Int64Visitor {
 impl<'de> Visitor<'de> for Uint64Visitor {
     type Value = u64;
 
+    #[inline]
     fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
     where
         E: Error,
@@ -317,6 +382,7 @@ impl<'de> Visitor<'de> for Uint64Visitor {
         v.parse().map_err(Error::custom)
     }
 
+    #[inline]
     fn visit_u64<E>(self, v: u64) -> Result<Self::Value, E>
     where
         E: Error,
@@ -324,6 +390,7 @@ impl<'de> Visitor<'de> for Uint64Visitor {
         Ok(v)
     }
 
+    #[inline]
     fn visit_i64<E>(self, v: i64) -> Result<Self::Value, E>
     where
         E: Error,
@@ -339,6 +406,7 @@ impl<'de> Visitor<'de> for Uint64Visitor {
 impl<'de> Visitor<'de> for StringVisitor {
     type Value = String;
 
+    #[inline]
     fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
     where
         E: Error,
@@ -346,6 +414,7 @@ impl<'de> Visitor<'de> for StringVisitor {
         Ok(v.to_owned())
     }
 
+    #[inline]
     fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
     where
         E: Error,
@@ -361,6 +430,7 @@ impl<'de> Visitor<'de> for StringVisitor {
 impl<'de> Visitor<'de> for BoolVisitor {
     type Value = bool;
 
+    #[inline]
     fn visit_bool<E>(self, v: bool) -> Result<Self::Value, E>
     where
         E: Error,
@@ -375,6 +445,27 @@ impl<'de> Visitor<'de> for BoolVisitor {
 
 impl<'de> Visitor<'de> for BytesVisitor {
     type Value = Bytes;
+
+    #[inline]
+    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+    where
+        E: Error,
+    {
+        use base64::{decode_config_buf, DecodeError, STANDARD, URL_SAFE};
+
+        let mut buf = Vec::new();
+        match decode_config_buf(v, STANDARD, &mut buf) {
+            Ok(()) => Ok(buf.into()),
+            Err(DecodeError::InvalidByte(_, b'-')) | Err(DecodeError::InvalidByte(_, b'_')) => {
+                buf.clear();
+                match decode_config_buf(v, URL_SAFE, &mut buf) {
+                    Ok(()) => Ok(buf.into()),
+                    Err(err) => Err(Error::custom(format!("invalid base64: {}", err))),
+                }
+            }
+            Err(err) => Err(Error::custom(format!("invalid base64: {}", err))),
+        }
+    }
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "a base64-encoded string")
@@ -400,9 +491,9 @@ impl<'a, 'de: 'a> Visitor<'de> for MessageVisitor<'a> {
                 .get_field_by_json_name(key)
                 .or_else(|| self.0.get_field_by_name(key))
             {
-                let value = map.next_value_seed(FieldDescriptorSeed(&field))?;
-
-                message.set_field(field.number(), value);
+                if let Some(value) = map.next_value_seed(OptionalFieldDescriptorSeed(&field))? {
+                    message.set_field(field.number(), value);
+                }
             } else {
                 let _ = map.next_value::<IgnoredAny>()?;
             }
@@ -415,6 +506,7 @@ impl<'a, 'de: 'a> Visitor<'de> for MessageVisitor<'a> {
 impl<'a, 'de: 'a> Visitor<'de> for EnumVisitor<'a> {
     type Value = i32;
 
+    #[inline]
     fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
     where
         E: Error,
@@ -425,6 +517,7 @@ impl<'a, 'de: 'a> Visitor<'de> for EnumVisitor<'a> {
         }
     }
 
+    #[inline]
     fn visit_i32<E>(self, v: i32) -> Result<Self::Value, E>
     where
         E: Error,
@@ -432,6 +525,7 @@ impl<'a, 'de: 'a> Visitor<'de> for EnumVisitor<'a> {
         Ok(v)
     }
 
+    #[inline]
     fn visit_i64<E>(self, v: i64) -> Result<Self::Value, E>
     where
         E: Error,
@@ -439,6 +533,7 @@ impl<'a, 'de: 'a> Visitor<'de> for EnumVisitor<'a> {
         self.visit_i32(v.try_into().map_err(Error::custom)?)
     }
 
+    #[inline]
     fn visit_u64<E>(self, v: u64) -> Result<Self::Value, E>
     where
         E: Error,
