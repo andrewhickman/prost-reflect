@@ -481,6 +481,54 @@ impl Value {
             _ => None,
         }
     }
+
+    /// Returns a a reference to the value if it is a `Value::Message`, or `None` if it is any other type.
+    pub fn as_message(&self) -> Option<&DynamicMessage> {
+        match self {
+            Value::Message(value) => Some(value),
+            _ => None,
+        }
+    }
+
+    /// Returns a mutable reference to the value if it is a `Value::Message`, or `None` if it is any other type.
+    pub fn as_message_mut(&mut self) -> Option<&mut DynamicMessage> {
+        match self {
+            Value::Message(value) => Some(value),
+            _ => None,
+        }
+    }
+
+    /// Returns a a reference to the value if it is a `Value::List`, or `None` if it is any other type.
+    pub fn as_list(&self) -> Option<&[Value]> {
+        match self {
+            Value::List(value) => Some(value),
+            _ => None,
+        }
+    }
+
+    /// Returns a mutable reference to the value if it is a `Value::List`, or `None` if it is any other type.
+    pub fn as_list_mut(&mut self) -> Option<&mut Vec<Value>> {
+        match self {
+            Value::List(value) => Some(value),
+            _ => None,
+        }
+    }
+
+    /// Returns a a reference to the value if it is a `Value::Map`, or `None` if it is any other type.
+    pub fn as_map(&self) -> Option<&HashMap<MapKey, Value>> {
+        match self {
+            Value::Map(value) => Some(value),
+            _ => None,
+        }
+    }
+
+    /// Returns a mutable reference to the value if it is a `Value::Map`, or `None` if it is any other type.
+    pub fn as_map_mut(&mut self) -> Option<&mut HashMap<MapKey, Value>> {
+        match self {
+            Value::Map(value) => Some(value),
+            _ => None,
+        }
+    }
 }
 
 impl MapKey {
