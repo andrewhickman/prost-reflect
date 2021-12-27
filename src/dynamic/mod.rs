@@ -11,7 +11,7 @@ use prost::{bytes::Bytes, DecodeError, Message};
 
 use crate::{descriptor::Kind, FieldDescriptor, MessageDescriptor};
 
-/// [`DynamicMessage`] allows reflection of a protobuf message.
+/// [`DynamicMessage`] provides encoding, decoding and reflection of a protobuf message.
 ///
 /// It wraps a [`MessageDescriptor`] and the [`Value`] for each field of the message, and implements
 /// [`Message`][`prost::Message`].
