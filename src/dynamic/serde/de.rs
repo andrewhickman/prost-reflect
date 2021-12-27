@@ -169,7 +169,7 @@ impl<'a, 'de: 'a> Visitor<'de> for MapVisitor<'a> {
             .kind();
         let value_desc = map_entry_message.get_field(MAP_ENTRY_VALUE_NUMBER).unwrap();
 
-        while let Some(key_str) = map.next_key::<Cow<'de, str>>()? {
+        while let Some(key_str) = map.next_key::<Cow<str>>()? {
             let key = match key_kind {
                 Kind::Int32 | Kind::Sint32 | Kind::Sfixed32 => {
                     MapKey::I32(i32::from_str(key_str.as_ref()).map_err(Error::custom)?)
@@ -527,11 +527,11 @@ impl<'a, 'de: 'a> Visitor<'de> for MessageVisitor<'a> {
     {
         let mut message = DynamicMessage::new(self.0.clone());
 
-        while let Some(key) = map.next_key::<&'de str>()? {
+        while let Some(key) = map.next_key::<Cow<str>>()? {
             if let Some(field) = self
                 .0
-                .get_field_by_json_name(key)
-                .or_else(|| self.0.get_field_by_name(key))
+                .get_field_by_json_name(key.as_ref())
+                .or_else(|| self.0.get_field_by_name(key.as_ref()))
             {
                 if let Some(value) = map.next_value_seed(OptionalFieldDescriptorSeed(&field))? {
                     message.set_field(field.number(), value);

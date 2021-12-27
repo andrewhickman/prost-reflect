@@ -1,6 +1,7 @@
 #![cfg(test)]
 
 mod arbitrary;
+mod json;
 
 use std::{
     collections::{BTreeMap, HashMap},
@@ -773,14 +774,12 @@ fn to_dynamic<T>(message: &T, message_name: &str) -> DynamicMessage
 where
     T: PartialEq + Debug + Message + Default,
 {
-    let prost_bytes = message.encode_to_vec();
-
     let mut dynamic_message = DynamicMessage::new(
         TEST_FILE_DESCRIPTOR
             .get_message_by_name(message_name)
             .expect("message not found"),
     );
-    dynamic_message.merge(prost_bytes.as_slice()).unwrap();
+    dynamic_message.merge_from_message(message).unwrap();
     dynamic_message
 }
 
@@ -789,9 +788,7 @@ where
     T: PartialEq + Debug + Message + Default,
 {
     let dynamic_message = to_dynamic(message, message_name);
-    let dynamic_bytes = dynamic_message.encode_to_vec();
-
-    let roundtripped_message = T::decode(dynamic_bytes.as_slice()).unwrap();
+    let roundtripped_message: T = dynamic_message.to_message().unwrap();
     prop_assert_eq!(message, &roundtripped_message);
     Ok(())
 }

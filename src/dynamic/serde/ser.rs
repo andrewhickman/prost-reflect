@@ -79,8 +79,30 @@ impl<'a> Serialize for SerializeValue<'a> {
             Value::I64(value) => serializer.collect_str(value),
             Value::U32(value) => serializer.serialize_u32(*value),
             Value::U64(value) => serializer.collect_str(value),
-            Value::F32(value) => serializer.serialize_f32(*value),
-            Value::F64(value) => serializer.serialize_f64(*value),
+            Value::F32(value) => {
+                if value.is_finite() {
+                    serializer.serialize_f32(*value)
+                } else if *value == f32::INFINITY {
+                    serializer.serialize_str("Infinity")
+                } else if *value == f32::NEG_INFINITY {
+                    serializer.serialize_str("-Infinity")
+                } else {
+                    debug_assert!(value.is_nan());
+                    serializer.serialize_str("NaN")
+                }
+            }
+            Value::F64(value) => {
+                if value.is_finite() {
+                    serializer.serialize_f64(*value)
+                } else if *value == f64::INFINITY {
+                    serializer.serialize_str("Infinity")
+                } else if *value == f64::NEG_INFINITY {
+                    serializer.serialize_str("-Infinity")
+                } else {
+                    debug_assert!(value.is_nan());
+                    serializer.serialize_str("NaN")
+                }
+            }
             Value::String(value) => serializer.serialize_str(value),
             Value::Bytes(value) => {
                 serializer.collect_str(&Base64Display::with_config(value, base64::STANDARD))
