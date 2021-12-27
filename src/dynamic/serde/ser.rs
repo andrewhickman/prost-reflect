@@ -23,16 +23,16 @@ impl Serialize for DynamicMessage {
             "google.protobuf.FloatValue" => return serialize_float(self, serializer),
             "google.protobuf.DoubleValue" => return serialize_double(self, serializer),
             "google.protobuf.Int32Value" => return serialize_int32(self, serializer),
-            ".google.protobuf.Int64Value" => return serialize_int64(self, serializer),
-            ".google.protobuf.UInt32Value" => return serialize_uint32(self, serializer),
-            ".google.protobuf.UInt64Value" => return serialize_uint64(self, serializer),
-            ".google.protobuf.BoolValue" => return serialize_bool(self, serializer),
-            ".google.protobuf.StringValue" => return serialize_string(self, serializer),
-            ".google.protobuf.BytesValue" => return serialize_bytes(self, serializer),
-            ".google.protobuf.FieldMask" => return serialize_field_mask(self, serializer),
-            ".google.protobuf.ListValue" => return serialize_list(self, serializer),
-            ".google.protobuf.Value" => return serialize_value(self, serializer),
-            ".google.protobuf.Empty" => return serialize_empty(self, serializer),
+            "google.protobuf.Int64Value" => return serialize_int64(self, serializer),
+            "google.protobuf.UInt32Value" => return serialize_uint32(self, serializer),
+            "google.protobuf.UInt64Value" => return serialize_uint64(self, serializer),
+            "google.protobuf.BoolValue" => return serialize_bool(self, serializer),
+            "google.protobuf.StringValue" => return serialize_string(self, serializer),
+            "google.protobuf.BytesValue" => return serialize_bytes(self, serializer),
+            "google.protobuf.FieldMask" => return serialize_field_mask(self, serializer),
+            "google.protobuf.ListValue" => return serialize_list(self, serializer),
+            "google.protobuf.Value" => return serialize_value(self, serializer),
+            "google.protobuf.Empty" => return serialize_empty(self, serializer),
             _ => (),
         };
 
@@ -235,7 +235,7 @@ where
 {
     let raw: i64 = msg.to_message().map_err(decode_to_ser_err)?;
 
-    serializer.serialize_i64(raw)
+    serializer.collect_str(&raw)
 }
 
 fn serialize_uint32<S>(msg: &DynamicMessage, serializer: S) -> Result<S::Ok, S::Error>
@@ -253,7 +253,7 @@ where
 {
     let raw: u64 = msg.to_message().map_err(decode_to_ser_err)?;
 
-    serializer.serialize_u64(raw)
+    serializer.collect_str(&raw)
 }
 
 fn serialize_bool<S>(msg: &DynamicMessage, serializer: S) -> Result<S::Ok, S::Error>
@@ -313,6 +313,7 @@ fn snake_case_to_camel_case(dst: &mut String, src: &str) {
     for mut ch in src.chars() {
         if ch == '_' {
             ucase_next = true;
+            continue;
         } else if ucase_next {
             ch = ch.to_ascii_uppercase();
             ucase_next = false;

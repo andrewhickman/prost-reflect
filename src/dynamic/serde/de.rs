@@ -78,46 +78,59 @@ impl<'a, 'de: 'a> DeserializeSeed<'de> for FieldDescriptorSeed<'a> {
     {
         if self.0.is_list() {
             deserializer
-                .deserialize_any(ListVisitor(self.0))
+                .deserialize_any(ListVisitor(&self.0.kind()))
                 .map(Value::List)
         } else if self.0.is_map() {
             deserializer
-                .deserialize_any(MapVisitor(self.0))
+                .deserialize_any(MapVisitor(&self.0.kind()))
                 .map(Value::Map)
         } else {
-            match self.0.kind() {
-                Kind::Double => deserializer.deserialize_any(DoubleVisitor).map(Value::F64),
-                Kind::Float => deserializer.deserialize_any(FloatVisitor).map(Value::F32),
-                Kind::Int32 | Kind::Sint32 | Kind::Sfixed32 => {
-                    deserializer.deserialize_any(Int32Visitor).map(Value::I32)
-                }
-                Kind::Int64 | Kind::Sint64 | Kind::Sfixed64 => {
-                    deserializer.deserialize_any(Int64Visitor).map(Value::I64)
-                }
-                Kind::Uint32 | Kind::Fixed32 => {
-                    deserializer.deserialize_any(Uint32Visitor).map(Value::U32)
-                }
-                Kind::Uint64 | Kind::Fixed64 => {
-                    deserializer.deserialize_any(Uint64Visitor).map(Value::U64)
-                }
-                Kind::Bool => deserializer.deserialize_any(BoolVisitor).map(Value::Bool),
-                Kind::String => deserializer
-                    .deserialize_string(StringVisitor)
-                    .map(Value::String),
-                Kind::Bytes => deserializer.deserialize_str(BytesVisitor).map(Value::Bytes),
-                Kind::Message(desc) => deserializer
-                    .deserialize_map(MessageVisitor(&desc))
-                    .map(Value::Message),
-                Kind::Enum(desc) => deserializer
-                    .deserialize_any(EnumVisitor(&desc))
-                    .map(Value::EnumNumber),
-            }
+            KindSeed(&self.0.kind()).deserialize(deserializer)
         }
     }
 }
 
-struct ListVisitor<'a>(&'a FieldDescriptor);
-struct MapVisitor<'a>(&'a FieldDescriptor);
+struct KindSeed<'a>(&'a Kind);
+
+impl<'a, 'de: 'a> DeserializeSeed<'de> for KindSeed<'a> {
+    type Value = Value;
+
+    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        match self.0 {
+            Kind::Double => deserializer.deserialize_any(DoubleVisitor).map(Value::F64),
+            Kind::Float => deserializer.deserialize_any(FloatVisitor).map(Value::F32),
+            Kind::Int32 | Kind::Sint32 | Kind::Sfixed32 => {
+                deserializer.deserialize_any(Int32Visitor).map(Value::I32)
+            }
+            Kind::Int64 | Kind::Sint64 | Kind::Sfixed64 => {
+                deserializer.deserialize_any(Int64Visitor).map(Value::I64)
+            }
+            Kind::Uint32 | Kind::Fixed32 => {
+                deserializer.deserialize_any(Uint32Visitor).map(Value::U32)
+            }
+            Kind::Uint64 | Kind::Fixed64 => {
+                deserializer.deserialize_any(Uint64Visitor).map(Value::U64)
+            }
+            Kind::Bool => deserializer.deserialize_any(BoolVisitor).map(Value::Bool),
+            Kind::String => deserializer
+                .deserialize_string(StringVisitor)
+                .map(Value::String),
+            Kind::Bytes => deserializer.deserialize_str(BytesVisitor).map(Value::Bytes),
+            Kind::Message(desc) => deserializer
+                .deserialize_map(MessageVisitor(desc))
+                .map(Value::Message),
+            Kind::Enum(desc) => deserializer
+                .deserialize_any(EnumVisitor(desc))
+                .map(Value::EnumNumber),
+        }
+    }
+}
+
+struct ListVisitor<'a>(&'a Kind);
+struct MapVisitor<'a>(&'a Kind);
 struct DoubleVisitor;
 struct FloatVisitor;
 struct Int32Visitor;
@@ -144,7 +157,7 @@ impl<'a, 'de: 'a> Visitor<'de> for ListVisitor<'a> {
     {
         let mut result = Vec::with_capacity(seq.size_hint().unwrap_or(0));
 
-        while let Some(value) = seq.next_element_seed(FieldDescriptorSeed(self.0))? {
+        while let Some(value) = seq.next_element_seed(KindSeed(self.0))? {
             result.push(value)
         }
 
@@ -161,8 +174,7 @@ impl<'a, 'de: 'a> Visitor<'de> for MapVisitor<'a> {
     {
         let mut result = HashMap::with_capacity(map.size_hint().unwrap_or(0));
 
-        let kind = self.0.kind();
-        let map_entry_message = kind.as_message().unwrap();
+        let map_entry_message = self.0.as_message().unwrap();
         let key_kind = map_entry_message
             .get_field(MAP_ENTRY_KEY_NUMBER)
             .unwrap()
