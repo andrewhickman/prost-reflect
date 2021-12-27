@@ -7,7 +7,7 @@ use std::{
     collections::{BTreeMap, HashMap},
 };
 
-use prost::bytes::Bytes;
+use prost::{bytes::Bytes, DecodeError, Message};
 
 use crate::{descriptor::Kind, FieldDescriptor, MessageDescriptor};
 
@@ -207,6 +207,32 @@ impl DynamicMessage {
         if let Some(field_desc) = self.desc.get_field_by_name(name) {
             self.clear_field(field_desc.number());
         }
+    }
+
+    /// Merge a strongly-typed message into this one.
+    ///
+    /// The message should be compatible with the type specified by
+    /// [`descriptor`][Self::descriptor], or the merge will likely fail with
+    /// a [`DecodeError`].
+    pub fn merge_from_message<T>(&mut self, value: &T) -> Result<(), DecodeError>
+    where
+        T: Message,
+    {
+        let buf = value.encode_to_vec();
+        self.merge(buf.as_slice())
+    }
+
+    /// Convert this dynamic message into a strongly typed value.
+    ///
+    /// The message should be compatible with the type specified by
+    /// [`descriptor`][Self::descriptor], or the merge will likely fail with
+    /// a [`DecodeError`].
+    pub fn to_message<T>(&self) -> Result<T, DecodeError>
+    where
+        T: Message + Default,
+    {
+        let buf = self.encode_to_vec();
+        T::decode(buf.as_slice())
     }
 }
 
