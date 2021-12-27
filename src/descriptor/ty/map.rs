@@ -1,7 +1,4 @@
-use std::{
-    collections::HashMap,
-    ops::{Index, IndexMut},
-};
+use std::collections::HashMap;
 
 use crate::DescriptorError;
 
@@ -33,13 +30,13 @@ impl TypeMap {
         self.storage.shrink_to_fit();
     }
 
-    pub fn add(&mut self, ty: Type) -> TypeId {
+    pub(super) fn add(&mut self, ty: Type) -> TypeId {
         let index = self.storage.len();
         self.storage.push(ty);
         TypeId(index)
     }
 
-    pub fn add_with_name(&mut self, mut name: String, ty: Type) -> TypeId {
+    pub(super) fn add_with_name(&mut self, mut name: String, ty: Type) -> TypeId {
         if name.starts_with('.') {
             name.remove(0);
         }
@@ -47,6 +44,14 @@ impl TypeMap {
         let id = self.add(ty);
         self.named_types.insert(name, id);
         id
+    }
+
+    pub(super) fn get(&self, id: TypeId) -> &Type {
+        &self.storage[id.0]
+    }
+
+    pub(super) fn set(&mut self, id: TypeId, ty: Type) {
+        self.storage[id.0] = ty
     }
 
     pub fn try_get_by_name(&self, name: &str) -> Option<TypeId> {
@@ -60,7 +65,7 @@ impl TypeMap {
         }
     }
 
-    pub fn get_scalar(&self, scalar: Scalar) -> TypeId {
+    pub(super) fn get_scalar(&self, scalar: Scalar) -> TypeId {
         TypeId(scalar as usize)
     }
 
@@ -87,19 +92,5 @@ impl TypeMap {
             let id = self.add(Type::Scalar(scalar));
             debug_assert_eq!(self.get_scalar(scalar), id);
         }
-    }
-}
-
-impl Index<TypeId> for TypeMap {
-    type Output = Type;
-
-    fn index(&self, index: TypeId) -> &Self::Output {
-        &self.storage[index.0]
-    }
-}
-
-impl IndexMut<TypeId> for TypeMap {
-    fn index_mut(&mut self, index: TypeId) -> &mut Self::Output {
-        &mut self.storage[index.0]
     }
 }

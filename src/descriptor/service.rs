@@ -140,18 +140,12 @@ impl MethodDescriptor {
 
     /// Gets the [`MessageDescriptor`] for the input type of this method.
     pub fn input(&self) -> MessageDescriptor {
-        MessageDescriptor {
-            file_set: self.parent_file().clone(),
-            ty: self.inner().request_ty,
-        }
+        MessageDescriptor::new(self.parent_file().clone(), self.inner().request_ty)
     }
 
     /// Gets the [`MessageDescriptor`] for the output type of this method.
     pub fn output(&self) -> MessageDescriptor {
-        MessageDescriptor {
-            file_set: self.parent_file().clone(),
-            ty: self.inner().response_ty,
-        }
+        MessageDescriptor::new(self.parent_file().clone(), self.inner().response_ty)
     }
 
     /// Returns `true` if the client streams multiple messages.

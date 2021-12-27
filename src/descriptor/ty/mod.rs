@@ -1,28 +1,150 @@
+mod build;
 mod map;
-
-use std::collections::{BTreeMap, HashMap};
-
-use prost::bytes::Bytes;
-use prost_types::{DescriptorProto, EnumDescriptorProto, FieldDescriptorProto, FileDescriptorSet};
-
-use crate::{
-    descriptor::{
-        make_full_name, parse_namespace, Cardinality, MAP_ENTRY_KEY_NUMBER, MAP_ENTRY_VALUE_NUMBER,
-    },
-    DescriptorError,
-};
 
 pub(in crate::descriptor) use self::map::{TypeId, TypeMap};
 
+use std::collections::{BTreeMap, HashMap};
+
+use crate::descriptor::{parse_name, FileDescriptor};
+
+/// A protobuf message definition.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MessageDescriptor {
+    file_set: FileDescriptor,
+    ty: TypeId,
+}
+
 #[derive(Debug)]
-pub(in crate::descriptor) enum Type {
-    Message(Message),
-    Enum(Enum),
+struct MessageDescriptorInner {
+    full_name: String,
+    is_map_entry: bool,
+    fields: BTreeMap<u32, FieldDescriptorInner>,
+    field_names: HashMap<String, u32>,
+    field_json_names: HashMap<String, u32>,
+    oneof_decls: Vec<OneofDescriptorInner>,
+}
+
+/// A oneof field in a protobuf message.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OneofDescriptor {
+    message: MessageDescriptor,
+    index: usize,
+}
+
+#[derive(Debug)]
+struct OneofDescriptorInner {
+    name: String,
+    full_name: String,
+    fields: Vec<u32>,
+}
+
+/// A protobuf message definition.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FieldDescriptor {
+    message: MessageDescriptor,
+    field: u32,
+}
+
+#[derive(Debug)]
+struct FieldDescriptorInner {
+    name: String,
+    full_name: String,
+    json_name: String,
+    is_group: bool,
+    cardinality: Cardinality,
+    is_packed: bool,
+    supports_presence: bool,
+    default_value: Option<crate::Value>,
+    oneof_index: Option<usize>,
+    ty: TypeId,
+}
+
+/// A protobuf enum type.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EnumDescriptor {
+    file_set: FileDescriptor,
+    ty: TypeId,
+}
+
+#[derive(Debug)]
+struct EnumDescriptorInner {
+    full_name: String,
+    value_names: HashMap<String, i32>,
+    values: BTreeMap<i32, EnumValueDescriptorInner>,
+}
+
+/// A value in a protobuf enum type.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EnumValueDescriptor {
+    parent: EnumDescriptor,
+    number: i32,
+}
+
+#[derive(Debug)]
+struct EnumValueDescriptorInner {
+    name: String,
+    full_name: String,
+}
+
+/// The type of a protobuf message field.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Kind {
+    /// The protobuf `double` type.
+    Double,
+    /// The protobuf `float` type.
+    Float,
+    /// The protobuf `int32` type.
+    Int32,
+    /// The protobuf `int64` type.
+    Int64,
+    /// The protobuf `uint32` type.
+    Uint32,
+    /// The protobuf `uint64` type.
+    Uint64,
+    /// The protobuf `sint32` type.
+    Sint32,
+    /// The protobuf `sint64` type.
+    Sint64,
+    /// The protobuf `fixed32` type.
+    Fixed32,
+    /// The protobuf `fixed64` type.
+    Fixed64,
+    /// The protobuf `sfixed32` type.
+    Sfixed32,
+    /// The protobuf `sfixed64` type.
+    Sfixed64,
+    /// The protobuf `bool` type.
+    Bool,
+    /// The protobuf `string` type.
+    String,
+    /// The protobuf `bytes` type.
+    Bytes,
+    /// A protobuf message type.
+    Message(MessageDescriptor),
+    /// A protobuf enum type.
+    Enum(EnumDescriptor),
+}
+
+/// Cardinality determines whether a field is optional, required, or repeated.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum Cardinality {
+    /// The field appears zero or one times.
+    Optional,
+    /// The field appears exactly one time. This cardinality is invalid with Proto3.
+    Required,
+    /// The field appears zero or more times.
+    Repeated,
+}
+
+#[derive(Debug)]
+enum Type {
+    Message(MessageDescriptorInner),
+    Enum(EnumDescriptorInner),
     Scalar(Scalar),
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
-pub(in crate::descriptor) enum Scalar {
+enum Scalar {
     Double = 0,
     Float,
     Int32,
@@ -40,345 +162,423 @@ pub(in crate::descriptor) enum Scalar {
     Bytes,
 }
 
-#[derive(Debug)]
-pub(in crate::descriptor) struct Message {
-    pub full_name: String,
-    pub is_map_entry: bool,
-    pub fields: BTreeMap<u32, MessageField>,
-    pub field_names: HashMap<String, u32>,
-    pub field_json_names: HashMap<String, u32>,
-    pub oneof_decls: Vec<Oneof>,
-}
-
-#[derive(Debug)]
-pub(in crate::descriptor) struct Oneof {
-    pub name: String,
-    pub full_name: String,
-    pub fields: Vec<u32>,
-}
-
-#[derive(Debug)]
-pub(in crate::descriptor) struct MessageField {
-    pub name: String,
-    pub full_name: String,
-    pub json_name: String,
-    pub is_group: bool,
-    pub cardinality: Cardinality,
-    pub is_packed: bool,
-    pub supports_presence: bool,
-    pub default_value: Option<crate::Value>,
-    pub oneof_index: Option<usize>,
-    pub ty: TypeId,
-}
-
-#[derive(Debug)]
-pub(in crate::descriptor) struct Enum {
-    pub full_name: String,
-    pub value_names: HashMap<String, i32>,
-    pub values: BTreeMap<i32, EnumValue>,
-}
-
-#[derive(Debug)]
-pub(in crate::descriptor) struct EnumValue {
-    pub name: String,
-    pub full_name: String,
-}
-
-impl TypeMap {
-    pub fn add_files(&mut self, raw: &FileDescriptorSet) -> Result<(), DescriptorError> {
-        let protos = iter_tys(raw)?;
-
-        for (name, proto) in &protos {
-            match *proto {
-                TyProto::Message {
-                    message_proto,
-                    syntax,
-                } => {
-                    self.add_message(name, message_proto, syntax, &protos)?;
-                }
-                TyProto::Enum { enum_proto } => {
-                    self.add_enum(name, enum_proto)?;
-                }
-            }
-        }
-
-        Ok(())
+impl MessageDescriptor {
+    pub(in crate::descriptor) fn new(file_set: FileDescriptor, ty: TypeId) -> Self {
+        MessageDescriptor { file_set, ty }
     }
 
-    fn add_message(
-        &mut self,
+    pub(in crate::descriptor) fn try_get_by_name(
+        file_set: &FileDescriptor,
         name: &str,
-        message_proto: &DescriptorProto,
-        syntax: Syntax,
-        protos: &HashMap<String, TyProto>,
-    ) -> Result<TypeId, DescriptorError> {
-        use prost_types::field_descriptor_proto::{Label, Type as ProtoType};
-
-        if let Some(id) = self.try_get_by_name(name) {
-            return Ok(id);
+    ) -> Option<Self> {
+        let ty = file_set.inner.type_map.try_get_by_name(name)?;
+        if !file_set.inner.type_map.get(ty).is_message() {
+            return None;
         }
+        Some(MessageDescriptor {
+            file_set: file_set.clone(),
+            ty,
+        })
+    }
 
-        let is_map_entry = match &message_proto.options {
-            Some(options) => options.map_entry(),
-            None => false,
-        };
+    /// Gets a reference to the [`FileDescriptor`] this message is defined in.
+    pub fn parent_file(&self) -> &FileDescriptor {
+        &self.file_set
+    }
 
-        let id = self.add_with_name(
-            name.to_owned(),
-            // Add a dummy value while we handle any recursive references.
-            Type::Message(Message {
-                full_name: Default::default(),
-                fields: Default::default(),
-                field_names: Default::default(),
-                field_json_names: Default::default(),
-                oneof_decls: Default::default(),
-                is_map_entry,
+    /// Gets the short name of the message type, e.g. `MyMessage`.
+    pub fn name(&self) -> &str {
+        parse_name(self.full_name())
+    }
+
+    /// Gets the full name of the message type, e.g. `my.package.MyMessage`.
+    pub fn full_name(&self) -> &str {
+        &self.message_ty().full_name
+    }
+
+    /// Gets an iterator yielding a [`FieldDescriptor`] for each field defined in this message.
+    pub fn fields(&self) -> impl ExactSizeIterator<Item = FieldDescriptor> + '_ {
+        self.message_ty()
+            .fields
+            .keys()
+            .map(move |&field| FieldDescriptor {
+                message: self.clone(),
+                field,
+            })
+    }
+
+    /// Gets an iterator yielding a [`OneofDescriptor`] for each oneof field defined in this message.
+    pub fn oneofs(&self) -> impl ExactSizeIterator<Item = OneofDescriptor> + '_ {
+        (0..self.message_ty().oneof_decls.len()).map(move |index| OneofDescriptor {
+            message: self.clone(),
+            index,
+        })
+    }
+
+    /// Gets a [`FieldDescriptor`] with the given number, or `None` if no such field exists.
+    pub fn get_field(&self, number: u32) -> Option<FieldDescriptor> {
+        if self.message_ty().fields.contains_key(&number) {
+            Some(FieldDescriptor {
+                message: self.clone(),
+                field: number,
+            })
+        } else {
+            None
+        }
+    }
+
+    /// Gets a [`FieldDescriptor`] with the given name, or `None` if no such field exists.
+    pub fn get_field_by_name(&self, name: &str) -> Option<FieldDescriptor> {
+        self.message_ty()
+            .field_names
+            .get(name)
+            .map(|&number| FieldDescriptor {
+                message: self.clone(),
+                field: number,
+            })
+    }
+
+    /// Gets a [`FieldDescriptor`] with the given JSON name, or `None` if no such field exists.
+    pub fn get_field_by_json_name(&self, json_name: &str) -> Option<FieldDescriptor> {
+        self.message_ty()
+            .field_json_names
+            .get(json_name)
+            .map(|&number| FieldDescriptor {
+                message: self.clone(),
+                field: number,
+            })
+    }
+
+    /// Returns `true` if this is an auto-generated message type to
+    /// represent the entry type for a map field.
+    //
+    /// If this method returns `true`, [`fields`][Self::fields] is guaranteed
+    /// yield the following two fields:
+    /// * A "key" field with a field number of 1
+    /// * A "value" field with a field number of 2
+    pub fn is_map_entry(&self) -> bool {
+        self.message_ty().is_map_entry
+    }
+
+    fn message_ty(&self) -> &MessageDescriptorInner {
+        self.file_set
+            .inner
+            .type_map
+            .get(self.ty)
+            .as_message()
+            .expect("descriptor is not a message type")
+    }
+}
+
+impl FieldDescriptor {
+    /// Gets a reference to the [`FileDescriptor`] this field is defined in.
+    pub fn parent_file(&self) -> &FileDescriptor {
+        self.message.parent_file()
+    }
+
+    /// Gets a reference to the [`MessageDescriptor`] this field is defined in.
+    pub fn parent_message(&self) -> &MessageDescriptor {
+        &self.message
+    }
+
+    /// Gets the short name of the message type, e.g. `my_field`.
+    pub fn name(&self) -> &str {
+        &self.message_field_ty().name
+    }
+
+    /// Gets the full name of the message field, e.g. `my.package.MyMessage.my_field`.
+    pub fn full_name(&self) -> &str {
+        &self.message_field_ty().full_name
+    }
+
+    /// Gets the unique number for this message field.
+    pub fn number(&self) -> u32 {
+        self.field
+    }
+
+    /// Gets the name used for JSON serialization.
+    ///
+    /// This is usually the camel-cased form of the field name.
+    pub fn json_name(&self) -> &str {
+        &self.message_field_ty().json_name
+    }
+
+    /// Whether this field is encoded using the proto2 group encoding.
+    pub fn is_group(&self) -> bool {
+        self.message_field_ty().is_group
+    }
+
+    /// Whether this field is a list type.
+    ///
+    /// Equivalent to checking that the cardinality is `Repeated` and that
+    /// [`is_map`][Self::is_map] returns `false`.
+    pub fn is_list(&self) -> bool {
+        self.cardinality() == Cardinality::Repeated && !self.is_map()
+    }
+
+    /// Whether this field is a map type.
+    ///
+    /// Equivalent to checking that the cardinality is `Repeated` and that
+    /// the field type is a message where [`is_map_entry`][MessageDescriptor::is_map_entry]
+    /// returns `true`.
+    pub fn is_map(&self) -> bool {
+        self.cardinality() == Cardinality::Repeated
+            && match self.kind() {
+                Kind::Message(message) => message.is_map_entry(),
+                _ => false,
+            }
+    }
+
+    /// Whether this field is a list encoded using [packed encoding](https://developers.google.com/protocol-buffers/docs/encoding#packed).
+    pub fn is_packed(&self) -> bool {
+        self.message_field_ty().is_packed
+    }
+
+    /// The cardinality of this field.
+    pub fn cardinality(&self) -> Cardinality {
+        self.message_field_ty().cardinality
+    }
+
+    /// Whether this field supports distinguishing between an unpopulated field and
+    /// the default value.
+    ///
+    /// For proto2 messages this returns `true` for all non-repeated fields.
+    /// For proto3 this returns `true` for message fields, and fields contained
+    /// in a `oneof`.
+    pub fn supports_presence(&self) -> bool {
+        self.message_field_ty().supports_presence
+    }
+
+    /// Gets the [`Kind`] of this field.
+    pub fn kind(&self) -> Kind {
+        let ty = self.message_field_ty().ty;
+        match self.message.file_set.inner.type_map.get(ty) {
+            Type::Message(_) => Kind::Message(MessageDescriptor {
+                file_set: self.message.file_set.clone(),
+                ty,
             }),
-        );
-
-        let mut oneof_decls: Vec<_> = message_proto
-            .oneof_decl
-            .iter()
-            .map(|oneof| Oneof {
-                name: oneof.name().to_owned(),
-                full_name: make_full_name(name, oneof.name()),
-                fields: Vec::new(),
-            })
-            .collect();
-
-        let fields = message_proto
-            .field
-            .iter()
-            .map(|field_proto| {
-                let ty = self.add_message_field(field_proto, protos)?;
-
-                let number = field_proto.number() as u32;
-
-                let cardinality = match field_proto.label() {
-                    Label::Optional => Cardinality::Optional,
-                    Label::Required => Cardinality::Required,
-                    Label::Repeated => Cardinality::Repeated,
-                };
-
-                let is_packed = self[ty].is_packable()
-                    && (field_proto
-                        .options
-                        .as_ref()
-                        .map_or(syntax == Syntax::Proto3, |options| options.packed()));
-
-                let supports_presence = field_proto.proto3_optional()
-                    || field_proto.oneof_index.is_some()
-                    || (cardinality != Cardinality::Repeated
-                        && (field_proto.r#type() == ProtoType::Message
-                            || syntax == Syntax::Proto2));
-
-                let default_value = match &field_proto.default_value {
-                    Some(value) => match &self[ty] {
-                        Type::Scalar(Scalar::Double) => {
-                            value.parse().map(crate::Value::F64).map_err(|_| ())
-                        }
-                        Type::Scalar(Scalar::Float) => {
-                            value.parse().map(crate::Value::F32).map_err(|_| ())
-                        }
-                        Type::Scalar(Scalar::Int32)
-                        | Type::Scalar(Scalar::Sint32)
-                        | Type::Scalar(Scalar::Sfixed32) => {
-                            value.parse().map(crate::Value::I32).map_err(|_| ())
-                        }
-                        Type::Scalar(Scalar::Int64)
-                        | Type::Scalar(Scalar::Sint64)
-                        | Type::Scalar(Scalar::Sfixed64) => {
-                            value.parse().map(crate::Value::I64).map_err(|_| ())
-                        }
-                        Type::Scalar(Scalar::Uint32) | Type::Scalar(Scalar::Fixed32) => {
-                            value.parse().map(crate::Value::U32).map_err(|_| ())
-                        }
-                        Type::Scalar(Scalar::Uint64) | Type::Scalar(Scalar::Fixed64) => {
-                            value.parse().map(crate::Value::U64).map_err(|_| ())
-                        }
-                        Type::Scalar(Scalar::Bool) => {
-                            value.parse().map(crate::Value::Bool).map_err(|_| ())
-                        }
-                        Type::Scalar(Scalar::String) => Ok(crate::Value::String(value.to_owned())),
-                        Type::Scalar(Scalar::Bytes) => {
-                            unescape_c_escape_string(value).map(crate::Value::Bytes)
-                        }
-                        Type::Enum(enum_ty) => enum_ty
-                            .values
-                            .iter()
-                            .find(|(_, v)| &v.name == value)
-                            .map(|(&n, _)| crate::Value::EnumNumber(n))
-                            .ok_or(()),
-                        Type::Message(_) => Err(()),
-                    }
-                    .map(Some)
-                    .map_err(|()| {
-                        DescriptorError::invalid_default_value(name, field_proto.name(), value)
-                    })?,
-                    None => None,
-                };
-
-                let oneof_index = match field_proto.oneof_index {
-                    Some(index) => {
-                        let index = index as usize;
-                        if let Some(oneof) = oneof_decls.get_mut(index) {
-                            oneof.fields.push(number);
-                        } else {
-                            return Err(DescriptorError::invalid_oneof_index(
-                                name,
-                                field_proto.name(),
-                            ));
-                        }
-                        Some(index)
-                    }
-                    None => None,
-                };
-
-                let field = MessageField {
-                    name: field_proto.name().to_owned(),
-                    full_name: make_full_name(name, field_proto.name()),
-                    json_name: field_proto.json_name().to_owned(),
-                    is_group: field_proto.r#type() == ProtoType::Group,
-                    cardinality,
-                    is_packed,
-                    supports_presence,
-                    default_value,
-                    oneof_index,
-                    ty,
-                };
-
-                Ok((number, field))
-            })
-            .collect::<Result<BTreeMap<_, _>, _>>()?;
-
-        let field_names = fields
-            .iter()
-            .map(|(&number, field)| (field.name.clone(), number))
-            .collect();
-        let field_json_names = fields
-            .iter()
-            .map(|(&number, field)| (field.json_name.clone(), number))
-            .collect();
-
-        if is_map_entry
-            && (!fields.contains_key(&MAP_ENTRY_KEY_NUMBER)
-                || !fields.contains_key(&MAP_ENTRY_VALUE_NUMBER))
-        {
-            return Err(DescriptorError::invalid_map_entry(name));
+            Type::Enum(_) => Kind::Enum(EnumDescriptor {
+                file_set: self.message.file_set.clone(),
+                ty,
+            }),
+            Type::Scalar(scalar) => match scalar {
+                Scalar::Double => Kind::Double,
+                Scalar::Float => Kind::Float,
+                Scalar::Int32 => Kind::Int32,
+                Scalar::Int64 => Kind::Int64,
+                Scalar::Uint32 => Kind::Uint32,
+                Scalar::Uint64 => Kind::Uint64,
+                Scalar::Sint32 => Kind::Sint32,
+                Scalar::Sint64 => Kind::Sint64,
+                Scalar::Fixed32 => Kind::Fixed32,
+                Scalar::Fixed64 => Kind::Fixed64,
+                Scalar::Sfixed32 => Kind::Sfixed32,
+                Scalar::Sfixed64 => Kind::Sfixed64,
+                Scalar::Bool => Kind::Bool,
+                Scalar::String => Kind::String,
+                Scalar::Bytes => Kind::Bytes,
+            },
         }
-
-        self[id] = Type::Message(Message {
-            fields,
-            field_names,
-            field_json_names,
-            oneof_decls,
-            full_name: name.to_owned(),
-            is_map_entry,
-        });
-
-        Ok(id)
     }
 
-    fn add_message_field(
-        &mut self,
-        field_proto: &FieldDescriptorProto,
-        protos: &HashMap<String, TyProto>,
-    ) -> Result<TypeId, DescriptorError> {
-        use prost_types::field_descriptor_proto::Type as ProtoType;
-
-        let type_name = field_proto.type_name().trim_start_matches('.');
-
-        let ty = match field_proto.r#type() {
-            ProtoType::Double => self.get_scalar(Scalar::Double),
-            ProtoType::Float => self.get_scalar(Scalar::Float),
-            ProtoType::Int64 => self.get_scalar(Scalar::Int64),
-            ProtoType::Uint64 => self.get_scalar(Scalar::Uint64),
-            ProtoType::Int32 => self.get_scalar(Scalar::Int32),
-            ProtoType::Fixed64 => self.get_scalar(Scalar::Fixed64),
-            ProtoType::Fixed32 => self.get_scalar(Scalar::Fixed32),
-            ProtoType::Bool => self.get_scalar(Scalar::Bool),
-            ProtoType::String => self.get_scalar(Scalar::String),
-            ProtoType::Bytes => self.get_scalar(Scalar::Bytes),
-            ProtoType::Uint32 => self.get_scalar(Scalar::Uint32),
-            ProtoType::Sfixed32 => self.get_scalar(Scalar::Sfixed32),
-            ProtoType::Sfixed64 => self.get_scalar(Scalar::Sfixed64),
-            ProtoType::Sint32 => self.get_scalar(Scalar::Sint32),
-            ProtoType::Sint64 => self.get_scalar(Scalar::Sint64),
-            ProtoType::Enum | ProtoType::Message | ProtoType::Group => {
-                match protos.get(type_name) {
-                    None => return Err(DescriptorError::type_not_found(type_name)),
-                    Some(&TyProto::Message {
-                        message_proto,
-                        syntax,
-                    }) => self.add_message(type_name, message_proto, syntax, protos)?,
-                    Some(TyProto::Enum { enum_proto }) => self.add_enum(type_name, enum_proto)?,
-                }
-            }
-        };
-
-        Ok(ty)
+    /// Gets a [`OneofDescriptor`] representing the oneof containing this field,
+    /// or `None` if this field is not contained in a oneof.
+    pub fn containing_oneof(&self) -> Option<OneofDescriptor> {
+        self.message_field_ty()
+            .oneof_index
+            .map(|index| OneofDescriptor {
+                message: self.message.clone(),
+                index,
+            })
     }
 
-    fn add_enum(
-        &mut self,
+    pub(crate) fn default_value(&self) -> Option<&crate::Value> {
+        self.message_field_ty().default_value.as_ref()
+    }
+
+    fn message_field_ty(&self) -> &FieldDescriptorInner {
+        &self.message.message_ty().fields[&self.field]
+    }
+}
+
+impl Kind {
+    /// Gets a reference to the [`MessageDescriptor`] if this is a message type,
+    /// or `None` otherwise.
+    pub fn as_message(&self) -> Option<&MessageDescriptor> {
+        match self {
+            Kind::Message(desc) => Some(desc),
+            _ => None,
+        }
+    }
+
+    /// Gets a reference to the [`EnumDescriptor`] if this is an enum type,
+    /// or `None` otherwise.
+    pub fn as_enum(&self) -> Option<&EnumDescriptor> {
+        match self {
+            Kind::Enum(desc) => Some(desc),
+            _ => None,
+        }
+    }
+}
+
+impl EnumDescriptor {
+    pub(in crate::descriptor) fn try_get_by_name(
+        file_set: &FileDescriptor,
         name: &str,
-        enum_proto: &EnumDescriptorProto,
-    ) -> Result<TypeId, DescriptorError> {
-        if let Some(id) = self.try_get_by_name(name) {
-            return Ok(id);
+    ) -> Option<Self> {
+        let ty = file_set.inner.type_map.try_get_by_name(name)?;
+        if !file_set.inner.type_map.get(ty).is_enum() {
+            return None;
         }
+        Some(EnumDescriptor {
+            file_set: file_set.clone(),
+            ty,
+        })
+    }
 
-        let package_name = parse_namespace(name);
+    /// Gets a reference to the [`FileDescriptor`] this enum type is defined in.
+    pub fn parent_file(&self) -> &FileDescriptor {
+        &self.file_set
+    }
 
-        let value_names = enum_proto
-            .value
+    /// Gets the short name of the enum type, e.g. `MyEnum`.
+    pub fn name(&self) -> &str {
+        parse_name(self.full_name())
+    }
+
+    /// Gets the full name of the enum, e.g. `my.package.MyEnum`.
+    pub fn full_name(&self) -> &str {
+        &self.enum_ty().full_name
+    }
+
+    /// Gets the default value for the enum type.
+    pub fn default_value(&self) -> EnumValueDescriptor {
+        self.values().next().unwrap()
+    }
+
+    /// Gets a [`EnumValueDescriptor`] for the enum value with the given name, or `None` if no such value exists.
+    pub fn get_value_by_name(&self, name: &str) -> Option<EnumValueDescriptor> {
+        self.enum_ty()
+            .value_names
+            .get(name)
+            .map(|&number| EnumValueDescriptor {
+                parent: self.clone(),
+                number,
+            })
+    }
+
+    /// Gets a [`EnumValueDescriptor`] for the enum value with the given number, or `None` if no such value exists.
+    pub fn get_value(&self, number: i32) -> Option<EnumValueDescriptor> {
+        self.enum_ty()
+            .values
+            .get(&number)
+            .map(|_| EnumValueDescriptor {
+                parent: self.clone(),
+                number,
+            })
+    }
+
+    /// Gets an iterator yielding a [`EnumValueDescriptor`] for each value in this enum.
+    pub fn values(&self) -> impl ExactSizeIterator<Item = EnumValueDescriptor> + '_ {
+        self.enum_ty()
+            .values
+            .keys()
+            .map(move |&number| EnumValueDescriptor {
+                parent: self.clone(),
+                number,
+            })
+    }
+
+    fn enum_ty(&self) -> &EnumDescriptorInner {
+        self.file_set.inner.type_map.get(self.ty).as_enum().unwrap()
+    }
+}
+
+impl EnumValueDescriptor {
+    /// Gets a reference to the [`FileDescriptor`] this enum value is defined in.
+    pub fn parent_file(&self) -> &FileDescriptor {
+        self.parent.parent_file()
+    }
+
+    /// Gets a reference to the [`EnumDescriptor`] this enum value is defined in.
+    pub fn parent_enum(&self) -> &EnumDescriptor {
+        &self.parent
+    }
+
+    /// Gets the short name of the enum value, e.g. `MY_VALUE`.
+    pub fn name(&self) -> &str {
+        &self.enum_value_ty().name
+    }
+
+    /// Gets the full name of the enum, e.g. `my.package.MY_VALUE`.
+    pub fn full_name(&self) -> &str {
+        &self.enum_value_ty().full_name
+    }
+
+    /// Gets the number representing this enum value.
+    pub fn number(&self) -> i32 {
+        self.number
+    }
+
+    fn enum_value_ty(&self) -> &EnumValueDescriptorInner {
+        self.parent.enum_ty().values.get(&self.number).unwrap()
+    }
+}
+
+impl OneofDescriptor {
+    /// Gets a reference to the [`FileDescriptor`] this oneof is defined in.
+    pub fn parent_file(&self) -> &FileDescriptor {
+        self.message.parent_file()
+    }
+
+    /// Gets a reference to the [`MessageDescriptor`] this message is defined in.
+    pub fn parent_message(&self) -> &MessageDescriptor {
+        &self.message
+    }
+
+    /// Gets the short name of the oneof, e.g. `my_oneof`.
+    pub fn name(&self) -> &str {
+        &self.oneof_ty().name
+    }
+
+    /// Gets the full name of the oneof, e.g. `my.package.MyMessage.my_oneof`.
+    pub fn full_name(&self) -> &str {
+        &self.oneof_ty().full_name
+    }
+
+    /// Gets an iterator yield a [`FieldDescriptor`] for each field of the parent message this oneof contains.
+    pub fn fields(&self) -> impl ExactSizeIterator<Item = FieldDescriptor> + '_ {
+        self.oneof_ty()
+            .fields
             .iter()
-            .map(|value| (value.name().to_owned(), value.number()))
-            .collect();
+            .map(move |&field| FieldDescriptor {
+                message: self.message.clone(),
+                field,
+            })
+    }
 
-        let ty = Enum {
-            full_name: name.to_owned(),
-            value_names,
-            values: enum_proto
-                .value
-                .iter()
-                .map(|value_proto| {
-                    (
-                        value_proto.number(),
-                        EnumValue {
-                            name: value_proto.name().to_owned(),
-                            full_name: make_full_name(package_name, value_proto.name()),
-                        },
-                    )
-                })
-                .collect(),
-        };
-
-        if ty.values.is_empty() {
-            return Err(DescriptorError::empty_enum());
-        }
-
-        Ok(self.add_with_name(name.to_owned(), Type::Enum(ty)))
+    fn oneof_ty(&self) -> &OneofDescriptorInner {
+        &self.message.message_ty().oneof_decls[self.index]
     }
 }
 
 impl Type {
-    pub(in crate::descriptor) fn is_message(&self) -> bool {
+    pub fn is_message(&self) -> bool {
         self.as_message().is_some()
     }
 
-    pub(in crate::descriptor) fn as_message(&self) -> Option<&Message> {
+    fn as_message(&self) -> Option<&MessageDescriptorInner> {
         match self {
             Type::Message(message) => Some(message),
             _ => None,
         }
     }
 
-    pub(in crate::descriptor) fn is_enum(&self) -> bool {
+    pub fn is_enum(&self) -> bool {
         self.as_enum().is_some()
     }
 
-    pub(in crate::descriptor) fn as_enum(&self) -> Option<&Enum> {
+    fn as_enum(&self) -> Option<&EnumDescriptorInner> {
         match self {
             Type::Enum(enum_ty) => Some(enum_ty),
             _ => None,
@@ -413,192 +613,4 @@ impl Scalar {
             Scalar::String | Scalar::Bytes => false,
         }
     }
-}
-
-#[derive(Clone)]
-enum TyProto<'a> {
-    Message {
-        message_proto: &'a DescriptorProto,
-        syntax: Syntax,
-    },
-    Enum {
-        enum_proto: &'a EnumDescriptorProto,
-    },
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-enum Syntax {
-    Proto2,
-    Proto3,
-}
-
-fn iter_tys(raw: &FileDescriptorSet) -> Result<HashMap<String, TyProto<'_>>, DescriptorError> {
-    let mut result = HashMap::with_capacity(128);
-
-    for file in &raw.file {
-        let syntax = match file.syntax.as_deref() {
-            None | Some("proto2") => Syntax::Proto2,
-            Some("proto3") => Syntax::Proto3,
-            Some(s) => return Err(DescriptorError::unknown_syntax(s)),
-        };
-
-        let namespace = file.package();
-
-        for message_proto in &file.message_type {
-            let full_name = make_full_name(namespace, message_proto.name());
-            iter_message(&full_name, &mut result, message_proto, syntax)?;
-            if result
-                .insert(
-                    full_name.clone(),
-                    TyProto::Message {
-                        message_proto,
-                        syntax,
-                    },
-                )
-                .is_some()
-            {
-                return Err(DescriptorError::type_already_exists(full_name));
-            }
-        }
-        for enum_proto in &file.enum_type {
-            let full_name = make_full_name(namespace, enum_proto.name());
-            if result
-                .insert(full_name.clone(), TyProto::Enum { enum_proto })
-                .is_some()
-            {
-                return Err(DescriptorError::type_already_exists(full_name));
-            }
-        }
-    }
-
-    Ok(result)
-}
-
-fn iter_message<'a>(
-    namespace: &str,
-    result: &mut HashMap<String, TyProto<'a>>,
-    raw: &'a DescriptorProto,
-    syntax: Syntax,
-) -> Result<(), DescriptorError> {
-    for message_proto in &raw.nested_type {
-        let full_name = make_full_name(namespace, message_proto.name());
-        iter_message(&full_name, result, message_proto, syntax)?;
-        if result
-            .insert(
-                full_name.clone(),
-                TyProto::Message {
-                    message_proto,
-                    syntax,
-                },
-            )
-            .is_some()
-        {
-            return Err(DescriptorError::type_already_exists(full_name));
-        }
-    }
-
-    for enum_proto in &raw.enum_type {
-        let full_name = make_full_name(namespace, enum_proto.name());
-        if result
-            .insert(full_name.clone(), TyProto::Enum { enum_proto })
-            .is_some()
-        {
-            return Err(DescriptorError::type_already_exists(full_name));
-        }
-    }
-
-    Ok(())
-}
-
-/// From https://github.com/tokio-rs/prost/blob/c3b7037a7f2c56cef327b41ca32a8c4e9ce5a41c/prost-build/src/code_generator.rs#L887
-/// Based on [`google::protobuf::UnescapeCEscapeString`][1]
-/// [1]: https://github.com/google/protobuf/blob/3.3.x/src/google/protobuf/stubs/strutil.cc#L312-L322
-fn unescape_c_escape_string(s: &str) -> Result<Bytes, ()> {
-    let src = s.as_bytes();
-    let len = src.len();
-    let mut dst = Vec::new();
-
-    let mut p = 0;
-
-    while p < len {
-        if src[p] != b'\\' {
-            dst.push(src[p]);
-            p += 1;
-        } else {
-            p += 1;
-            if p == len {
-                return Err(());
-            }
-            match src[p] {
-                b'a' => {
-                    dst.push(0x07);
-                    p += 1;
-                }
-                b'b' => {
-                    dst.push(0x08);
-                    p += 1;
-                }
-                b'f' => {
-                    dst.push(0x0C);
-                    p += 1;
-                }
-                b'n' => {
-                    dst.push(0x0A);
-                    p += 1;
-                }
-                b'r' => {
-                    dst.push(0x0D);
-                    p += 1;
-                }
-                b't' => {
-                    dst.push(0x09);
-                    p += 1;
-                }
-                b'v' => {
-                    dst.push(0x0B);
-                    p += 1;
-                }
-                b'\\' => {
-                    dst.push(0x5C);
-                    p += 1;
-                }
-                b'?' => {
-                    dst.push(0x3F);
-                    p += 1;
-                }
-                b'\'' => {
-                    dst.push(0x27);
-                    p += 1;
-                }
-                b'"' => {
-                    dst.push(0x22);
-                    p += 1;
-                }
-                b'0'..=b'7' => {
-                    let mut octal = 0;
-                    for _ in 0..3 {
-                        if p < len && src[p] >= b'0' && src[p] <= b'7' {
-                            octal = octal * 8 + (src[p] - b'0');
-                            p += 1;
-                        } else {
-                            break;
-                        }
-                    }
-                    dst.push(octal);
-                }
-                b'x' | b'X' => {
-                    if p + 2 > len {
-                        return Err(());
-                    }
-                    match u8::from_str_radix(&s[p + 1..p + 3], 16) {
-                        Ok(b) => dst.push(b),
-                        _ => return Err(()),
-                    }
-                    p += 3;
-                }
-                _ => return Err(()),
-            }
-        }
-    }
-    Ok(dst.into())
 }
