@@ -82,6 +82,14 @@ impl FileDescriptor {
         (0..self.inner.services.len()).map(move |index| ServiceDescriptor::new(self.clone(), index))
     }
 
+    fn messages(&self) -> impl Iterator<Item = MessageDescriptor> + '_ {
+        MessageDescriptor::iter(self)
+    }
+
+    fn enums(&self) -> impl Iterator<Item = EnumDescriptor> + '_ {
+        EnumDescriptor::iter(self)
+    }
+
     /// Gets a [`MessageDescriptor`] by its fully qualified name, for example `PackageName.MessageName`.
     pub fn get_message_by_name(&self, name: &str) -> Option<MessageDescriptor> {
         MessageDescriptor::try_get_by_name(self, name)
@@ -96,8 +104,10 @@ impl FileDescriptor {
 impl fmt::Debug for FileDescriptor {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("FileDescriptor")
-            .field("services", &self.inner.services)
-            .finish_non_exhaustive()
+            .field("services", &debug_fmt_iter(self.services()))
+            .field("messages", &debug_fmt_iter(self.messages()))
+            .field("enums", &debug_fmt_iter(self.enums()))
+            .finish()
     }
 }
 
@@ -130,4 +140,23 @@ fn parse_name(full_name: &str) -> &str {
         Some((_, name)) => name,
         None => full_name,
     }
+}
+
+fn debug_fmt_iter<I>(i: I) -> impl fmt::Debug
+where
+    I: Iterator,
+    I::Item: fmt::Debug,
+{
+    struct Wrapper<T>(Vec<T>);
+
+    impl<T> fmt::Debug for Wrapper<T>
+    where
+        T: fmt::Debug,
+    {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            f.debug_list().entries(&self.0).finish()
+        }
+    }
+
+    Wrapper(i.collect())
 }

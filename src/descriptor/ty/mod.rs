@@ -3,18 +3,20 @@ mod map;
 
 pub(in crate::descriptor) use self::map::{TypeId, TypeMap};
 
-use std::collections::{BTreeMap, HashMap};
+use std::{
+    collections::{BTreeMap, HashMap},
+    fmt,
+};
 
-use crate::descriptor::{parse_name, FileDescriptor};
+use crate::descriptor::{debug_fmt_iter, parse_name, FileDescriptor};
 
 /// A protobuf message definition.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct MessageDescriptor {
     file_set: FileDescriptor,
     ty: TypeId,
 }
 
-#[derive(Debug)]
 struct MessageDescriptorInner {
     full_name: String,
     is_map_entry: bool,
@@ -25,13 +27,12 @@ struct MessageDescriptorInner {
 }
 
 /// A oneof field in a protobuf message.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct OneofDescriptor {
     message: MessageDescriptor,
     index: usize,
 }
 
-#[derive(Debug)]
 struct OneofDescriptorInner {
     name: String,
     full_name: String,
@@ -39,13 +40,12 @@ struct OneofDescriptorInner {
 }
 
 /// A protobuf message definition.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct FieldDescriptor {
     message: MessageDescriptor,
     field: u32,
 }
 
-#[derive(Debug)]
 struct FieldDescriptorInner {
     name: String,
     full_name: String,
@@ -60,13 +60,12 @@ struct FieldDescriptorInner {
 }
 
 /// A protobuf enum type.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct EnumDescriptor {
     file_set: FileDescriptor,
     ty: TypeId,
 }
 
-#[derive(Debug)]
 struct EnumDescriptorInner {
     full_name: String,
     value_names: HashMap<String, i32>,
@@ -74,13 +73,12 @@ struct EnumDescriptorInner {
 }
 
 /// A value in a protobuf enum type.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct EnumValueDescriptor {
     parent: EnumDescriptor,
     number: i32,
 }
 
-#[derive(Debug)]
 struct EnumValueDescriptorInner {
     name: String,
     full_name: String,
@@ -136,7 +134,6 @@ pub enum Cardinality {
     Repeated,
 }
 
-#[derive(Debug)]
 enum Type {
     Message(MessageDescriptorInner),
     Enum(EnumDescriptorInner),
@@ -165,6 +162,20 @@ enum Scalar {
 impl MessageDescriptor {
     pub(in crate::descriptor) fn new(file_set: FileDescriptor, ty: TypeId) -> Self {
         MessageDescriptor { file_set, ty }
+    }
+
+    pub(in crate::descriptor) fn iter(
+        file_set: &FileDescriptor,
+    ) -> impl Iterator<Item = Self> + '_ {
+        file_set
+            .inner
+            .type_map
+            .ids()
+            .filter(move |&ty| file_set.inner.type_map.get(ty).is_message())
+            .map(move |ty| MessageDescriptor {
+                file_set: file_set.clone(),
+                ty,
+            })
     }
 
     pub(in crate::descriptor) fn try_get_by_name(
@@ -267,6 +278,18 @@ impl MessageDescriptor {
             .get(self.ty)
             .as_message()
             .expect("descriptor is not a message type")
+    }
+}
+
+impl fmt::Debug for MessageDescriptor {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("MessageDescriptor")
+            .field("name", &self.name())
+            .field("full_name", &self.full_name())
+            .field("is_map_entry", &self.is_map_entry())
+            .field("fields", &debug_fmt_iter(self.fields()))
+            .field("oneofs", &debug_fmt_iter(self.oneofs()))
+            .finish()
     }
 }
 
@@ -401,6 +424,29 @@ impl FieldDescriptor {
     }
 }
 
+impl fmt::Debug for FieldDescriptor {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("FieldDescriptor")
+            .field("name", &self.name())
+            .field("full_name", &self.full_name())
+            .field("json_name", &self.json_name())
+            .field("number", &self.number())
+            .field("kind", &self.kind())
+            .field("cardinality", &self.cardinality())
+            .field(
+                "containing_oneof",
+                &self.containing_oneof().map(|o| o.name().to_owned()),
+            )
+            .field("default_value", &self.default_value())
+            .field("is_group", &self.is_group())
+            .field("is_list", &self.is_list())
+            .field("is_map", &self.is_map())
+            .field("is_packed", &self.is_packed())
+            .field("supports_presence", &self.supports_presence())
+            .finish()
+    }
+}
+
 impl Kind {
     /// Gets a reference to the [`MessageDescriptor`] if this is a message type,
     /// or `None` otherwise.
@@ -422,6 +468,20 @@ impl Kind {
 }
 
 impl EnumDescriptor {
+    pub(in crate::descriptor) fn iter(
+        file_set: &FileDescriptor,
+    ) -> impl Iterator<Item = Self> + '_ {
+        file_set
+            .inner
+            .type_map
+            .ids()
+            .filter(move |&ty| file_set.inner.type_map.get(ty).is_enum())
+            .map(move |ty| EnumDescriptor {
+                file_set: file_set.clone(),
+                ty,
+            })
+    }
+
     pub(in crate::descriptor) fn try_get_by_name(
         file_set: &FileDescriptor,
         name: &str,
@@ -494,6 +554,17 @@ impl EnumDescriptor {
     }
 }
 
+impl fmt::Debug for EnumDescriptor {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("EnumDescriptor")
+            .field("name", &self.name())
+            .field("full_name", &self.full_name())
+            .field("default_value", &self.default_value())
+            .field("values", &debug_fmt_iter(self.values()))
+            .finish()
+    }
+}
+
 impl EnumValueDescriptor {
     /// Gets a reference to the [`FileDescriptor`] this enum value is defined in.
     pub fn parent_file(&self) -> &FileDescriptor {
@@ -522,6 +593,16 @@ impl EnumValueDescriptor {
 
     fn enum_value_ty(&self) -> &EnumValueDescriptorInner {
         self.parent.enum_ty().values.get(&self.number).unwrap()
+    }
+}
+
+impl fmt::Debug for EnumValueDescriptor {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("EnumValueDescriptor")
+            .field("name", &self.number())
+            .field("full_name", &self.full_name())
+            .field("number", &self.number())
+            .finish()
     }
 }
 
@@ -559,6 +640,16 @@ impl OneofDescriptor {
 
     fn oneof_ty(&self) -> &OneofDescriptorInner {
         &self.message.message_ty().oneof_decls[self.index]
+    }
+}
+
+impl fmt::Debug for OneofDescriptor {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("OneofDescriptor")
+            .field("name", &self.name())
+            .field("full_name", &self.full_name())
+            .field("fields", &debug_fmt_iter(self.fields()))
+            .finish()
     }
 }
 

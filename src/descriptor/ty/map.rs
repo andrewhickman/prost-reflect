@@ -7,7 +7,6 @@ use super::{Scalar, Type};
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub(in crate::descriptor) struct TypeId(usize);
 
-#[derive(Debug)]
 pub(in crate::descriptor) struct TypeMap {
     named_types: HashMap<String, TypeId>,
     storage: Vec<Type>,
@@ -23,6 +22,10 @@ impl TypeMap {
         result.add_scalars();
 
         result
+    }
+
+    pub fn ids(&self) -> impl ExactSizeIterator<Item = TypeId> + '_ {
+        (0..self.storage.len()).map(TypeId)
     }
 
     pub fn shrink_to_fit(&mut self) {

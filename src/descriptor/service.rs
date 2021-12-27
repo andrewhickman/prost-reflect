@@ -1,28 +1,30 @@
+use std::fmt;
+
 use prost_types::{FileDescriptorProto, MethodDescriptorProto, ServiceDescriptorProto};
+
+use crate::descriptor::debug_fmt_iter;
 
 use super::{make_full_name, parse_name, ty, DescriptorError, FileDescriptor, MessageDescriptor};
 
 /// A protobuf service definition.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct ServiceDescriptor {
     file_descriptor: FileDescriptor,
     index: usize,
 }
 
-#[derive(Debug)]
 pub(super) struct ServiceDescriptorInner {
     full_name: String,
     methods: Vec<MethodDescriptorInner>,
 }
 
 /// A method definition for a [`ServiceDescriptor`].
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct MethodDescriptor {
     service: ServiceDescriptor,
     index: usize,
 }
 
-#[derive(Debug)]
 struct MethodDescriptorInner {
     full_name: String,
     request_ty: ty::TypeId,
@@ -99,6 +101,17 @@ impl ServiceDescriptorInner {
             })
             .collect::<Result<_, DescriptorError>>()?;
         Ok(ServiceDescriptorInner { full_name, methods })
+    }
+}
+
+impl fmt::Debug for ServiceDescriptor {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ServiceDescriptor")
+            .field("name", &self.name())
+            .field("full_name", &self.full_name())
+            .field("index", &self.index())
+            .field("methods", &debug_fmt_iter(self.methods()))
+            .finish()
     }
 }
 
@@ -181,5 +194,19 @@ impl MethodDescriptorInner {
             client_streaming: raw_method.client_streaming(),
             server_streaming: raw_method.server_streaming(),
         })
+    }
+}
+
+impl fmt::Debug for MethodDescriptor {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("MethodDescriptor")
+            .field("name", &self.name())
+            .field("full_name", &self.full_name())
+            .field("index", &self.index())
+            .field("input", &self.input())
+            .field("output", &self.output())
+            .field("is_client_streaming", &self.is_client_streaming())
+            .field("is_server_streaming", &self.is_server_streaming())
+            .finish()
     }
 }
