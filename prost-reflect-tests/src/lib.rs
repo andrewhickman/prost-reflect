@@ -11,7 +11,7 @@ use std::{
 use once_cell::sync::Lazy;
 use proptest::{prelude::*, test_runner::TestCaseError};
 use prost::{bytes::Bytes, Message};
-use prost_reflect::{DynamicMessage, FileDescriptor, MapKey, Value};
+use prost_reflect::{DynamicMessage, FileDescriptor, MapKey, ReflectMessage, Value};
 use prost_types::FileDescriptorSet;
 
 include!(concat!(env!("OUT_DIR"), "/test.rs"));
@@ -815,7 +815,7 @@ where
             .get_message_by_name(message_name)
             .expect("message not found"),
     );
-    dynamic_message.merge_from_message(message).unwrap();
+    dynamic_message.transcode_from(message).unwrap();
     dynamic_message
 }
 
@@ -824,7 +824,7 @@ where
     T: PartialEq + Debug + Message + Default,
 {
     let dynamic_message = to_dynamic(message, message_name);
-    let roundtripped_message: T = dynamic_message.to_message().unwrap();
+    let roundtripped_message: T = dynamic_message.transcode_to().unwrap();
     prop_assert_eq!(message, &roundtripped_message);
     Ok(())
 }

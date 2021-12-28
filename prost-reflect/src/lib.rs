@@ -62,12 +62,14 @@ extern crate serde1 as serde;
 
 mod descriptor;
 mod dynamic;
+mod reflect;
 
 pub use self::descriptor::{
     DescriptorError, EnumDescriptor, EnumValueDescriptor, FieldDescriptor, FileDescriptor, Kind,
     MessageDescriptor, MethodDescriptor, OneofDescriptor, ServiceDescriptor,
 };
 pub use self::dynamic::{DynamicMessage, MapKey, Value};
+pub use self::reflect::ReflectMessage;
 
 #[cfg(feature = "serde")]
 pub use self::dynamic::{DeserializeOptions, SerializeOptions};

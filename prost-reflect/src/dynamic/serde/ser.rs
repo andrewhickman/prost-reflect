@@ -8,6 +8,7 @@ use serde::ser::{Error, Serialize, SerializeMap, SerializeSeq, Serializer};
 use crate::{
     descriptor::{Kind, MAP_ENTRY_VALUE_NUMBER},
     dynamic::{serde::SerializeOptions, DynamicMessage, DynamicMessageField, MapKey, Value},
+    ReflectMessage,
 };
 
 struct SerializeWrapper<'a, T> {
@@ -284,7 +285,7 @@ fn serialize_timestamp<S>(
 where
     S: Serializer,
 {
-    let raw: prost_types::Timestamp = msg.to_message().map_err(decode_to_ser_err)?;
+    let raw: prost_types::Timestamp = msg.transcode_to().map_err(decode_to_ser_err)?;
 
     let datetime = Utc
         .timestamp_opt(
@@ -305,7 +306,7 @@ fn serialize_duration<S>(
 where
     S: Serializer,
 {
-    let raw: prost_types::Duration = msg.to_message().map_err(decode_to_ser_err)?;
+    let raw: prost_types::Duration = msg.transcode_to().map_err(decode_to_ser_err)?;
 
     if raw.nanos == 0 {
         serializer.collect_str(&format_args!("{}s", raw.seconds))
@@ -322,7 +323,7 @@ fn serialize_float<S>(
 where
     S: Serializer,
 {
-    let raw: f32 = msg.to_message().map_err(decode_to_ser_err)?;
+    let raw: f32 = msg.transcode_to().map_err(decode_to_ser_err)?;
 
     serializer.serialize_f32(raw)
 }
@@ -335,7 +336,7 @@ fn serialize_double<S>(
 where
     S: Serializer,
 {
-    let raw: f64 = msg.to_message().map_err(decode_to_ser_err)?;
+    let raw: f64 = msg.transcode_to().map_err(decode_to_ser_err)?;
 
     serializer.serialize_f64(raw)
 }
@@ -348,7 +349,7 @@ fn serialize_int32<S>(
 where
     S: Serializer,
 {
-    let raw: i32 = msg.to_message().map_err(decode_to_ser_err)?;
+    let raw: i32 = msg.transcode_to().map_err(decode_to_ser_err)?;
 
     serializer.serialize_i32(raw)
 }
@@ -361,7 +362,7 @@ fn serialize_int64<S>(
 where
     S: Serializer,
 {
-    let raw: i64 = msg.to_message().map_err(decode_to_ser_err)?;
+    let raw: i64 = msg.transcode_to().map_err(decode_to_ser_err)?;
 
     if options.stringify_64_bit_integers {
         serializer.collect_str(&raw)
@@ -378,7 +379,7 @@ fn serialize_uint32<S>(
 where
     S: Serializer,
 {
-    let raw: u32 = msg.to_message().map_err(decode_to_ser_err)?;
+    let raw: u32 = msg.transcode_to().map_err(decode_to_ser_err)?;
 
     serializer.serialize_u32(raw)
 }
@@ -391,7 +392,7 @@ fn serialize_uint64<S>(
 where
     S: Serializer,
 {
-    let raw: u64 = msg.to_message().map_err(decode_to_ser_err)?;
+    let raw: u64 = msg.transcode_to().map_err(decode_to_ser_err)?;
 
     if options.stringify_64_bit_integers {
         serializer.collect_str(&raw)
@@ -408,7 +409,7 @@ fn serialize_bool<S>(
 where
     S: Serializer,
 {
-    let raw: bool = msg.to_message().map_err(decode_to_ser_err)?;
+    let raw: bool = msg.transcode_to().map_err(decode_to_ser_err)?;
 
     serializer.serialize_bool(raw)
 }
@@ -421,7 +422,7 @@ fn serialize_string<S>(
 where
     S: Serializer,
 {
-    let raw: String = msg.to_message().map_err(decode_to_ser_err)?;
+    let raw: String = msg.transcode_to().map_err(decode_to_ser_err)?;
 
     serializer.serialize_str(&raw)
 }
@@ -434,7 +435,7 @@ fn serialize_bytes<S>(
 where
     S: Serializer,
 {
-    let raw: Vec<u8> = msg.to_message().map_err(decode_to_ser_err)?;
+    let raw: Vec<u8> = msg.transcode_to().map_err(decode_to_ser_err)?;
 
     serializer.collect_str(&Base64Display::with_config(&raw, base64::STANDARD))
 }
@@ -447,7 +448,7 @@ fn serialize_field_mask<S>(
 where
     S: Serializer,
 {
-    let raw: prost_types::FieldMask = msg.to_message().map_err(decode_to_ser_err)?;
+    let raw: prost_types::FieldMask = msg.transcode_to().map_err(decode_to_ser_err)?;
 
     let mut result = String::new();
     for path in raw.paths {
@@ -501,7 +502,7 @@ fn serialize_value<S>(
 where
     S: Serializer,
 {
-    let raw: prost_types::Value = msg.to_message().map_err(decode_to_ser_err)?;
+    let raw: prost_types::Value = msg.transcode_to().map_err(decode_to_ser_err)?;
 
     serialize_value_inner(&raw, serializer, options)
 }
@@ -514,7 +515,7 @@ fn serialize_struct<S>(
 where
     S: Serializer,
 {
-    let raw: prost_types::Struct = msg.to_message().map_err(decode_to_ser_err)?;
+    let raw: prost_types::Struct = msg.transcode_to().map_err(decode_to_ser_err)?;
 
     serialize_struct_inner(&raw, serializer, options)
 }
@@ -527,7 +528,7 @@ fn serialize_list<S>(
 where
     S: Serializer,
 {
-    let raw: prost_types::ListValue = msg.to_message().map_err(decode_to_ser_err)?;
+    let raw: prost_types::ListValue = msg.transcode_to().map_err(decode_to_ser_err)?;
 
     serialize_list_inner(&raw, serializer, options)
 }

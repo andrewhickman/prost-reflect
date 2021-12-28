@@ -12,6 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added `parent_message()` method to `MessageDescriptor` and `EnumDescriptor` to support inspecting the structure of nested types.
 - Added `package_name()` method to `MessageDescriptor`, `EnumDescriptor` and `ServiceDescriptor` to determine which package they are defined in.
+- Added `ReflectMessage` trait for types which can identify themselves with a `MessageDescriptor`.
+
+### Changed
+
+- Renamed `merge_from_message` to `transcode_from` and `to_message` to `transcode_to`.
 
 ## [0.2.0] - 2021-12-27
 

@@ -12,7 +12,7 @@ pub use self::serde::{DeserializeOptions, SerializeOptions};
 
 use prost::{bytes::Bytes, DecodeError, Message};
 
-use crate::{descriptor::Kind, FieldDescriptor, MessageDescriptor};
+use crate::{descriptor::Kind, FieldDescriptor, MessageDescriptor, ReflectMessage};
 
 /// [`DynamicMessage`] provides encoding, decoding and reflection of a protobuf message.
 ///
@@ -91,12 +91,6 @@ impl DynamicMessage {
                 .collect(),
             desc,
         }
-    }
-
-    /// Gets a reference to the [`MessageDescriptor`] containing protobuf type information for
-    /// this message.
-    pub fn descriptor(&self) -> MessageDescriptor {
-        self.desc.clone()
     }
 
     /// Returns `true` if this message has a field set with the number `number`.
@@ -196,7 +190,7 @@ impl DynamicMessage {
     /// The message should be compatible with the type specified by
     /// [`descriptor`][Self::descriptor], or the merge will likely fail with
     /// a [`DecodeError`].
-    pub fn merge_from_message<T>(&mut self, value: &T) -> Result<(), DecodeError>
+    pub fn transcode_from<T>(&mut self, value: &T) -> Result<(), DecodeError>
     where
         T: Message,
     {
@@ -209,12 +203,18 @@ impl DynamicMessage {
     /// The message should be compatible with the type specified by
     /// [`descriptor`][Self::descriptor], or the merge will likely fail with
     /// a [`DecodeError`].
-    pub fn to_message<T>(&self) -> Result<T, DecodeError>
+    pub fn transcode_to<T>(&self) -> Result<T, DecodeError>
     where
         T: Message + Default,
     {
         let buf = self.encode_to_vec();
         T::decode(buf.as_slice())
+    }
+}
+
+impl ReflectMessage for DynamicMessage {
+    fn descriptor(&self) -> MessageDescriptor {
+        self.desc.clone()
     }
 }
 

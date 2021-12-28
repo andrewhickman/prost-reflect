@@ -968,7 +968,7 @@ fn make_message<E: Error, T: Message>(
 ) -> Result<DynamicMessage, E> {
     let mut dynamic = DynamicMessage::new(desc.clone());
     dynamic
-        .merge_from_message(&message)
+        .transcode_from(&message)
         .map_err(|err| Error::custom(format!("error decoding: {}", err)))?;
     Ok(dynamic)
 }
