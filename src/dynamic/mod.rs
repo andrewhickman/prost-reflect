@@ -18,55 +18,6 @@ use crate::{descriptor::Kind, FieldDescriptor, MessageDescriptor};
 ///
 /// It wraps a [`MessageDescriptor`] and the [`Value`] for each field of the message, and implements
 /// [`Message`][`prost::Message`].
-///
-/// # Example - decoding
-///
-/// [`DynamicMessage`] does not implement [`Default`] since it needs a message descriptor to
-/// function. To decode a protobuf byte stream into an instance of this type, create a default
-/// value for the [`MessageDescriptor`] instance and merge into it:
-///
-/// ```
-/// use prost::Message;
-/// use prost_reflect::{DynamicMessage, FileDescriptor, Value};
-///
-/// # let bytes = b"\n\xaf\x01\n\x10my_message.proto\x12\x07package\"\x1d\n\tMyMessage\x12\x10\n\x03foo\x18\x01 \x01(\x05R\x03fooJk\n\x06\x12\x04\x00\x00\x06\x01\n\x08\n\x01\x0c\x12\x03\x00\x00\x12\n\x08\n\x01\x02\x12\x03\x02\x00\x10\n\n\n\x02\x04\x00\x12\x04\x04\x00\x06\x01\n\n\n\x03\x04\x00\x01\x12\x03\x04\x08\x11\n\x0b\n\x04\x04\x00\x02\x00\x12\x03\x05\x02\x10\n\x0c\n\x05\x04\x00\x02\x00\x05\x12\x03\x05\x02\x07\n\x0c\n\x05\x04\x00\x02\x00\x01\x12\x03\x05\x08\x0b\n\x0c\n\x05\x04\x00\x02\x00\x03\x12\x03\x05\x0e\x0fb\x06proto3";
-/// # let file_descriptor_set = prost_types::FileDescriptorSet::decode(bytes.as_ref()).unwrap();
-/// let file_descriptor = FileDescriptor::new(file_descriptor_set).unwrap();
-/// let message_descriptor = file_descriptor.get_message_by_name("package.MyMessage").unwrap();
-///
-/// let mut dynamic_message = DynamicMessage::new(message_descriptor);
-/// dynamic_message.merge(b"\x08\x96\x01".as_ref());
-///
-/// assert_eq!(dynamic_message.get_field_by_name("foo").unwrap().as_ref(), &Value::I32(150));
-/// ```
-#[cfg_attr(
-    feature = "serde",
-    doc = r##"
-# Example - JSON mapping
-
-When the `serde` feature is enabled, `DynamicMessage` can be deserialized to and from the
-[canonical JSON mapping](https://developers.google.com/protocol-buffers/docs/proto3#json) 
-defined for protobuf messages.
-
-```
-use prost::Message;
-use prost_reflect::{DynamicMessage, FileDescriptor, Value};
-use serde_json::de::Deserializer;
-
-# let bytes = b"\n\xaf\x01\n\x10my_message.proto\x12\x07package\"\x1d\n\tMyMessage\x12\x10\n\x03foo\x18\x01 \x01(\x05R\x03fooJk\n\x06\x12\x04\x00\x00\x06\x01\n\x08\n\x01\x0c\x12\x03\x00\x00\x12\n\x08\n\x01\x02\x12\x03\x02\x00\x10\n\n\n\x02\x04\x00\x12\x04\x04\x00\x06\x01\n\n\n\x03\x04\x00\x01\x12\x03\x04\x08\x11\n\x0b\n\x04\x04\x00\x02\x00\x12\x03\x05\x02\x10\n\x0c\n\x05\x04\x00\x02\x00\x05\x12\x03\x05\x02\x07\n\x0c\n\x05\x04\x00\x02\x00\x01\x12\x03\x05\x08\x0b\n\x0c\n\x05\x04\x00\x02\x00\x03\x12\x03\x05\x0e\x0fb\x06proto3";
-# let file_descriptor_set = prost_types::FileDescriptorSet::decode(bytes.as_ref()).unwrap();
-let file_descriptor = FileDescriptor::new(file_descriptor_set).unwrap();
-let message_descriptor = file_descriptor.get_message_by_name("package.MyMessage").unwrap();
-
-let json = r#"{ "foo": 150 }"#;
-let mut deserializer = Deserializer::from_str(json);
-let dynamic_message = DynamicMessage::deserialize(message_descriptor, &mut deserializer).unwrap();
-deserializer.end().unwrap();
-
-assert_eq!(dynamic_message.get_field_by_name("foo").unwrap().as_ref(), &Value::I32(150));
-```
-"##
-)]
 #[derive(Debug, Clone, PartialEq)]
 pub struct DynamicMessage {
     desc: MessageDescriptor,

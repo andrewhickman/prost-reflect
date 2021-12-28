@@ -12,6 +12,7 @@ readme = "README.md"
 edition = "2018"
 autotests = false
 rust-version = "1.53.0"
+exclude = [".github", "src/file_descriptor_set.bin"]
 
 [workspace]
 members = ["tests"]
