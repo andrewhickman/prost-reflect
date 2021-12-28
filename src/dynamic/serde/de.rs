@@ -99,7 +99,7 @@ where
 
 struct OptionalFieldDescriptorSeed<'a>(&'a FieldDescriptor);
 
-impl<'a, 'de: 'a> DeserializeSeed<'de> for OptionalFieldDescriptorSeed<'a> {
+impl<'a, 'de> DeserializeSeed<'de> for OptionalFieldDescriptorSeed<'a> {
     type Value = Option<Value>;
 
     fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
@@ -110,7 +110,7 @@ impl<'a, 'de: 'a> DeserializeSeed<'de> for OptionalFieldDescriptorSeed<'a> {
     }
 }
 
-impl<'a, 'de: 'a> Visitor<'de> for OptionalFieldDescriptorSeed<'a> {
+impl<'a, 'de> Visitor<'de> for OptionalFieldDescriptorSeed<'a> {
     type Value = Option<Value>;
 
     #[inline]
@@ -146,7 +146,7 @@ impl<'a, 'de: 'a> Visitor<'de> for OptionalFieldDescriptorSeed<'a> {
 
 struct FieldDescriptorSeed<'a>(&'a FieldDescriptor);
 
-impl<'a, 'de: 'a> DeserializeSeed<'de> for FieldDescriptorSeed<'a> {
+impl<'a, 'de> DeserializeSeed<'de> for FieldDescriptorSeed<'a> {
     type Value = Value;
 
     fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
@@ -169,7 +169,7 @@ impl<'a, 'de: 'a> DeserializeSeed<'de> for FieldDescriptorSeed<'a> {
 
 struct KindSeed<'a>(&'a Kind);
 
-impl<'a, 'de: 'a> DeserializeSeed<'de> for KindSeed<'a> {
+impl<'a, 'de> DeserializeSeed<'de> for KindSeed<'a> {
     type Value = Value;
 
     fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
@@ -216,7 +216,7 @@ struct BytesVisitor;
 struct MessageVisitor<'a>(&'a MessageDescriptor);
 struct EnumVisitor<'a>(&'a EnumDescriptor);
 
-impl<'a, 'de: 'a> Visitor<'de> for ListVisitor<'a> {
+impl<'a, 'de> Visitor<'de> for ListVisitor<'a> {
     type Value = Vec<Value>;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -238,7 +238,7 @@ impl<'a, 'de: 'a> Visitor<'de> for ListVisitor<'a> {
     }
 }
 
-impl<'a, 'de: 'a> Visitor<'de> for MapVisitor<'a> {
+impl<'a, 'de> Visitor<'de> for MapVisitor<'a> {
     type Value = HashMap<MapKey, Value>;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -599,7 +599,7 @@ impl<'de> Visitor<'de> for BytesVisitor {
     }
 }
 
-impl<'a, 'de: 'a> Visitor<'de> for MessageVisitor<'a> {
+impl<'a, 'de> Visitor<'de> for MessageVisitor<'a> {
     type Value = DynamicMessage;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -630,7 +630,7 @@ impl<'a, 'de: 'a> Visitor<'de> for MessageVisitor<'a> {
     }
 }
 
-impl<'a, 'de: 'a> Visitor<'de> for EnumVisitor<'a> {
+impl<'a, 'de> Visitor<'de> for EnumVisitor<'a> {
     type Value = i32;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
