@@ -279,7 +279,7 @@ impl<'a> Serialize for SerializeWrapper<'a, MapKey> {
 fn serialize_timestamp<S>(
     msg: &DynamicMessage,
     serializer: S,
-    _config: &SerializeOptions,
+    _options: &SerializeOptions,
 ) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
@@ -300,7 +300,7 @@ where
 fn serialize_duration<S>(
     msg: &DynamicMessage,
     serializer: S,
-    _config: &SerializeOptions,
+    _options: &SerializeOptions,
 ) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
@@ -317,7 +317,7 @@ where
 fn serialize_float<S>(
     msg: &DynamicMessage,
     serializer: S,
-    _config: &SerializeOptions,
+    _options: &SerializeOptions,
 ) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
@@ -330,7 +330,7 @@ where
 fn serialize_double<S>(
     msg: &DynamicMessage,
     serializer: S,
-    _config: &SerializeOptions,
+    _options: &SerializeOptions,
 ) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
@@ -343,7 +343,7 @@ where
 fn serialize_int32<S>(
     msg: &DynamicMessage,
     serializer: S,
-    _config: &SerializeOptions,
+    _options: &SerializeOptions,
 ) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
@@ -356,20 +356,24 @@ where
 fn serialize_int64<S>(
     msg: &DynamicMessage,
     serializer: S,
-    _config: &SerializeOptions,
+    options: &SerializeOptions,
 ) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
     let raw: i64 = msg.to_message().map_err(decode_to_ser_err)?;
 
-    serializer.collect_str(&raw)
+    if options.stringify_64_bit_integers {
+        serializer.collect_str(&raw)
+    } else {
+        serializer.serialize_i64(raw)
+    }
 }
 
 fn serialize_uint32<S>(
     msg: &DynamicMessage,
     serializer: S,
-    _config: &SerializeOptions,
+    _options: &SerializeOptions,
 ) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
@@ -382,20 +386,24 @@ where
 fn serialize_uint64<S>(
     msg: &DynamicMessage,
     serializer: S,
-    _config: &SerializeOptions,
+    options: &SerializeOptions,
 ) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
     let raw: u64 = msg.to_message().map_err(decode_to_ser_err)?;
 
-    serializer.collect_str(&raw)
+    if options.stringify_64_bit_integers {
+        serializer.collect_str(&raw)
+    } else {
+        serializer.serialize_u64(raw)
+    }
 }
 
 fn serialize_bool<S>(
     msg: &DynamicMessage,
     serializer: S,
-    _config: &SerializeOptions,
+    _options: &SerializeOptions,
 ) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
@@ -408,7 +416,7 @@ where
 fn serialize_string<S>(
     msg: &DynamicMessage,
     serializer: S,
-    _config: &SerializeOptions,
+    _options: &SerializeOptions,
 ) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
@@ -421,7 +429,7 @@ where
 fn serialize_bytes<S>(
     msg: &DynamicMessage,
     serializer: S,
-    _config: &SerializeOptions,
+    _options: &SerializeOptions,
 ) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
@@ -434,7 +442,7 @@ where
 fn serialize_field_mask<S>(
     msg: &DynamicMessage,
     serializer: S,
-    _config: &SerializeOptions,
+    _options: &SerializeOptions,
 ) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
@@ -477,7 +485,7 @@ fn snake_case_to_camel_case(dst: &mut String, src: &str) {
 fn serialize_empty<S>(
     _: &DynamicMessage,
     serializer: S,
-    _config: &SerializeOptions,
+    _options: &SerializeOptions,
 ) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
