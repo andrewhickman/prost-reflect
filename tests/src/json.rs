@@ -828,8 +828,38 @@ proptest! {
     }
 
     #[test]
+    fn roundtrip_arb_scalars_options(message: Scalars) {
+        roundtrip_json_with_options(
+            &message,
+            ".test.Scalars",
+            &SerializeOptions::new()
+                .stringify_64_bit_integers(false)
+                .use_enum_numbers(true)
+                .use_proto_field_name(true)
+                .emit_unpopulated_fields(true),
+            &DeserializeOptions::new()
+                .deny_unknown_fields(true)
+        )?;
+    }
+
+    #[test]
     fn roundtrip_arb_scalar_arrays(message: ScalarArrays) {
         roundtrip_json(&message, ".test.ScalarArrays")?;
+    }
+
+    #[test]
+    fn roundtrip_arb_scalar_arrays_options(message: ScalarArrays) {
+        roundtrip_json_with_options(
+            &message,
+            ".test.ScalarArrays",
+            &SerializeOptions::new()
+                .stringify_64_bit_integers(false)
+                .use_enum_numbers(true)
+                .use_proto_field_name(true)
+                .emit_unpopulated_fields(true),
+            &DeserializeOptions::new()
+                .deny_unknown_fields(true)
+        )?;
     }
 
     #[test]
@@ -838,8 +868,38 @@ proptest! {
     }
 
     #[test]
+    fn roundtrip_arb_complex_type_options(message: ComplexType) {
+        roundtrip_json_with_options(
+            &message,
+            ".test.ComplexType",
+            &SerializeOptions::new()
+                .stringify_64_bit_integers(false)
+                .use_enum_numbers(true)
+                .use_proto_field_name(true)
+                .emit_unpopulated_fields(true),
+            &DeserializeOptions::new()
+                .deny_unknown_fields(true)
+        )?;
+    }
+
+    #[test]
     fn roundtrip_arb_well_known_types(message: WellKnownTypes) {
         roundtrip_json(&message, ".test.WellKnownTypes")?;
+    }
+
+    #[test]
+    fn roundtrip_arb_well_known_types_options(message: WellKnownTypes) {
+        roundtrip_json_with_options(
+            &message,
+            ".test.WellKnownTypes",
+            &SerializeOptions::new()
+                .stringify_64_bit_integers(false)
+                .use_enum_numbers(true)
+                .use_proto_field_name(true)
+                .emit_unpopulated_fields(true),
+            &DeserializeOptions::new()
+                .deny_unknown_fields(true)
+        )?;
     }
 }
 
@@ -894,8 +954,25 @@ fn roundtrip_json<T>(message: &T, message_name: &str) -> Result<(), TestCaseErro
 where
     T: PartialEq + Debug + Message + Default,
 {
-    let json = to_json(message, message_name);
-    let roundtripped_message = from_json(json, message_name);
+    roundtrip_json_with_options(
+        message,
+        message_name,
+        &Default::default(),
+        &Default::default(),
+    )
+}
+
+fn roundtrip_json_with_options<T>(
+    message: &T,
+    message_name: &str,
+    ser_options: &SerializeOptions,
+    de_options: &DeserializeOptions,
+) -> Result<(), TestCaseError>
+where
+    T: PartialEq + Debug + Message + Default,
+{
+    let json = to_json_with_options(message, message_name, ser_options);
+    let roundtripped_message = from_json_with_options(json, message_name, de_options);
     prop_assert_eq!(message, &roundtripped_message);
     Ok(())
 }
