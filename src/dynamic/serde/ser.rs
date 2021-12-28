@@ -7,73 +7,140 @@ use serde::ser::{Error, Serialize, SerializeMap, SerializeSeq, Serializer};
 
 use crate::{
     descriptor::{Kind, MAP_ENTRY_VALUE_NUMBER},
-    dynamic::{DynamicMessage, DynamicMessageField, MapKey, Value},
+    dynamic::{serde::SerializeOptions, DynamicMessage, DynamicMessageField, MapKey, Value},
 };
 
-impl Serialize for DynamicMessage {
+struct SerializeWrapper<'a, T> {
+    value: &'a T,
+    config: &'a SerializeOptions,
+}
+
+pub(super) fn serialize_message<S>(
+    message: &DynamicMessage,
+    serializer: S,
+    config: &SerializeOptions,
+) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    SerializeWrapper {
+        value: message,
+        config,
+    }
+    .serialize(serializer)
+}
+
+impl<'a> Serialize for SerializeWrapper<'a, DynamicMessage> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
         // Special cases for well-known types
-        match self.descriptor().full_name() {
-            "google.protobuf.Timestamp" => return serialize_timestamp(self, serializer),
-            "google.protobuf.Duration" => return serialize_duration(self, serializer),
-            "google.protobuf.Struct" => return serialize_struct(self, serializer),
-            "google.protobuf.FloatValue" => return serialize_float(self, serializer),
-            "google.protobuf.DoubleValue" => return serialize_double(self, serializer),
-            "google.protobuf.Int32Value" => return serialize_int32(self, serializer),
-            "google.protobuf.Int64Value" => return serialize_int64(self, serializer),
-            "google.protobuf.UInt32Value" => return serialize_uint32(self, serializer),
-            "google.protobuf.UInt64Value" => return serialize_uint64(self, serializer),
-            "google.protobuf.BoolValue" => return serialize_bool(self, serializer),
-            "google.protobuf.StringValue" => return serialize_string(self, serializer),
-            "google.protobuf.BytesValue" => return serialize_bytes(self, serializer),
-            "google.protobuf.FieldMask" => return serialize_field_mask(self, serializer),
-            "google.protobuf.ListValue" => return serialize_list(self, serializer),
-            "google.protobuf.Value" => return serialize_value(self, serializer),
-            "google.protobuf.Empty" => return serialize_empty(self, serializer),
+        match self.value.descriptor().full_name() {
+            "google.protobuf.Timestamp" => {
+                return serialize_timestamp(self.value, serializer, self.config)
+            }
+            "google.protobuf.Duration" => {
+                return serialize_duration(self.value, serializer, self.config)
+            }
+            "google.protobuf.Struct" => {
+                return serialize_struct(self.value, serializer, self.config)
+            }
+            "google.protobuf.FloatValue" => {
+                return serialize_float(self.value, serializer, self.config)
+            }
+            "google.protobuf.DoubleValue" => {
+                return serialize_double(self.value, serializer, self.config)
+            }
+            "google.protobuf.Int32Value" => {
+                return serialize_int32(self.value, serializer, self.config)
+            }
+            "google.protobuf.Int64Value" => {
+                return serialize_int64(self.value, serializer, self.config)
+            }
+            "google.protobuf.UInt32Value" => {
+                return serialize_uint32(self.value, serializer, self.config)
+            }
+            "google.protobuf.UInt64Value" => {
+                return serialize_uint64(self.value, serializer, self.config)
+            }
+            "google.protobuf.BoolValue" => {
+                return serialize_bool(self.value, serializer, self.config)
+            }
+            "google.protobuf.StringValue" => {
+                return serialize_string(self.value, serializer, self.config)
+            }
+            "google.protobuf.BytesValue" => {
+                return serialize_bytes(self.value, serializer, self.config)
+            }
+            "google.protobuf.FieldMask" => {
+                return serialize_field_mask(self.value, serializer, self.config)
+            }
+            "google.protobuf.ListValue" => {
+                return serialize_list(self.value, serializer, self.config)
+            }
+            "google.protobuf.Value" => return serialize_value(self.value, serializer, self.config),
+            "google.protobuf.Empty" => return serialize_empty(self.value, serializer, self.config),
             _ => (),
         };
 
-        let len = self.fields.values().filter(|v| v.is_populated()).count();
+        let len = self
+            .value
+            .fields
+            .values()
+            .filter(|v| v.is_populated())
+            .count();
         let mut map = serializer.serialize_map(Some(len))?;
-        for field in self.fields.values() {
+        for field in self.value.fields.values() {
             if field.is_populated() {
-                map.serialize_entry(field.desc.json_name(), field)?;
+                map.serialize_entry(
+                    field.desc.json_name(),
+                    &SerializeWrapper {
+                        value: field,
+                        config: self.config,
+                    },
+                )?;
             }
         }
         map.end()
     }
 }
 
-impl Serialize for DynamicMessageField {
+impl<'a> Serialize for SerializeWrapper<'a, DynamicMessageField> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
         // These null cases shouldn't be hit since we're only serializing populated fields currently,
         // but we may want an option to include unpopulated fields in future.
-        let value = match &self.value {
+        let value = match &self.value.value {
             None => return serializer.serialize_none(),
             Some(value) => value,
         };
 
-        SerializeValue(value, &self.desc.kind()).serialize(serializer)
+        SerializeWrapper {
+            value: &ValueAndKind {
+                value,
+                kind: &self.value.desc.kind(),
+            },
+            config: self.config,
+        }
+        .serialize(serializer)
     }
 }
 
-struct SerializeValue<'a>(&'a Value, &'a Kind);
-struct SerializeMapKey<'a>(&'a MapKey);
+struct ValueAndKind<'a> {
+    value: &'a Value,
+    kind: &'a Kind,
+}
 
-impl<'a> Serialize for SerializeValue<'a> {
+impl<'a> Serialize for SerializeWrapper<'a, ValueAndKind<'a>> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
         // Special cased well known types
-
-        match self.0 {
+        match self.value.value {
             Value::Bool(value) => serializer.serialize_bool(*value),
             Value::I32(value) => serializer.serialize_i32(*value),
             Value::I64(value) => serializer.collect_str(value),
@@ -108,11 +175,11 @@ impl<'a> Serialize for SerializeValue<'a> {
                 serializer.collect_str(&Base64Display::with_config(value, base64::STANDARD))
             }
             Value::EnumNumber(number) => {
-                let enum_ty = match self.1 {
+                let enum_ty = match self.value.kind {
                     Kind::Enum(enum_ty) => enum_ty,
                     _ => panic!(
                         "mismatch between DynamicMessage value {:?} and type {:?}",
-                        self.0, self.1
+                        self.value.value, self.value.kind
                     ),
                 };
 
@@ -128,26 +195,41 @@ impl<'a> Serialize for SerializeValue<'a> {
             Value::List(values) => {
                 let mut list = serializer.serialize_seq(Some(values.len()))?;
                 for value in values {
-                    list.serialize_element(&SerializeValue(value, self.1))?;
+                    list.serialize_element(&SerializeWrapper {
+                        value: &ValueAndKind {
+                            value,
+                            kind: self.value.kind,
+                        },
+                        config: self.config,
+                    })?;
                 }
                 list.end()
             }
             Value::Map(values) => {
-                let value_kind = match self.1 {
+                let value_kind = match self.value.kind {
                     Kind::Message(message) if message.is_map_entry() => {
                         message.get_field(MAP_ENTRY_VALUE_NUMBER).unwrap().kind()
                     }
                     _ => panic!(
                         "mismatch between DynamicMessage value {:?} and type {:?}",
-                        self.0, self.1
+                        self.value.value, self.value.kind
                     ),
                 };
 
                 let mut map = serializer.serialize_map(Some(values.len()))?;
                 for (key, value) in values {
                     map.serialize_entry(
-                        &SerializeMapKey(key),
-                        &SerializeValue(value, &value_kind),
+                        &SerializeWrapper {
+                            value: key,
+                            config: self.config,
+                        },
+                        &SerializeWrapper {
+                            value: &ValueAndKind {
+                                value,
+                                kind: &value_kind,
+                            },
+                            config: self.config,
+                        },
                     )?;
                 }
                 map.end()
@@ -156,12 +238,12 @@ impl<'a> Serialize for SerializeValue<'a> {
     }
 }
 
-impl<'a> Serialize for SerializeMapKey<'a> {
+impl<'a> Serialize for SerializeWrapper<'a, MapKey> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        match self.0 {
+        match self.value {
             MapKey::Bool(value) => serializer.collect_str(value),
             MapKey::I32(value) => serializer.collect_str(value),
             MapKey::I64(value) => serializer.collect_str(value),
@@ -172,7 +254,11 @@ impl<'a> Serialize for SerializeMapKey<'a> {
     }
 }
 
-fn serialize_timestamp<S>(msg: &DynamicMessage, serializer: S) -> Result<S::Ok, S::Error>
+fn serialize_timestamp<S>(
+    msg: &DynamicMessage,
+    serializer: S,
+    _config: &SerializeOptions,
+) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
@@ -189,7 +275,11 @@ where
     serializer.serialize_str(&datetime.to_rfc3339_opts(chrono::SecondsFormat::AutoSi, true))
 }
 
-fn serialize_duration<S>(msg: &DynamicMessage, serializer: S) -> Result<S::Ok, S::Error>
+fn serialize_duration<S>(
+    msg: &DynamicMessage,
+    serializer: S,
+    _config: &SerializeOptions,
+) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
@@ -202,7 +292,11 @@ where
     }
 }
 
-fn serialize_float<S>(msg: &DynamicMessage, serializer: S) -> Result<S::Ok, S::Error>
+fn serialize_float<S>(
+    msg: &DynamicMessage,
+    serializer: S,
+    _config: &SerializeOptions,
+) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
@@ -211,7 +305,11 @@ where
     serializer.serialize_f32(raw)
 }
 
-fn serialize_double<S>(msg: &DynamicMessage, serializer: S) -> Result<S::Ok, S::Error>
+fn serialize_double<S>(
+    msg: &DynamicMessage,
+    serializer: S,
+    _config: &SerializeOptions,
+) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
@@ -220,7 +318,11 @@ where
     serializer.serialize_f64(raw)
 }
 
-fn serialize_int32<S>(msg: &DynamicMessage, serializer: S) -> Result<S::Ok, S::Error>
+fn serialize_int32<S>(
+    msg: &DynamicMessage,
+    serializer: S,
+    _config: &SerializeOptions,
+) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
@@ -229,7 +331,11 @@ where
     serializer.serialize_i32(raw)
 }
 
-fn serialize_int64<S>(msg: &DynamicMessage, serializer: S) -> Result<S::Ok, S::Error>
+fn serialize_int64<S>(
+    msg: &DynamicMessage,
+    serializer: S,
+    _config: &SerializeOptions,
+) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
@@ -238,7 +344,11 @@ where
     serializer.collect_str(&raw)
 }
 
-fn serialize_uint32<S>(msg: &DynamicMessage, serializer: S) -> Result<S::Ok, S::Error>
+fn serialize_uint32<S>(
+    msg: &DynamicMessage,
+    serializer: S,
+    _config: &SerializeOptions,
+) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
@@ -247,7 +357,11 @@ where
     serializer.serialize_u32(raw)
 }
 
-fn serialize_uint64<S>(msg: &DynamicMessage, serializer: S) -> Result<S::Ok, S::Error>
+fn serialize_uint64<S>(
+    msg: &DynamicMessage,
+    serializer: S,
+    _config: &SerializeOptions,
+) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
@@ -256,7 +370,11 @@ where
     serializer.collect_str(&raw)
 }
 
-fn serialize_bool<S>(msg: &DynamicMessage, serializer: S) -> Result<S::Ok, S::Error>
+fn serialize_bool<S>(
+    msg: &DynamicMessage,
+    serializer: S,
+    _config: &SerializeOptions,
+) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
@@ -265,7 +383,11 @@ where
     serializer.serialize_bool(raw)
 }
 
-fn serialize_string<S>(msg: &DynamicMessage, serializer: S) -> Result<S::Ok, S::Error>
+fn serialize_string<S>(
+    msg: &DynamicMessage,
+    serializer: S,
+    _config: &SerializeOptions,
+) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
@@ -274,7 +396,11 @@ where
     serializer.serialize_str(&raw)
 }
 
-fn serialize_bytes<S>(msg: &DynamicMessage, serializer: S) -> Result<S::Ok, S::Error>
+fn serialize_bytes<S>(
+    msg: &DynamicMessage,
+    serializer: S,
+    _config: &SerializeOptions,
+) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
@@ -283,7 +409,11 @@ where
     serializer.collect_str(&Base64Display::with_config(&raw, base64::STANDARD))
 }
 
-fn serialize_field_mask<S>(msg: &DynamicMessage, serializer: S) -> Result<S::Ok, S::Error>
+fn serialize_field_mask<S>(
+    msg: &DynamicMessage,
+    serializer: S,
+    _config: &SerializeOptions,
+) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
@@ -322,52 +452,70 @@ fn snake_case_to_camel_case(dst: &mut String, src: &str) {
     }
 }
 
-fn serialize_empty<S>(_: &DynamicMessage, serializer: S) -> Result<S::Ok, S::Error>
+fn serialize_empty<S>(
+    _: &DynamicMessage,
+    serializer: S,
+    _config: &SerializeOptions,
+) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
     serializer.collect_map(std::iter::empty::<((), ())>())
 }
 
-fn serialize_value<S>(msg: &DynamicMessage, serializer: S) -> Result<S::Ok, S::Error>
+fn serialize_value<S>(
+    msg: &DynamicMessage,
+    serializer: S,
+    config: &SerializeOptions,
+) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
     let raw: prost_types::Value = msg.to_message().map_err(decode_to_ser_err)?;
 
-    serialize_value_inner(&raw, serializer)
+    serialize_value_inner(&raw, serializer, config)
 }
 
-fn serialize_struct<S>(msg: &DynamicMessage, serializer: S) -> Result<S::Ok, S::Error>
+fn serialize_struct<S>(
+    msg: &DynamicMessage,
+    serializer: S,
+    config: &SerializeOptions,
+) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
     let raw: prost_types::Struct = msg.to_message().map_err(decode_to_ser_err)?;
 
-    serialize_struct_inner(&raw, serializer)
+    serialize_struct_inner(&raw, serializer, config)
 }
 
-fn serialize_list<S>(msg: &DynamicMessage, serializer: S) -> Result<S::Ok, S::Error>
+fn serialize_list<S>(
+    msg: &DynamicMessage,
+    serializer: S,
+    config: &SerializeOptions,
+) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
     let raw: prost_types::ListValue = msg.to_message().map_err(decode_to_ser_err)?;
 
-    serialize_list_inner(&raw, serializer)
+    serialize_list_inner(&raw, serializer, config)
 }
 
-struct SerializeGoogleProtobufValue<'a>(&'a prost_types::Value);
-
-impl<'a> Serialize for SerializeGoogleProtobufValue<'a> {
+impl<'a> Serialize for SerializeWrapper<'a, prost_types::Value> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        serialize_value_inner(self.0, serializer)
+        serialize_value_inner(self.value, serializer, self.config)
     }
 }
 
-fn serialize_value_inner<S>(raw: &prost_types::Value, serializer: S) -> Result<S::Ok, S::Error>
+fn serialize_value_inner<S>(
+    raw: &prost_types::Value,
+    serializer: S,
+    config: &SerializeOptions,
+) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
@@ -384,31 +532,41 @@ where
             }
         }
         Some(prost_types::value::Kind::StringValue(value)) => serializer.serialize_str(value),
-        Some(prost_types::value::Kind::ListValue(value)) => serialize_list_inner(value, serializer),
+        Some(prost_types::value::Kind::ListValue(value)) => {
+            serialize_list_inner(value, serializer, config)
+        }
         Some(prost_types::value::Kind::StructValue(value)) => {
-            serialize_struct_inner(value, serializer)
+            serialize_struct_inner(value, serializer, config)
         }
     }
 }
 
-fn serialize_struct_inner<S>(raw: &prost_types::Struct, serializer: S) -> Result<S::Ok, S::Error>
+fn serialize_struct_inner<S>(
+    raw: &prost_types::Struct,
+    serializer: S,
+    config: &SerializeOptions,
+) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
     let mut map = serializer.serialize_map(Some(raw.fields.len()))?;
     for (key, value) in &raw.fields {
-        map.serialize_entry(key, &SerializeGoogleProtobufValue(value))?;
+        map.serialize_entry(key, &SerializeWrapper { value, config })?;
     }
     map.end()
 }
 
-fn serialize_list_inner<S>(raw: &prost_types::ListValue, serializer: S) -> Result<S::Ok, S::Error>
+fn serialize_list_inner<S>(
+    raw: &prost_types::ListValue,
+    serializer: S,
+    config: &SerializeOptions,
+) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
     let mut list = serializer.serialize_seq(Some(raw.values.len()))?;
     for value in &raw.values {
-        list.serialize_element(&SerializeGoogleProtobufValue(value))?;
+        list.serialize_element(&SerializeWrapper { value, config })?;
     }
     list.end()
 }

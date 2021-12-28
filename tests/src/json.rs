@@ -5,7 +5,7 @@ use std::{
 
 use proptest::{prelude::*, test_runner::TestCaseError};
 use prost::Message;
-use serde::de::DeserializeSeed;
+use prost_reflect::DynamicMessage;
 use serde_json::json;
 
 use crate::{to_dynamic, ComplexType, ScalarArrays, Scalars, WellKnownTypes, TEST_FILE_DESCRIPTOR};
@@ -707,13 +707,15 @@ fn from_json<T>(json: serde_json::Value, message_name: &str) -> T
 where
     T: PartialEq + Debug + Message + Default,
 {
-    TEST_FILE_DESCRIPTOR
-        .get_message_by_name(message_name)
-        .unwrap()
-        .deserialize(json)
-        .unwrap()
-        .to_message()
-        .unwrap()
+    DynamicMessage::deserialize(
+        TEST_FILE_DESCRIPTOR
+            .get_message_by_name(message_name)
+            .unwrap(),
+        json,
+    )
+    .unwrap()
+    .to_message()
+    .unwrap()
 }
 
 fn roundtrip_json<T>(message: &T, message_name: &str) -> Result<(), TestCaseError>

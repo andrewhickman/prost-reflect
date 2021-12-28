@@ -12,24 +12,14 @@ use serde::de::{DeserializeSeed, Deserializer, Error, IgnoredAny, MapAccess, Seq
 
 use crate::{
     descriptor::{MAP_ENTRY_KEY_NUMBER, MAP_ENTRY_VALUE_NUMBER},
-    dynamic::{DynamicMessage, MapKey, Value},
+    dynamic::{serde::DeserializeOptions, DynamicMessage, MapKey, Value},
     EnumDescriptor, FieldDescriptor, Kind, MessageDescriptor,
 };
 
-impl<'a, 'de> DeserializeSeed<'de> for &'a MessageDescriptor {
-    type Value = DynamicMessage;
-
-    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        deserialize_message(self, deserializer)
-    }
-}
-
-fn deserialize_message<'de, D>(
+pub(super) fn deserialize_message<'de, D>(
     desc: &MessageDescriptor,
     deserializer: D,
+    config: &DeserializeOptions,
 ) -> Result<DynamicMessage, D::Error>
 where
     D: Deserializer<'de>,
@@ -83,7 +73,7 @@ where
         "google.protobuf.Empty" => deserializer
             .deserialize_map(GoogleProtobufEmptyVisitor)
             .and_then(|empty| make_message(desc, empty)),
-        _ => deserializer.deserialize_map(MessageVisitor(desc)),
+        _ => deserializer.deserialize_map(MessageVisitor(desc, config)),
     }
 }
 
@@ -97,7 +87,7 @@ where
     }
 }
 
-struct OptionalFieldDescriptorSeed<'a>(&'a FieldDescriptor);
+struct OptionalFieldDescriptorSeed<'a>(&'a FieldDescriptor, &'a DeserializeOptions);
 
 impl<'a, 'de> DeserializeSeed<'de> for OptionalFieldDescriptorSeed<'a> {
     type Value = Option<Value>;
@@ -134,7 +124,7 @@ impl<'a, 'de> Visitor<'de> for OptionalFieldDescriptorSeed<'a> {
     where
         D: Deserializer<'de>,
     {
-        FieldDescriptorSeed(self.0)
+        FieldDescriptorSeed(self.0, self.1)
             .deserialize(deserializer)
             .map(Some)
     }
@@ -144,7 +134,7 @@ impl<'a, 'de> Visitor<'de> for OptionalFieldDescriptorSeed<'a> {
     }
 }
 
-struct FieldDescriptorSeed<'a>(&'a FieldDescriptor);
+struct FieldDescriptorSeed<'a>(&'a FieldDescriptor, &'a DeserializeOptions);
 
 impl<'a, 'de> DeserializeSeed<'de> for FieldDescriptorSeed<'a> {
     type Value = Value;
@@ -155,19 +145,19 @@ impl<'a, 'de> DeserializeSeed<'de> for FieldDescriptorSeed<'a> {
     {
         if self.0.is_list() {
             deserializer
-                .deserialize_any(ListVisitor(&self.0.kind()))
+                .deserialize_any(ListVisitor(&self.0.kind(), self.1))
                 .map(Value::List)
         } else if self.0.is_map() {
             deserializer
-                .deserialize_any(MapVisitor(&self.0.kind()))
+                .deserialize_any(MapVisitor(&self.0.kind(), self.1))
                 .map(Value::Map)
         } else {
-            KindSeed(&self.0.kind()).deserialize(deserializer)
+            KindSeed(&self.0.kind(), self.1).deserialize(deserializer)
         }
     }
 }
 
-struct KindSeed<'a>(&'a Kind);
+struct KindSeed<'a>(&'a Kind, &'a DeserializeOptions);
 
 impl<'a, 'de> DeserializeSeed<'de> for KindSeed<'a> {
     type Value = Value;
@@ -196,14 +186,16 @@ impl<'a, 'de> DeserializeSeed<'de> for KindSeed<'a> {
                 .deserialize_string(StringVisitor)
                 .map(Value::String),
             Kind::Bytes => deserializer.deserialize_str(BytesVisitor).map(Value::Bytes),
-            Kind::Message(desc) => deserialize_message(desc, deserializer).map(Value::Message),
+            Kind::Message(desc) => {
+                deserialize_message(desc, deserializer, self.1).map(Value::Message)
+            }
             Kind::Enum(desc) => deserialize_enum(desc, deserializer).map(Value::EnumNumber),
         }
     }
 }
 
-struct ListVisitor<'a>(&'a Kind);
-struct MapVisitor<'a>(&'a Kind);
+struct ListVisitor<'a>(&'a Kind, &'a DeserializeOptions);
+struct MapVisitor<'a>(&'a Kind, &'a DeserializeOptions);
 struct DoubleVisitor;
 struct FloatVisitor;
 struct Int32Visitor;
@@ -213,7 +205,7 @@ struct Uint64Visitor;
 struct StringVisitor;
 struct BoolVisitor;
 struct BytesVisitor;
-struct MessageVisitor<'a>(&'a MessageDescriptor);
+struct MessageVisitor<'a>(&'a MessageDescriptor, &'a DeserializeOptions);
 struct EnumVisitor<'a>(&'a EnumDescriptor);
 
 impl<'a, 'de> Visitor<'de> for ListVisitor<'a> {
@@ -230,7 +222,7 @@ impl<'a, 'de> Visitor<'de> for ListVisitor<'a> {
     {
         let mut result = Vec::with_capacity(seq.size_hint().unwrap_or(0));
 
-        while let Some(value) = seq.next_element_seed(KindSeed(self.0))? {
+        while let Some(value) = seq.next_element_seed(KindSeed(self.0, self.1))? {
             result.push(value)
         }
 
@@ -279,7 +271,7 @@ impl<'a, 'de> Visitor<'de> for MapVisitor<'a> {
                 _ => unreachable!("invalid type for map key"),
             };
 
-            let value = map.next_value_seed(FieldDescriptorSeed(&value_desc))?;
+            let value = map.next_value_seed(FieldDescriptorSeed(&value_desc, self.1))?;
 
             result.insert(key, value);
         }
@@ -618,7 +610,9 @@ impl<'a, 'de> Visitor<'de> for MessageVisitor<'a> {
                 .get_field_by_json_name(key.as_ref())
                 .or_else(|| self.0.get_field_by_name(key.as_ref()))
             {
-                if let Some(value) = map.next_value_seed(OptionalFieldDescriptorSeed(&field))? {
+                if let Some(value) =
+                    map.next_value_seed(OptionalFieldDescriptorSeed(&field, self.1))?
+                {
                     message.set_field(field.number(), value);
                 }
             } else {
