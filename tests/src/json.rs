@@ -5,7 +5,7 @@ use std::{
 
 use proptest::{prelude::*, test_runner::TestCaseError};
 use prost::Message;
-use prost_reflect::{DeserializeOptions, DynamicMessage};
+use prost_reflect::{DeserializeOptions, DynamicMessage, SerializeOptions};
 use serde_json::json;
 
 use crate::{to_dynamic, ComplexType, ScalarArrays, Scalars, WellKnownTypes, TEST_FILE_DESCRIPTOR};
@@ -308,6 +308,128 @@ fn serialize_well_known_types() {
 }
 
 #[test]
+fn serialize_no_stringify_64_bit_integers() {
+    let value = to_json_with_options(
+        &Scalars {
+            int32: 3,
+            int64: -4,
+            uint32: 5,
+            uint64: 6,
+            sint32: 7,
+            sint64: -8,
+            fixed32: 9,
+            fixed64: 10,
+            sfixed32: 11,
+            sfixed64: -12,
+            ..Default::default()
+        },
+        ".test.Scalars",
+        &SerializeOptions::new().stringify_64_bit_integers(false),
+    );
+
+    assert_eq!(
+        value,
+        json!({
+            "int32": 3,
+            "int64": -4,
+            "uint32": 5,
+            "uint64": 6,
+            "sint32": 7,
+            "sint64": -8,
+            "fixed32": 9,
+            "fixed64": 10,
+            "sfixed32": 11,
+            "sfixed64": -12,
+        })
+    );
+}
+
+#[test]
+fn serialize_use_proto_field_name() {
+    let value = to_json_with_options(
+        &ComplexType {
+            my_enum: vec![0, 1, 2, 3],
+            ..Default::default()
+        },
+        ".test.ComplexType",
+        &SerializeOptions::new().use_proto_field_name(true),
+    );
+
+    assert_eq!(
+        value,
+        json!({
+            "my_enum": ["DEFAULT", "FOO", 2, "BAR"],
+        })
+    );
+}
+
+#[test]
+fn serialize_use_enum_numbers() {
+    let value = to_json_with_options(
+        &ComplexType {
+            my_enum: vec![0, 1, 2, 3],
+            ..Default::default()
+        },
+        ".test.ComplexType",
+        &SerializeOptions::new().use_enum_numbers(true),
+    );
+
+    assert_eq!(
+        value,
+        json!({
+            "myEnum": [0, 1, 2, 3],
+        })
+    );
+}
+
+#[test]
+fn serialize_emit_unpopulated_fields() {
+    let value = to_json_with_options(
+        &ComplexType {
+            string_map: HashMap::from([(
+                "1".to_owned(),
+                Scalars {
+                    ..Default::default()
+                },
+            )]),
+            int_map: HashMap::default(),
+            nested: None,
+            my_enum: vec![],
+        },
+        ".test.ComplexType",
+        &SerializeOptions::new().emit_unpopulated_fields(true),
+    );
+
+    assert_eq!(
+        value,
+        json!({
+            "stringMap": {
+                "1": {
+                    "double": 0.0,
+                    "float": 0.0,
+                    "int32": 0,
+                    "int64": "0",
+                    "uint32": 0,
+                    "uint64": "0",
+                    "sint32": 0,
+                    "sint64": "0",
+                    "fixed32": 0,
+                    "fixed64": "0",
+                    "sfixed32": 0,
+                    "sfixed64": "0",
+                    "bool": false,
+                    "string": "",
+                    "bytes": "",
+                },
+            },
+            "intMap": {},
+            "nested": null,
+            "myEnum": [],
+        })
+    );
+}
+
+#[test]
 fn deserialize_scalars() {
     let value: Scalars = from_json(
         json!({
@@ -406,7 +528,7 @@ fn deserialize_scalars_empty() {
 #[test]
 #[should_panic(expected = "unrecognized field name 'unknown_field'")]
 fn deserialize_deny_unknown_fields() {
-    from_json_with_config::<Scalars>(
+    from_json_with_options::<Scalars>(
         json!({
             "unknown_field": 123,
         }),
@@ -417,7 +539,7 @@ fn deserialize_deny_unknown_fields() {
 
 #[test]
 fn deserialize_allow_unknown_fields() {
-    let value = from_json_with_config::<Scalars>(
+    let value = from_json_with_options::<Scalars>(
         json!({
             "unknown_field": 123,
         }),
@@ -725,17 +847,30 @@ fn to_json<T>(message: &T, message_name: &str) -> serde_json::Value
 where
     T: PartialEq + Debug + Message + Default,
 {
-    serde_json::to_value(&to_dynamic(message, message_name)).unwrap()
+    to_json_with_options(message, message_name, &Default::default())
+}
+
+fn to_json_with_options<T>(
+    message: &T,
+    message_name: &str,
+    options: &SerializeOptions,
+) -> serde_json::Value
+where
+    T: PartialEq + Debug + Message + Default,
+{
+    to_dynamic(message, message_name)
+        .serialize_with_options(serde_json::value::Serializer, options)
+        .unwrap()
 }
 
 fn from_json<T>(json: serde_json::Value, message_name: &str) -> T
 where
     T: PartialEq + Debug + Message + Default,
 {
-    from_json_with_config(json, message_name, &Default::default())
+    from_json_with_options(json, message_name, &Default::default())
 }
 
-fn from_json_with_config<T>(
+fn from_json_with_options<T>(
     json: serde_json::Value,
     message_name: &str,
     options: &DeserializeOptions,

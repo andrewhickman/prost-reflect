@@ -9,8 +9,13 @@ use serde::{
 use crate::{DynamicMessage, MessageDescriptor};
 
 /// Options to control serialization of messages.
-#[derive(Default, Debug, Clone)]
-pub struct SerializeOptions {}
+#[derive(Debug, Clone)]
+pub struct SerializeOptions {
+    stringify_64_bit_integers: bool,
+    use_enum_numbers: bool,
+    use_proto_field_name: bool,
+    emit_unpopulated_fields: bool,
+}
 
 /// Options to control deserialization of messages.
 #[derive(Debug, Clone)]
@@ -83,7 +88,8 @@ impl DynamicMessage {
 }
 
 impl DeserializeOptions {
-    /// Creates a new instance of [`DeserializeOptions`].
+    /// Creates a new instance of [`DeserializeOptions`], with the default options chosen to conform to
+    /// the standard JSON mapping.
     pub fn new() -> Self {
         Self::default()
     }
@@ -101,6 +107,67 @@ impl Default for DeserializeOptions {
     fn default() -> Self {
         DeserializeOptions {
             deny_unknown_fields: true,
+        }
+    }
+}
+
+impl SerializeOptions {
+    /// Creates a new instance of [`SerializeOptions`], with the default options chosen to conform to
+    /// the standard JSON mapping.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Whether to encode 64-bit integral types as strings.
+    ///
+    /// The spec requires encoding 64-bit integers as strings, to prevent loss of precision in JSON
+    /// when the value cannot be represented exactly by a double. If this option is disabled, all
+    /// numbers will be serialized as their corresponding serde types instead.
+    ///
+    /// The default value is `true`.
+    pub fn stringify_64_bit_integers(mut self, yes: bool) -> Self {
+        self.stringify_64_bit_integers = yes;
+        self
+    }
+
+    /// Whether to encode enum values as their numeric value.
+    ///
+    /// If `true`, enum values will be serialized as their integer values. Otherwise, they will be
+    /// serialized as the string value specified in the proto file.
+    ///
+    /// The default value is `false`.
+    pub fn use_enum_numbers(mut self, yes: bool) -> Self {
+        self.use_enum_numbers = yes;
+        self
+    }
+
+    /// Whether to use the proto field name instead of the lowerCamelCase name in JSON field names.
+    ///
+    /// The default value is `false`.
+    pub fn use_proto_field_name(mut self, yes: bool) -> Self {
+        self.use_proto_field_name = yes;
+        self
+    }
+
+    /// Whether to emit unpopulated fields.
+    ///
+    /// If `false`, any fields for which [`has_field`][DynamicMessage::has_field] returns `true` will
+    /// not be serialized. If `true`, they will be serialized with their default value.
+    ///
+    /// The default value is `false`.
+    pub fn emit_unpopulated_fields(mut self, yes: bool) -> Self {
+        self.emit_unpopulated_fields = yes;
+        self
+    }
+}
+
+impl Default for SerializeOptions {
+    fn default() -> Self {
+        SerializeOptions {
+            stringify_64_bit_integers: true,
+            use_enum_numbers: false,
+            use_proto_field_name: false,
+            emit_unpopulated_fields: false,
         }
     }
 }

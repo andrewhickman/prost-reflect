@@ -12,20 +12,20 @@ use crate::{
 
 struct SerializeWrapper<'a, T> {
     value: &'a T,
-    config: &'a SerializeOptions,
+    options: &'a SerializeOptions,
 }
 
 pub(super) fn serialize_message<S>(
     message: &DynamicMessage,
     serializer: S,
-    config: &SerializeOptions,
+    options: &SerializeOptions,
 ) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
     SerializeWrapper {
         value: message,
-        config,
+        options,
     }
     .serialize(serializer)
 }
@@ -38,49 +38,53 @@ impl<'a> Serialize for SerializeWrapper<'a, DynamicMessage> {
         // Special cases for well-known types
         match self.value.descriptor().full_name() {
             "google.protobuf.Timestamp" => {
-                return serialize_timestamp(self.value, serializer, self.config)
+                return serialize_timestamp(self.value, serializer, self.options)
             }
             "google.protobuf.Duration" => {
-                return serialize_duration(self.value, serializer, self.config)
+                return serialize_duration(self.value, serializer, self.options)
             }
             "google.protobuf.Struct" => {
-                return serialize_struct(self.value, serializer, self.config)
+                return serialize_struct(self.value, serializer, self.options)
             }
             "google.protobuf.FloatValue" => {
-                return serialize_float(self.value, serializer, self.config)
+                return serialize_float(self.value, serializer, self.options)
             }
             "google.protobuf.DoubleValue" => {
-                return serialize_double(self.value, serializer, self.config)
+                return serialize_double(self.value, serializer, self.options)
             }
             "google.protobuf.Int32Value" => {
-                return serialize_int32(self.value, serializer, self.config)
+                return serialize_int32(self.value, serializer, self.options)
             }
             "google.protobuf.Int64Value" => {
-                return serialize_int64(self.value, serializer, self.config)
+                return serialize_int64(self.value, serializer, self.options)
             }
             "google.protobuf.UInt32Value" => {
-                return serialize_uint32(self.value, serializer, self.config)
+                return serialize_uint32(self.value, serializer, self.options)
             }
             "google.protobuf.UInt64Value" => {
-                return serialize_uint64(self.value, serializer, self.config)
+                return serialize_uint64(self.value, serializer, self.options)
             }
             "google.protobuf.BoolValue" => {
-                return serialize_bool(self.value, serializer, self.config)
+                return serialize_bool(self.value, serializer, self.options)
             }
             "google.protobuf.StringValue" => {
-                return serialize_string(self.value, serializer, self.config)
+                return serialize_string(self.value, serializer, self.options)
             }
             "google.protobuf.BytesValue" => {
-                return serialize_bytes(self.value, serializer, self.config)
+                return serialize_bytes(self.value, serializer, self.options)
             }
             "google.protobuf.FieldMask" => {
-                return serialize_field_mask(self.value, serializer, self.config)
+                return serialize_field_mask(self.value, serializer, self.options)
             }
             "google.protobuf.ListValue" => {
-                return serialize_list(self.value, serializer, self.config)
+                return serialize_list(self.value, serializer, self.options)
             }
-            "google.protobuf.Value" => return serialize_value(self.value, serializer, self.config),
-            "google.protobuf.Empty" => return serialize_empty(self.value, serializer, self.config),
+            "google.protobuf.Value" => {
+                return serialize_value(self.value, serializer, self.options)
+            }
+            "google.protobuf.Empty" => {
+                return serialize_empty(self.value, serializer, self.options)
+            }
             _ => (),
         };
 
@@ -92,12 +96,18 @@ impl<'a> Serialize for SerializeWrapper<'a, DynamicMessage> {
             .count();
         let mut map = serializer.serialize_map(Some(len))?;
         for field in self.value.fields.values() {
-            if field.is_populated() {
+            if field.is_populated() || self.options.emit_unpopulated_fields {
+                let name = if self.options.use_proto_field_name {
+                    field.desc.name()
+                } else {
+                    field.desc.json_name()
+                };
+
                 map.serialize_entry(
-                    field.desc.json_name(),
+                    name,
                     &SerializeWrapper {
                         value: field,
-                        config: self.config,
+                        options: self.options,
                     },
                 )?;
             }
@@ -111,8 +121,6 @@ impl<'a> Serialize for SerializeWrapper<'a, DynamicMessageField> {
     where
         S: Serializer,
     {
-        // These null cases shouldn't be hit since we're only serializing populated fields currently,
-        // but we may want an option to include unpopulated fields in future.
         let value = match &self.value.value {
             None => return serializer.serialize_none(),
             Some(value) => value,
@@ -123,7 +131,7 @@ impl<'a> Serialize for SerializeWrapper<'a, DynamicMessageField> {
                 value,
                 kind: &self.value.desc.kind(),
             },
-            config: self.config,
+            options: self.options,
         }
         .serialize(serializer)
     }
@@ -143,9 +151,21 @@ impl<'a> Serialize for SerializeWrapper<'a, ValueAndKind<'a>> {
         match self.value.value {
             Value::Bool(value) => serializer.serialize_bool(*value),
             Value::I32(value) => serializer.serialize_i32(*value),
-            Value::I64(value) => serializer.collect_str(value),
+            Value::I64(value) => {
+                if self.options.stringify_64_bit_integers {
+                    serializer.collect_str(value)
+                } else {
+                    serializer.serialize_i64(*value)
+                }
+            }
             Value::U32(value) => serializer.serialize_u32(*value),
-            Value::U64(value) => serializer.collect_str(value),
+            Value::U64(value) => {
+                if self.options.stringify_64_bit_integers {
+                    serializer.collect_str(value)
+                } else {
+                    serializer.serialize_u64(*value)
+                }
+            }
             Value::F32(value) => {
                 if value.is_finite() {
                     serializer.serialize_f32(*value)
@@ -185,13 +205,15 @@ impl<'a> Serialize for SerializeWrapper<'a, ValueAndKind<'a>> {
 
                 if enum_ty.full_name() == "google.protobuf.NullValue" {
                     serializer.serialize_none()
+                } else if self.options.use_enum_numbers {
+                    serializer.serialize_i32(*number)
                 } else if let Some(enum_value) = enum_ty.get_value(*number) {
                     serializer.serialize_str(enum_value.name())
                 } else {
                     serializer.serialize_i32(*number)
                 }
             }
-            Value::Message(message) => message.serialize(serializer),
+            Value::Message(message) => message.serialize_with_options(serializer, self.options),
             Value::List(values) => {
                 let mut list = serializer.serialize_seq(Some(values.len()))?;
                 for value in values {
@@ -200,7 +222,7 @@ impl<'a> Serialize for SerializeWrapper<'a, ValueAndKind<'a>> {
                             value,
                             kind: self.value.kind,
                         },
-                        config: self.config,
+                        options: self.options,
                     })?;
                 }
                 list.end()
@@ -221,14 +243,14 @@ impl<'a> Serialize for SerializeWrapper<'a, ValueAndKind<'a>> {
                     map.serialize_entry(
                         &SerializeWrapper {
                             value: key,
-                            config: self.config,
+                            options: self.options,
                         },
                         &SerializeWrapper {
                             value: &ValueAndKind {
                                 value,
                                 kind: &value_kind,
                             },
-                            config: self.config,
+                            options: self.options,
                         },
                     )?;
                 }
@@ -466,40 +488,40 @@ where
 fn serialize_value<S>(
     msg: &DynamicMessage,
     serializer: S,
-    config: &SerializeOptions,
+    options: &SerializeOptions,
 ) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
     let raw: prost_types::Value = msg.to_message().map_err(decode_to_ser_err)?;
 
-    serialize_value_inner(&raw, serializer, config)
+    serialize_value_inner(&raw, serializer, options)
 }
 
 fn serialize_struct<S>(
     msg: &DynamicMessage,
     serializer: S,
-    config: &SerializeOptions,
+    options: &SerializeOptions,
 ) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
     let raw: prost_types::Struct = msg.to_message().map_err(decode_to_ser_err)?;
 
-    serialize_struct_inner(&raw, serializer, config)
+    serialize_struct_inner(&raw, serializer, options)
 }
 
 fn serialize_list<S>(
     msg: &DynamicMessage,
     serializer: S,
-    config: &SerializeOptions,
+    options: &SerializeOptions,
 ) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
     let raw: prost_types::ListValue = msg.to_message().map_err(decode_to_ser_err)?;
 
-    serialize_list_inner(&raw, serializer, config)
+    serialize_list_inner(&raw, serializer, options)
 }
 
 impl<'a> Serialize for SerializeWrapper<'a, prost_types::Value> {
@@ -507,14 +529,14 @@ impl<'a> Serialize for SerializeWrapper<'a, prost_types::Value> {
     where
         S: Serializer,
     {
-        serialize_value_inner(self.value, serializer, self.config)
+        serialize_value_inner(self.value, serializer, self.options)
     }
 }
 
 fn serialize_value_inner<S>(
     raw: &prost_types::Value,
     serializer: S,
-    config: &SerializeOptions,
+    options: &SerializeOptions,
 ) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
@@ -533,10 +555,10 @@ where
         }
         Some(prost_types::value::Kind::StringValue(value)) => serializer.serialize_str(value),
         Some(prost_types::value::Kind::ListValue(value)) => {
-            serialize_list_inner(value, serializer, config)
+            serialize_list_inner(value, serializer, options)
         }
         Some(prost_types::value::Kind::StructValue(value)) => {
-            serialize_struct_inner(value, serializer, config)
+            serialize_struct_inner(value, serializer, options)
         }
     }
 }
@@ -544,14 +566,14 @@ where
 fn serialize_struct_inner<S>(
     raw: &prost_types::Struct,
     serializer: S,
-    config: &SerializeOptions,
+    options: &SerializeOptions,
 ) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
     let mut map = serializer.serialize_map(Some(raw.fields.len()))?;
     for (key, value) in &raw.fields {
-        map.serialize_entry(key, &SerializeWrapper { value, config })?;
+        map.serialize_entry(key, &SerializeWrapper { value, options })?;
     }
     map.end()
 }
@@ -559,14 +581,14 @@ where
 fn serialize_list_inner<S>(
     raw: &prost_types::ListValue,
     serializer: S,
-    config: &SerializeOptions,
+    options: &SerializeOptions,
 ) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
     let mut list = serializer.serialize_seq(Some(raw.values.len()))?;
     for value in &raw.values {
-        list.serialize_element(&SerializeWrapper { value, config })?;
+        list.serialize_element(&SerializeWrapper { value, options })?;
     }
     list.end()
 }

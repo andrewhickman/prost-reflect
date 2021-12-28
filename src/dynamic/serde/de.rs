@@ -19,7 +19,7 @@ use crate::{
 pub(super) fn deserialize_message<'de, D>(
     desc: &MessageDescriptor,
     deserializer: D,
-    config: &DeserializeOptions,
+    options: &DeserializeOptions,
 ) -> Result<DynamicMessage, D::Error>
 where
     D: Deserializer<'de>,
@@ -73,7 +73,7 @@ where
         "google.protobuf.Empty" => deserializer
             .deserialize_map(GoogleProtobufEmptyVisitor)
             .and_then(|empty| make_message(desc, empty)),
-        _ => deserializer.deserialize_map(MessageVisitor(desc, config)),
+        _ => deserializer.deserialize_map(MessageVisitor(desc, options)),
     }
 }
 
