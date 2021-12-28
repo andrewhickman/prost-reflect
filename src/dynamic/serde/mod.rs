@@ -90,7 +90,7 @@ impl DeserializeOptions {
 
     /// Whether to error during deserialization when encountering unknown message fields.
     ///
-    /// The default value for this field is `true`.
+    /// The default value is `true`.
     pub fn deny_unknown_fields(mut self, yes: bool) -> Self {
         self.deny_unknown_fields = yes;
         self

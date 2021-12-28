@@ -19,4 +19,7 @@ pub use self::descriptor::{
     DescriptorError, EnumDescriptor, EnumValueDescriptor, FieldDescriptor, FileDescriptor, Kind,
     MessageDescriptor, MethodDescriptor, OneofDescriptor, ServiceDescriptor,
 };
-pub use self::dynamic::{DeserializeOptions, DynamicMessage, MapKey, SerializeOptions, Value};
+pub use self::dynamic::{DynamicMessage, MapKey, Value};
+
+#[cfg(feature = "serde")]
+pub use self::dynamic::{DeserializeOptions, SerializeOptions};

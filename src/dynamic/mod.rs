@@ -7,6 +7,7 @@ use std::{
     collections::{BTreeMap, HashMap},
 };
 
+#[cfg(feature = "serde")]
 pub use self::serde::{DeserializeOptions, SerializeOptions};
 
 use prost::{bytes::Bytes, DecodeError, Message};
