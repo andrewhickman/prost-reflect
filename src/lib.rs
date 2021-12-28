@@ -19,4 +19,4 @@ pub use self::descriptor::{
     DescriptorError, EnumDescriptor, EnumValueDescriptor, FieldDescriptor, FileDescriptor, Kind,
     MessageDescriptor, MethodDescriptor, OneofDescriptor, ServiceDescriptor,
 };
-pub use self::dynamic::{DynamicMessage, MapKey, Value};
+pub use self::dynamic::{DeserializeOptions, DynamicMessage, MapKey, SerializeOptions, Value};

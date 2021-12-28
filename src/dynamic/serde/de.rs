@@ -615,6 +615,8 @@ impl<'a, 'de> Visitor<'de> for MessageVisitor<'a> {
                 {
                     message.set_field(field.number(), value);
                 }
+            } else if self.1.deny_unknown_fields {
+                return Err(Error::custom(format!("unrecognized field name '{}'", key)));
             } else {
                 let _ = map.next_value::<IgnoredAny>()?;
             }

@@ -5,7 +5,7 @@ use std::{
 
 use proptest::{prelude::*, test_runner::TestCaseError};
 use prost::Message;
-use prost_reflect::DynamicMessage;
+use prost_reflect::{DeserializeOptions, DynamicMessage};
 use serde_json::json;
 
 use crate::{to_dynamic, ComplexType, ScalarArrays, Scalars, WellKnownTypes, TEST_FILE_DESCRIPTOR};
@@ -404,6 +404,31 @@ fn deserialize_scalars_empty() {
 }
 
 #[test]
+#[should_panic(expected = "unrecognized field name 'unknown_field'")]
+fn deserialize_deny_unknown_fields() {
+    from_json_with_config::<Scalars>(
+        json!({
+            "unknown_field": 123,
+        }),
+        ".test.Scalars",
+        &DeserializeOptions::new(),
+    );
+}
+
+#[test]
+fn deserialize_allow_unknown_fields() {
+    let value = from_json_with_config::<Scalars>(
+        json!({
+            "unknown_field": 123,
+        }),
+        ".test.Scalars",
+        &DeserializeOptions::new().deny_unknown_fields(false),
+    );
+
+    assert_eq!(value, Default::default());
+}
+
+#[test]
 fn deserialize_scalars_null() {
     let value: Scalars = from_json(
         json!({
@@ -707,11 +732,23 @@ fn from_json<T>(json: serde_json::Value, message_name: &str) -> T
 where
     T: PartialEq + Debug + Message + Default,
 {
-    DynamicMessage::deserialize(
+    from_json_with_config(json, message_name, &Default::default())
+}
+
+fn from_json_with_config<T>(
+    json: serde_json::Value,
+    message_name: &str,
+    options: &DeserializeOptions,
+) -> T
+where
+    T: PartialEq + Debug + Message + Default,
+{
+    DynamicMessage::deserialize_with_options(
         TEST_FILE_DESCRIPTOR
             .get_message_by_name(message_name)
             .unwrap(),
         json,
+        options,
     )
     .unwrap()
     .to_message()

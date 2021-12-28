@@ -7,6 +7,8 @@ use std::{
     collections::{BTreeMap, HashMap},
 };
 
+pub use self::serde::{DeserializeOptions, SerializeOptions};
+
 use prost::{bytes::Bytes, DecodeError, Message};
 
 use crate::{descriptor::Kind, FieldDescriptor, MessageDescriptor};
