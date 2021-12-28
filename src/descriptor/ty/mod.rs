@@ -19,6 +19,7 @@ pub struct MessageDescriptor {
 
 struct MessageDescriptorInner {
     full_name: String,
+    parent: Option<TypeId>,
     is_map_entry: bool,
     fields: BTreeMap<u32, FieldDescriptorInner>,
     field_names: HashMap<String, u32>,
@@ -68,6 +69,7 @@ pub struct EnumDescriptor {
 
 struct EnumDescriptorInner {
     full_name: String,
+    parent: Option<TypeId>,
     value_names: HashMap<String, i32>,
     values: BTreeMap<i32, EnumValueDescriptorInner>,
 }
@@ -194,6 +196,14 @@ impl MessageDescriptor {
     /// Gets a reference to the [`FileDescriptor`] this message is defined in.
     pub fn parent_file(&self) -> &FileDescriptor {
         &self.file_set
+    }
+
+    /// Gets the parent message type if this message type is nested inside a another message, or `None` otherwise
+    pub fn parent_message(&self) -> Option<MessageDescriptor> {
+        self.message_ty().parent.map(|ty| MessageDescriptor {
+            file_set: self.file_set.clone(),
+            ty,
+        })
     }
 
     /// Gets the short name of the message type, e.g. `MyMessage`.
@@ -497,6 +507,14 @@ impl EnumDescriptor {
     /// Gets a reference to the [`FileDescriptor`] this enum type is defined in.
     pub fn parent_file(&self) -> &FileDescriptor {
         &self.file_set
+    }
+
+    /// Gets the parent message type if this enum type is nested inside a another message, or `None` otherwise
+    pub fn parent_message(&self) -> Option<MessageDescriptor> {
+        self.enum_ty().parent.map(|ty| MessageDescriptor {
+            file_set: self.file_set.clone(),
+            ty,
+        })
     }
 
     /// Gets the short name of the enum type, e.g. `MyEnum`.
