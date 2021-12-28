@@ -27,6 +27,7 @@ fn main() -> io::Result<()> {
             ".test.WellKnownTypes.empty",
             "#[proptest(strategy = \"::proptest::option::of(::proptest::strategy::Just(()))\")]",
         )
+        .field_attribute(".test.WellKnownTypes.null", "#[proptest(value= \"0\")]")
         .file_descriptor_set_path(
             PathBuf::from(env::var("OUT_DIR").expect("OUT_DIR environment variable not set"))
                 .join("file_descriptor_set.bin"),

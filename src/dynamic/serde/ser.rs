@@ -417,5 +417,5 @@ fn decode_to_ser_err<E>(err: DecodeError) -> E
 where
     E: Error,
 {
-    E::custom(format!("error decoding: {}", err))
+    Error::custom(format!("error decoding: {}", err))
 }

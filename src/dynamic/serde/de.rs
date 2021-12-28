@@ -1,6 +1,13 @@
-use std::{borrow::Cow, collections::HashMap, convert::TryInto, fmt, str::FromStr};
+use std::{
+    borrow::Cow,
+    collections::{BTreeMap, HashMap},
+    convert::TryInto,
+    fmt,
+    str::FromStr,
+};
 
-use prost::bytes::Bytes;
+use chrono::{DateTime, Utc};
+use prost::{bytes::Bytes, Message};
 use serde::de::{DeserializeSeed, Deserializer, Error, IgnoredAny, MapAccess, SeqAccess, Visitor};
 
 use crate::{
@@ -16,7 +23,77 @@ impl<'a, 'de> DeserializeSeed<'de> for &'a MessageDescriptor {
     where
         D: Deserializer<'de>,
     {
-        deserializer.deserialize_map(MessageVisitor(self))
+        deserialize_message(self, deserializer)
+    }
+}
+
+fn deserialize_message<'de, D>(
+    desc: &MessageDescriptor,
+    deserializer: D,
+) -> Result<DynamicMessage, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    match desc.full_name() {
+        "google.protobuf.Timestamp" => deserializer
+            .deserialize_str(GoogleProtobufTimestampVisitor)
+            .and_then(|timestamp| make_message(desc, timestamp)),
+        "google.protobuf.Duration" => deserializer
+            .deserialize_str(GoogleProtobufDurationVisitor)
+            .and_then(|duration| make_message(desc, duration)),
+        "google.protobuf.FloatValue" => deserializer
+            .deserialize_any(FloatVisitor)
+            .and_then(|v| make_message(desc, v)),
+        "google.protobuf.DoubleValue" => deserializer
+            .deserialize_any(DoubleVisitor)
+            .and_then(|v| make_message(desc, v)),
+        "google.protobuf.Int32Value" => deserializer
+            .deserialize_any(Int32Visitor)
+            .and_then(|v| make_message(desc, v)),
+        "google.protobuf.Int64Value" => deserializer
+            .deserialize_any(Int64Visitor)
+            .and_then(|v| make_message(desc, v)),
+        "google.protobuf.UInt32Value" => deserializer
+            .deserialize_any(Uint32Visitor)
+            .and_then(|v| make_message(desc, v)),
+        "google.protobuf.UInt64Value" => deserializer
+            .deserialize_any(Uint64Visitor)
+            .and_then(|v| make_message(desc, v)),
+        "google.protobuf.BoolValue" => deserializer
+            .deserialize_any(BoolVisitor)
+            .and_then(|v| make_message(desc, v)),
+        "google.protobuf.StringValue" => deserializer
+            .deserialize_any(StringVisitor)
+            .and_then(|v| make_message(desc, v)),
+        "google.protobuf.BytesValue" => deserializer
+            .deserialize_any(BytesVisitor)
+            .and_then(|v| make_message(desc, v)),
+        "google.protobuf.FieldMask" => deserializer
+            .deserialize_str(GoogleProtobufFieldMaskVisitor)
+            .and_then(|field_mask| make_message(desc, field_mask)),
+        "google.protobuf.Struct" => deserializer
+            .deserialize_map(GoogleProtobufStructVisitor)
+            .and_then(|value| make_message(desc, value)),
+        "google.protobuf.ListValue" => deserializer
+            .deserialize_seq(GoogleProtobufListVisitor)
+            .and_then(|list| make_message(desc, list)),
+        "google.protobuf.Value" => deserializer
+            .deserialize_any(GoogleProtobufValueVisitor)
+            .and_then(|value| make_message(desc, value)),
+        "google.protobuf.Empty" => deserializer
+            .deserialize_map(GoogleProtobufEmptyVisitor)
+            .and_then(|empty| make_message(desc, empty)),
+        _ => deserializer.deserialize_map(MessageVisitor(desc)),
+    }
+}
+
+fn deserialize_enum<'de, D>(desc: &EnumDescriptor, deserializer: D) -> Result<i32, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    match desc.full_name() {
+        "google.protobuf.NullValue" => deserializer.deserialize_unit(GoogleProtobufNullVisitor),
+        _ => deserializer.deserialize_any(EnumVisitor(desc)),
     }
 }
 
@@ -119,12 +196,8 @@ impl<'a, 'de: 'a> DeserializeSeed<'de> for KindSeed<'a> {
                 .deserialize_string(StringVisitor)
                 .map(Value::String),
             Kind::Bytes => deserializer.deserialize_str(BytesVisitor).map(Value::Bytes),
-            Kind::Message(desc) => deserializer
-                .deserialize_map(MessageVisitor(desc))
-                .map(Value::Message),
-            Kind::Enum(desc) => deserializer
-                .deserialize_any(EnumVisitor(desc))
-                .map(Value::EnumNumber),
+            Kind::Message(desc) => deserialize_message(desc, deserializer).map(Value::Message),
+            Kind::Enum(desc) => deserialize_enum(desc, deserializer).map(Value::EnumNumber),
         }
     }
 }
@@ -168,6 +241,10 @@ impl<'a, 'de: 'a> Visitor<'de> for ListVisitor<'a> {
 impl<'a, 'de: 'a> Visitor<'de> for MapVisitor<'a> {
     type Value = HashMap<MapKey, Value>;
 
+    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "a map")
+    }
+
     fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
     where
         A: MapAccess<'de>,
@@ -209,14 +286,14 @@ impl<'a, 'de: 'a> Visitor<'de> for MapVisitor<'a> {
 
         Ok(result)
     }
-
-    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "a map")
-    }
 }
 
 impl<'de> Visitor<'de> for DoubleVisitor {
     type Value = f64;
+
+    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "a 64-bit floating point value")
+    }
 
     #[inline]
     fn visit_f64<E>(self, v: f64) -> Result<Self::Value, E>
@@ -254,14 +331,14 @@ impl<'de> Visitor<'de> for DoubleVisitor {
             Err(err) => Err(Error::custom(err)),
         }
     }
-
-    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "a 64-bit floating point value")
-    }
 }
 
 impl<'de> Visitor<'de> for FloatVisitor {
     type Value = f32;
+
+    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "a 32-bit floating point value")
+    }
 
     #[inline]
     fn visit_f32<E>(self, v: f32) -> Result<Self::Value, E>
@@ -307,14 +384,14 @@ impl<'de> Visitor<'de> for FloatVisitor {
             Err(err) => Err(Error::custom(err)),
         }
     }
-
-    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "a 32-bit floating point value")
-    }
 }
 
 impl<'de> Visitor<'de> for Int32Visitor {
     type Value = i32;
+
+    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "a 32-bit signed integer")
+    }
 
     #[inline]
     fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
@@ -347,14 +424,14 @@ impl<'de> Visitor<'de> for Int32Visitor {
     {
         v.try_into().map_err(Error::custom)
     }
-
-    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "a 32-bit signed integer")
-    }
 }
 
 impl<'de> Visitor<'de> for Uint32Visitor {
     type Value = u32;
+
+    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "a 32-bit unsigned integer or decimal string")
+    }
 
     #[inline]
     fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
@@ -387,14 +464,14 @@ impl<'de> Visitor<'de> for Uint32Visitor {
     {
         v.try_into().map_err(Error::custom)
     }
-
-    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "a 32-bit unsigned integer or decimal string")
-    }
 }
 
 impl<'de> Visitor<'de> for Int64Visitor {
     type Value = i64;
+
+    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "a 64-bit signed integer or decimal string")
+    }
 
     #[inline]
     fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
@@ -418,16 +495,16 @@ impl<'de> Visitor<'de> for Int64Visitor {
         E: Error,
     {
         v.try_into().map_err(Error::custom)
-    }
-
-    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "a 64-bit signed integer or decimal string")
     }
 }
 
 impl<'de> Visitor<'de> for Uint64Visitor {
     type Value = u64;
 
+    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "a 64-bit unsigned integer or decimal string")
+    }
+
     #[inline]
     fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
     where
@@ -451,14 +528,14 @@ impl<'de> Visitor<'de> for Uint64Visitor {
     {
         v.try_into().map_err(Error::custom)
     }
-
-    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "a 64-bit unsigned integer or decimal string")
-    }
 }
 
 impl<'de> Visitor<'de> for StringVisitor {
     type Value = String;
+
+    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "a string")
+    }
 
     #[inline]
     fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
@@ -475,14 +552,14 @@ impl<'de> Visitor<'de> for StringVisitor {
     {
         Ok(v)
     }
-
-    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "a string")
-    }
 }
 
 impl<'de> Visitor<'de> for BoolVisitor {
     type Value = bool;
+
+    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "a boolean")
+    }
 
     #[inline]
     fn visit_bool<E>(self, v: bool) -> Result<Self::Value, E>
@@ -491,14 +568,14 @@ impl<'de> Visitor<'de> for BoolVisitor {
     {
         Ok(v)
     }
-
-    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "a boolean")
-    }
 }
 
 impl<'de> Visitor<'de> for BytesVisitor {
     type Value = Bytes;
+
+    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "a base64-encoded string")
+    }
 
     #[inline]
     fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
@@ -519,10 +596,6 @@ impl<'de> Visitor<'de> for BytesVisitor {
             }
             Err(err) => Err(Error::custom(format!("invalid base64: {}", err))),
         }
-    }
-
-    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "a base64-encoded string")
     }
 }
 
@@ -560,6 +633,10 @@ impl<'a, 'de: 'a> Visitor<'de> for MessageVisitor<'a> {
 impl<'a, 'de: 'a> Visitor<'de> for EnumVisitor<'a> {
     type Value = i32;
 
+    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "a string or integer")
+    }
+
     #[inline]
     fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
     where
@@ -594,8 +671,308 @@ impl<'a, 'de: 'a> Visitor<'de> for EnumVisitor<'a> {
     {
         self.visit_i32(v.try_into().map_err(Error::custom)?)
     }
+}
+
+struct GoogleProtobufNullVisitor;
+struct GoogleProtobufTimestampVisitor;
+struct GoogleProtobufDurationVisitor;
+struct GoogleProtobufFieldMaskVisitor;
+struct GoogleProtobufListVisitor;
+struct GoogleProtobufStructVisitor;
+struct GoogleProtobufValueVisitor;
+struct GoogleProtobufEmptyVisitor;
+
+impl<'de> Visitor<'de> for GoogleProtobufNullVisitor {
+    type Value = i32;
+
+    fn visit_unit<E>(self) -> Result<Self::Value, E>
+    where
+        E: Error,
+    {
+        Ok(0)
+    }
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "a string or integer")
+        write!(f, "null")
     }
+}
+
+impl<'de> Visitor<'de> for GoogleProtobufTimestampVisitor {
+    type Value = prost_types::Timestamp;
+
+    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "a rfc3339 timestamp string")
+    }
+
+    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+    where
+        E: Error,
+    {
+        let fixed_offset = DateTime::parse_from_rfc3339(v).map_err(Error::custom)?;
+
+        let utc: DateTime<Utc> = fixed_offset.into();
+
+        let mut timestamp = prost_types::Timestamp {
+            seconds: utc.timestamp(),
+            nanos: utc.timestamp_subsec_nanos() as i32,
+        };
+        timestamp.normalize();
+        Ok(timestamp)
+    }
+}
+
+impl<'de> Visitor<'de> for GoogleProtobufDurationVisitor {
+    type Value = prost_types::Duration;
+
+    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "a duration string")
+    }
+
+    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+    where
+        E: Error,
+    {
+        if !v.ends_with('s') {
+            return Err(Error::custom("invalid duration string"));
+        }
+        let v = &v[..v.len() - 1];
+
+        if let Some((seconds_str, nanos_str)) = v.split_once('.') {
+            let seconds = i64::from_str(seconds_str).map_err(Error::custom)?;
+            let nanos = match nanos_str.len() {
+                0 => 0,
+                len @ 1..=9 => {
+                    let mut nanos = u32::from_str(nanos_str).map_err(Error::custom)?;
+                    for _ in 0..9 - len {
+                        nanos *= 10;
+                    }
+                    nanos as i32
+                }
+                _ => return Err(Error::custom("too many fractional digits for duration")),
+            };
+
+            Ok(prost_types::Duration { seconds, nanos })
+        } else {
+            let seconds = i64::from_str(v).map_err(Error::custom)?;
+
+            Ok(prost_types::Duration { seconds, nanos: 0 })
+        }
+    }
+}
+
+impl<'de> Visitor<'de> for GoogleProtobufFieldMaskVisitor {
+    type Value = prost_types::FieldMask;
+
+    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+    where
+        E: Error,
+    {
+        let paths = v
+            .split(',')
+            .filter(|path| !path.is_empty())
+            .map(|path| {
+                let mut result = String::new();
+                let mut parts = path.split('.');
+
+                if let Some(part) = parts.next() {
+                    camel_case_to_snake_case(&mut result, part)?;
+                }
+                for part in parts {
+                    result.push('.');
+                    camel_case_to_snake_case(&mut result, part)?;
+                }
+
+                Ok(result)
+            })
+            .collect::<Result<_, ()>>()
+            .map_err(|()| Error::custom("invalid field mask"))?;
+
+        Ok(prost_types::FieldMask { paths })
+    }
+
+    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "a field mask string")
+    }
+}
+
+fn camel_case_to_snake_case(result: &mut String, part: &str) -> Result<(), ()> {
+    for ch in part.chars() {
+        if ch.is_ascii_uppercase() {
+            result.push('_');
+            result.push(ch.to_ascii_lowercase());
+        } else if ch == '_' {
+            return Err(());
+        } else {
+            result.push(ch);
+        }
+    }
+
+    Ok(())
+}
+
+impl<'de> DeserializeSeed<'de> for GoogleProtobufValueVisitor {
+    type Value = prost_types::Value;
+
+    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_any(self)
+    }
+}
+
+impl<'de> Visitor<'de> for GoogleProtobufListVisitor {
+    type Value = prost_types::ListValue;
+
+    fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+    where
+        A: SeqAccess<'de>,
+    {
+        let mut values = Vec::with_capacity(seq.size_hint().unwrap_or(0));
+        while let Some(value) = seq.next_element_seed(GoogleProtobufValueVisitor)? {
+            values.push(value);
+        }
+        Ok(prost_types::ListValue { values })
+    }
+
+    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "a list")
+    }
+}
+
+impl<'de> Visitor<'de> for GoogleProtobufStructVisitor {
+    type Value = prost_types::Struct;
+
+    fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+    where
+        A: MapAccess<'de>,
+    {
+        let mut fields = BTreeMap::new();
+        while let Some(key) = map.next_key::<String>()? {
+            let value = map.next_value_seed(GoogleProtobufValueVisitor)?;
+            fields.insert(key, value);
+        }
+        Ok(prost_types::Struct { fields })
+    }
+
+    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "a map")
+    }
+}
+
+impl<'de> Visitor<'de> for GoogleProtobufValueVisitor {
+    type Value = prost_types::Value;
+
+    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "a value")
+    }
+
+    fn visit_bool<E>(self, v: bool) -> Result<Self::Value, E>
+    where
+        E: Error,
+    {
+        Ok(prost_types::Value {
+            kind: Some(prost_types::value::Kind::BoolValue(v)),
+        })
+    }
+
+    fn visit_i64<E>(self, v: i64) -> Result<Self::Value, E>
+    where
+        E: Error,
+    {
+        self.visit_f64(v as f64)
+    }
+
+    fn visit_u64<E>(self, v: u64) -> Result<Self::Value, E>
+    where
+        E: Error,
+    {
+        self.visit_f64(v as f64)
+    }
+
+    fn visit_f64<E>(self, v: f64) -> Result<Self::Value, E>
+    where
+        E: Error,
+    {
+        Ok(prost_types::Value {
+            kind: Some(prost_types::value::Kind::NumberValue(v)),
+        })
+    }
+
+    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+    where
+        E: Error,
+    {
+        self.visit_string(v.to_owned())
+    }
+
+    fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
+    where
+        E: Error,
+    {
+        Ok(prost_types::Value {
+            kind: Some(prost_types::value::Kind::StringValue(v)),
+        })
+    }
+
+    fn visit_unit<E>(self) -> Result<Self::Value, E>
+    where
+        E: Error,
+    {
+        Ok(prost_types::Value {
+            kind: Some(prost_types::value::Kind::NullValue(0)),
+        })
+    }
+
+    fn visit_seq<A>(self, seq: A) -> Result<Self::Value, A::Error>
+    where
+        A: SeqAccess<'de>,
+    {
+        GoogleProtobufListVisitor
+            .visit_seq(seq)
+            .map(|l| prost_types::Value {
+                kind: Some(prost_types::value::Kind::ListValue(l)),
+            })
+    }
+
+    fn visit_map<A>(self, map: A) -> Result<Self::Value, A::Error>
+    where
+        A: MapAccess<'de>,
+    {
+        GoogleProtobufStructVisitor
+            .visit_map(map)
+            .map(|s| prost_types::Value {
+                kind: Some(prost_types::value::Kind::StructValue(s)),
+            })
+    }
+}
+
+impl<'de> Visitor<'de> for GoogleProtobufEmptyVisitor {
+    type Value = ();
+
+    fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+    where
+        A: MapAccess<'de>,
+    {
+        if map.next_entry::<IgnoredAny, IgnoredAny>()?.is_some() {
+            return Err(Error::custom("unexpected value in map"));
+        }
+
+        Ok(())
+    }
+
+    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "an empty map")
+    }
+}
+
+fn make_message<E: Error, T: Message>(
+    desc: &MessageDescriptor,
+    message: T,
+) -> Result<DynamicMessage, E> {
+    let mut dynamic = DynamicMessage::new(desc.clone());
+    dynamic
+        .merge_from_message(&message)
+        .map_err(|err| Error::custom(format!("error decoding: {}", err)))?;
+    Ok(dynamic)
 }
