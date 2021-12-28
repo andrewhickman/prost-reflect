@@ -87,7 +87,7 @@ struct EnumValueDescriptorInner {
 }
 
 /// The type of a protobuf message field.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum Kind {
     /// The protobuf `double` type.
     Double,
@@ -472,6 +472,30 @@ impl Kind {
         match self {
             Kind::Enum(desc) => Some(desc),
             _ => None,
+        }
+    }
+}
+
+impl fmt::Debug for Kind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Double => write!(f, "double"),
+            Self::Float => write!(f, "float"),
+            Self::Int32 => write!(f, "int32"),
+            Self::Int64 => write!(f, "int64"),
+            Self::Uint32 => write!(f, "uint32"),
+            Self::Uint64 => write!(f, "uint64"),
+            Self::Sint32 => write!(f, "sint32"),
+            Self::Sint64 => write!(f, "sint64"),
+            Self::Fixed32 => write!(f, "fixed32"),
+            Self::Fixed64 => write!(f, "fixed64"),
+            Self::Sfixed32 => write!(f, "sfixed32"),
+            Self::Sfixed64 => write!(f, "sfixed64"),
+            Self::Bool => write!(f, "bool"),
+            Self::String => write!(f, "string"),
+            Self::Bytes => write!(f, "bytes"),
+            Self::Message(m) => write!(f, "{}", m.full_name()),
+            Self::Enum(e) => write!(f, "{}", e.full_name()),
         }
     }
 }
