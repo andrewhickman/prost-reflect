@@ -8,7 +8,7 @@ use std::{
     fmt,
 };
 
-use crate::descriptor::{debug_fmt_iter, parse_name, FileDescriptor};
+use crate::descriptor::{debug_fmt_iter, parse_name, parse_namespace, FileDescriptor};
 
 /// A protobuf message definition.
 #[derive(Clone, PartialEq, Eq)]
@@ -216,6 +216,13 @@ impl MessageDescriptor {
         &self.message_ty().full_name
     }
 
+    /// Gets the name of the package this message type is defined in, e.g. `my.package`.
+    ///
+    /// If no package name is set, an empty string is returned.
+    pub fn package_name(&self) -> &str {
+        parse_namespace(&self.root_message_ty().full_name)
+    }
+
     /// Gets an iterator yielding a [`FieldDescriptor`] for each field defined in this message.
     pub fn fields(&self) -> impl ExactSizeIterator<Item = FieldDescriptor> + '_ {
         self.message_ty()
@@ -281,12 +288,15 @@ impl MessageDescriptor {
     }
 
     fn message_ty(&self) -> &MessageDescriptorInner {
-        self.file_set
-            .inner
-            .type_map
-            .get(self.ty)
-            .as_message()
-            .expect("descriptor is not a message type")
+        self.file_set.inner.type_map.get(self.ty).unwrap_message()
+    }
+
+    fn root_message_ty(&self) -> &MessageDescriptorInner {
+        let mut curr = self.message_ty();
+        while let Some(parent) = curr.parent {
+            curr = self.file_set.inner.type_map.get(parent).unwrap_message()
+        }
+        curr
     }
 }
 
@@ -551,6 +561,16 @@ impl EnumDescriptor {
         &self.enum_ty().full_name
     }
 
+    /// Gets the name of the package this enum type is defined in, e.g. `my.package`.
+    ///
+    /// If no package name is set, an empty string is returned.
+    pub fn package_name(&self) -> &str {
+        match self.root_message_ty() {
+            Some(message) => parse_namespace(&message.full_name),
+            None => parse_namespace(self.full_name()),
+        }
+    }
+
     /// Gets the default value for the enum type.
     pub fn default_value(&self) -> EnumValueDescriptor {
         self.values().next().unwrap()
@@ -590,7 +610,21 @@ impl EnumDescriptor {
     }
 
     fn enum_ty(&self) -> &EnumDescriptorInner {
-        self.file_set.inner.type_map.get(self.ty).as_enum().unwrap()
+        self.file_set.inner.type_map.get(self.ty).unwrap_enum()
+    }
+
+    fn root_message_ty(&self) -> Option<&MessageDescriptorInner> {
+        match self.enum_ty().parent {
+            Some(mut curr) => loop {
+                let message = self.file_set.inner.type_map.get(curr).unwrap_message();
+                if let Some(parent) = message.parent {
+                    curr = parent;
+                } else {
+                    return Some(message);
+                }
+            },
+            None => None,
+        }
     }
 }
 
@@ -695,24 +729,24 @@ impl fmt::Debug for OneofDescriptor {
 
 impl<'a> Type<'a> {
     pub fn is_message(&self) -> bool {
-        self.as_message().is_some()
+        matches!(self, Type::Message(_))
     }
 
-    fn as_message(&self) -> Option<&'a MessageDescriptorInner> {
+    fn unwrap_message(&self) -> &'a MessageDescriptorInner {
         match self {
-            Type::Message(message) => Some(message),
-            _ => None,
+            Type::Message(message) => message,
+            _ => panic!("expected message type"),
         }
     }
 
     pub fn is_enum(&self) -> bool {
-        self.as_enum().is_some()
+        matches!(self, Type::Enum(_))
     }
 
-    fn as_enum(&self) -> Option<&'a EnumDescriptorInner> {
+    fn unwrap_enum(&self) -> &'a EnumDescriptorInner {
         match self {
-            Type::Enum(enum_ty) => Some(enum_ty),
-            _ => None,
+            Type::Enum(enum_ty) => enum_ty,
+            _ => panic!("expected enum type"),
         }
     }
 

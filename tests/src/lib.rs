@@ -27,61 +27,6 @@ pub static TEST_FILE_DESCRIPTOR: Lazy<FileDescriptor> = Lazy::new(|| {
 });
 
 #[test]
-fn test_descriptor_methods() {
-    let message_desc = TEST_FILE_DESCRIPTOR
-        .get_message_by_name("my.package.MyMessage")
-        .unwrap();
-    assert_eq!(message_desc.name(), "MyMessage");
-    assert_eq!(message_desc.full_name(), "my.package.MyMessage");
-
-    let field_desc = message_desc.get_field_by_name("my_field").unwrap();
-    assert_eq!(field_desc.name(), "my_field");
-    assert_eq!(field_desc.full_name(), "my.package.MyMessage.my_field");
-
-    let nested_message_desc = TEST_FILE_DESCRIPTOR
-        .get_message_by_name("my.package.MyMessage.MyNestedMessage")
-        .unwrap();
-    assert_eq!(nested_message_desc.name(), "MyNestedMessage");
-    assert_eq!(
-        nested_message_desc.full_name(),
-        "my.package.MyMessage.MyNestedMessage"
-    );
-
-    let enum_desc = TEST_FILE_DESCRIPTOR
-        .get_enum_by_name("my.package.MyEnum")
-        .unwrap();
-    assert_eq!(enum_desc.name(), "MyEnum");
-    assert_eq!(enum_desc.full_name(), "my.package.MyEnum");
-
-    let enum_value_desc = enum_desc.get_value_by_name("MY_VALUE").unwrap();
-    assert_eq!(enum_value_desc.name(), "MY_VALUE");
-    assert_eq!(enum_value_desc.full_name(), "my.package.MY_VALUE");
-
-    let nested_enum_desc = TEST_FILE_DESCRIPTOR
-        .get_enum_by_name("my.package.MyMessage.MyNestedEnum")
-        .unwrap();
-    assert_eq!(nested_enum_desc.name(), "MyNestedEnum");
-    assert_eq!(
-        nested_enum_desc.full_name(),
-        "my.package.MyMessage.MyNestedEnum"
-    );
-
-    let service_desc = TEST_FILE_DESCRIPTOR
-        .services()
-        .find(|s| s.full_name() == "my.package.MyService")
-        .unwrap();
-    assert_eq!(service_desc.name(), "MyService");
-    assert_eq!(service_desc.full_name(), "my.package.MyService");
-
-    let method_desc = service_desc
-        .methods()
-        .find(|m| m.name() == "MyMethod")
-        .unwrap();
-    assert_eq!(method_desc.name(), "MyMethod");
-    assert_eq!(method_desc.full_name(), "my.package.MyService.MyMethod");
-}
-
-#[test]
 fn clear_message() {
     let mut dynamic = to_dynamic(
         &Scalars {
@@ -127,6 +72,73 @@ fn clear_message() {
 }
 
 #[test]
+fn test_descriptor_methods() {
+    let message_desc = TEST_FILE_DESCRIPTOR
+        .get_message_by_name("my.package.MyMessage")
+        .unwrap();
+    assert_eq!(message_desc.name(), "MyMessage");
+    assert_eq!(message_desc.full_name(), "my.package.MyMessage");
+    assert_eq!(message_desc.parent_message(), None);
+    assert_eq!(message_desc.package_name(), "my.package");
+
+    let field_desc = message_desc.get_field_by_name("my_field").unwrap();
+    assert_eq!(field_desc.name(), "my_field");
+    assert_eq!(field_desc.full_name(), "my.package.MyMessage.my_field");
+
+    let nested_message_desc = TEST_FILE_DESCRIPTOR
+        .get_message_by_name("my.package.MyMessage.MyNestedMessage")
+        .unwrap();
+    assert_eq!(nested_message_desc.name(), "MyNestedMessage");
+    assert_eq!(
+        nested_message_desc.full_name(),
+        "my.package.MyMessage.MyNestedMessage"
+    );
+    assert_eq!(
+        nested_message_desc.parent_message(),
+        Some(message_desc.clone())
+    );
+    assert_eq!(nested_message_desc.package_name(), "my.package");
+
+    let enum_desc = TEST_FILE_DESCRIPTOR
+        .get_enum_by_name("my.package.MyEnum")
+        .unwrap();
+    assert_eq!(enum_desc.name(), "MyEnum");
+    assert_eq!(enum_desc.full_name(), "my.package.MyEnum");
+    assert_eq!(enum_desc.parent_message(), None);
+    assert_eq!(enum_desc.package_name(), "my.package");
+
+    let enum_value_desc = enum_desc.get_value_by_name("MY_VALUE").unwrap();
+    assert_eq!(enum_value_desc.name(), "MY_VALUE");
+    assert_eq!(enum_value_desc.full_name(), "my.package.MY_VALUE");
+
+    let nested_enum_desc = TEST_FILE_DESCRIPTOR
+        .get_enum_by_name("my.package.MyMessage.MyNestedEnum")
+        .unwrap();
+    assert_eq!(nested_enum_desc.name(), "MyNestedEnum");
+    assert_eq!(
+        nested_enum_desc.full_name(),
+        "my.package.MyMessage.MyNestedEnum"
+    );
+    assert_eq!(nested_enum_desc.parent_message(), Some(message_desc));
+    assert_eq!(nested_enum_desc.package_name(), "my.package");
+
+    let service_desc = TEST_FILE_DESCRIPTOR
+        .services()
+        .find(|s| s.full_name() == "my.package.MyService")
+        .unwrap();
+    assert_eq!(service_desc.name(), "MyService");
+    assert_eq!(service_desc.full_name(), "my.package.MyService");
+    assert_eq!(service_desc.package_name(), "my.package");
+
+    let method_desc = service_desc
+        .methods()
+        .find(|m| m.name() == "MyMethod")
+        .unwrap();
+    assert_eq!(method_desc.name(), "MyMethod");
+    assert_eq!(method_desc.full_name(), "my.package.MyService.MyMethod");
+}
+
+#[test]
 fn test_descriptor_names_no_package() {
     let message_desc = TEST_FILE_DESCRIPTOR
         .get_message_by_name("MyMessage")
@@ -134,6 +146,7 @@ fn test_descriptor_names_no_package() {
     assert_eq!(message_desc.name(), "MyMessage");
     assert_eq!(message_desc.full_name(), "MyMessage");
     assert_eq!(message_desc.parent_message(), None);
+    assert_eq!(message_desc.package_name(), "");
 
     let field_desc = message_desc.get_field_by_name("my_field").unwrap();
     assert_eq!(field_desc.name(), "my_field");
@@ -144,12 +157,17 @@ fn test_descriptor_names_no_package() {
         .unwrap();
     assert_eq!(nested_message_desc.name(), "MyNestedMessage");
     assert_eq!(nested_message_desc.full_name(), "MyMessage.MyNestedMessage");
-    assert_eq!(nested_message_desc.parent_message(), Some(message_desc.clone()));
+    assert_eq!(
+        nested_message_desc.parent_message(),
+        Some(message_desc.clone())
+    );
+    assert_eq!(nested_message_desc.package_name(), "");
 
     let enum_desc = TEST_FILE_DESCRIPTOR.get_enum_by_name("MyEnum").unwrap();
     assert_eq!(enum_desc.name(), "MyEnum");
     assert_eq!(enum_desc.full_name(), "MyEnum");
     assert_eq!(enum_desc.parent_message(), None);
+    assert_eq!(enum_desc.package_name(), "");
 
     let enum_value_desc = enum_desc.get_value_by_name("MY_VALUE").unwrap();
     assert_eq!(enum_value_desc.name(), "MY_VALUE");
@@ -161,6 +179,7 @@ fn test_descriptor_names_no_package() {
     assert_eq!(nested_enum_desc.name(), "MyNestedEnum");
     assert_eq!(nested_enum_desc.full_name(), "MyMessage.MyNestedEnum");
     assert_eq!(nested_enum_desc.parent_message(), Some(message_desc));
+    assert_eq!(nested_enum_desc.package_name(), "");
 
     let service_desc = TEST_FILE_DESCRIPTOR
         .services()
@@ -168,6 +187,7 @@ fn test_descriptor_names_no_package() {
         .unwrap();
     assert_eq!(service_desc.name(), "MyService");
     assert_eq!(service_desc.full_name(), "MyService");
+    assert_eq!(service_desc.package_name(), "");
 
     let method_desc = service_desc
         .methods()

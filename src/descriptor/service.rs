@@ -4,7 +4,10 @@ use prost_types::{FileDescriptorProto, MethodDescriptorProto, ServiceDescriptorP
 
 use crate::descriptor::debug_fmt_iter;
 
-use super::{make_full_name, parse_name, ty, DescriptorError, FileDescriptor, MessageDescriptor};
+use super::{
+    make_full_name, parse_name, parse_namespace, ty, DescriptorError, FileDescriptor,
+    MessageDescriptor,
+};
 
 /// A protobuf service definition.
 #[derive(Clone, PartialEq, Eq)]
@@ -65,6 +68,13 @@ impl ServiceDescriptor {
     /// Gets the full name of the service, e.g. `my.package.Service`.
     pub fn full_name(&self) -> &str {
         &self.inner().full_name
+    }
+
+    /// Gets the name of the package this service is defined in, e.g. `my.package`.
+    ///
+    /// If no package name is set, an empty string is returned.
+    pub fn package_name(&self) -> &str {
+        parse_namespace(self.full_name())
     }
 
     /// Gets an iterator yielding a [`MethodDescriptor`] for each method defined in this service.
