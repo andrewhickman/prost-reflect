@@ -1,60 +1,101 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, convert::TryInto};
 
-use crate::DescriptorError;
+use crate::{
+    descriptor::ty::{EnumDescriptorInner, MessageDescriptorInner},
+    DescriptorError,
+};
 
 use super::{Scalar, Type};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub(in crate::descriptor) struct TypeId(usize);
+pub(in crate::descriptor) struct TypeId(TypeKind, u32);
+
+#[repr(u32)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+enum TypeKind {
+    Scalar,
+    Message,
+    Enum,
+}
 
 pub(in crate::descriptor) struct TypeMap {
     named_types: HashMap<String, TypeId>,
-    storage: Vec<Type>,
+    messages: Vec<MessageDescriptorInner>,
+    enums: Vec<EnumDescriptorInner>,
 }
 
 impl TypeMap {
+    const SCALARS: &'static [Scalar] = &[
+        Scalar::Double,
+        Scalar::Float,
+        Scalar::Int32,
+        Scalar::Int64,
+        Scalar::Uint32,
+        Scalar::Uint64,
+        Scalar::Sint32,
+        Scalar::Sint64,
+        Scalar::Fixed32,
+        Scalar::Fixed64,
+        Scalar::Sfixed32,
+        Scalar::Sfixed64,
+        Scalar::Bool,
+        Scalar::String,
+        Scalar::Bytes,
+    ];
+
     pub fn new() -> Self {
-        let mut result = TypeMap {
-            named_types: HashMap::with_capacity(128),
-            storage: Vec::with_capacity(128),
-        };
-
-        result.add_scalars();
-
-        result
+        TypeMap {
+            named_types: HashMap::new(),
+            messages: Vec::new(),
+            enums: Vec::new(),
+        }
     }
 
-    pub fn ids(&self) -> impl ExactSizeIterator<Item = TypeId> + '_ {
-        (0..self.storage.len()).map(TypeId)
+    pub fn messages(&self) -> impl ExactSizeIterator<Item = TypeId> + '_ {
+        (0..self.messages.len()).map(|id| TypeId(TypeKind::Message, id as u32))
+    }
+
+    pub fn enums(&self) -> impl ExactSizeIterator<Item = TypeId> + '_ {
+        (0..self.enums.len()).map(|id| TypeId(TypeKind::Message, id as u32))
     }
 
     pub fn shrink_to_fit(&mut self) {
         self.named_types.shrink_to_fit();
-        self.storage.shrink_to_fit();
+        self.messages.shrink_to_fit();
+        self.enums.shrink_to_fit();
     }
 
-    pub(super) fn add(&mut self, ty: Type) -> TypeId {
-        let index = self.storage.len();
-        self.storage.push(ty);
-        TypeId(index)
+    pub(super) fn add_message(&mut self, message: MessageDescriptorInner) -> TypeId {
+        let id = self.messages.len().try_into().expect("too many messages");
+        self.messages.push(message);
+        TypeId(TypeKind::Message, id)
     }
 
-    pub(super) fn add_with_name(&mut self, mut name: String, ty: Type) -> TypeId {
+    pub(super) fn add_enum(&mut self, enum_desc: EnumDescriptorInner) -> TypeId {
+        let id = self.enums.len().try_into().expect("too many messages");
+        self.enums.push(enum_desc);
+        TypeId(TypeKind::Enum, id)
+    }
+
+    pub(super) fn add_name(&mut self, mut name: &str, ty: TypeId) {
         if name.starts_with('.') {
-            name.remove(0);
+            name = &name[1..];
         }
 
-        let id = self.add(ty);
-        self.named_types.insert(name, id);
-        id
+        self.named_types.insert(name.to_owned(), ty);
     }
 
-    pub(super) fn get(&self, id: TypeId) -> &Type {
-        &self.storage[id.0]
+    pub(super) fn get(&self, id: TypeId) -> Type {
+        match id.0 {
+            TypeKind::Scalar => Type::Scalar(Self::SCALARS[id.1 as usize]),
+            TypeKind::Message => Type::Message(&self.messages[id.1 as usize]),
+            TypeKind::Enum => Type::Enum(&self.enums[id.1 as usize]),
+        }
     }
 
-    pub(super) fn set(&mut self, id: TypeId, ty: Type) {
-        self.storage[id.0] = ty
+    pub(super) fn set_message(&mut self, id: TypeId, message: MessageDescriptorInner) {
+        assert_eq!(id.0, TypeKind::Message);
+        self.messages[id.1 as usize] = message;
     }
 
     pub fn try_get_by_name(&self, name: &str) -> Option<TypeId> {
@@ -69,31 +110,6 @@ impl TypeMap {
     }
 
     pub(super) fn get_scalar(&self, scalar: Scalar) -> TypeId {
-        TypeId(scalar as usize)
-    }
-
-    fn add_scalars(&mut self) {
-        let scalars = [
-            Scalar::Double,
-            Scalar::Float,
-            Scalar::Int32,
-            Scalar::Int64,
-            Scalar::Uint32,
-            Scalar::Uint64,
-            Scalar::Sint32,
-            Scalar::Sint64,
-            Scalar::Fixed32,
-            Scalar::Fixed64,
-            Scalar::Sfixed32,
-            Scalar::Sfixed64,
-            Scalar::Bool,
-            Scalar::String,
-            Scalar::Bytes,
-        ];
-
-        for scalar in scalars {
-            let id = self.add(Type::Scalar(scalar));
-            debug_assert_eq!(self.get_scalar(scalar), id);
-        }
+        TypeId(TypeKind::Scalar, scalar as u32)
     }
 }

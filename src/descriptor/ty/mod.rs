@@ -134,9 +134,9 @@ pub enum Cardinality {
     Repeated,
 }
 
-enum Type {
-    Message(MessageDescriptorInner),
-    Enum(EnumDescriptorInner),
+enum Type<'a> {
+    Message(&'a MessageDescriptorInner),
+    Enum(&'a EnumDescriptorInner),
     Scalar(Scalar),
 }
 
@@ -166,12 +166,11 @@ impl MessageDescriptor {
 
     pub(in crate::descriptor) fn iter(
         file_set: &FileDescriptor,
-    ) -> impl Iterator<Item = Self> + '_ {
+    ) -> impl ExactSizeIterator<Item = Self> + '_ {
         file_set
             .inner
             .type_map
-            .ids()
-            .filter(move |&ty| file_set.inner.type_map.get(ty).is_message())
+            .messages()
             .map(move |ty| MessageDescriptor {
                 file_set: file_set.clone(),
                 ty,
@@ -470,12 +469,11 @@ impl Kind {
 impl EnumDescriptor {
     pub(in crate::descriptor) fn iter(
         file_set: &FileDescriptor,
-    ) -> impl Iterator<Item = Self> + '_ {
+    ) -> impl ExactSizeIterator<Item = Self> + '_ {
         file_set
             .inner
             .type_map
-            .ids()
-            .filter(move |&ty| file_set.inner.type_map.get(ty).is_enum())
+            .enums()
             .map(move |ty| EnumDescriptor {
                 file_set: file_set.clone(),
                 ty,
@@ -653,12 +651,12 @@ impl fmt::Debug for OneofDescriptor {
     }
 }
 
-impl Type {
+impl<'a> Type<'a> {
     pub fn is_message(&self) -> bool {
         self.as_message().is_some()
     }
 
-    fn as_message(&self) -> Option<&MessageDescriptorInner> {
+    fn as_message(&self) -> Option<&'a MessageDescriptorInner> {
         match self {
             Type::Message(message) => Some(message),
             _ => None,
@@ -669,7 +667,7 @@ impl Type {
         self.as_enum().is_some()
     }
 
-    fn as_enum(&self) -> Option<&EnumDescriptorInner> {
+    fn as_enum(&self) -> Option<&'a EnumDescriptorInner> {
         match self {
             Type::Enum(enum_ty) => Some(enum_ty),
             _ => None,

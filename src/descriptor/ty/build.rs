@@ -25,10 +25,10 @@ impl TypeMap {
                     message_proto,
                     syntax,
                 } => {
-                    self.add_message(name, message_proto, syntax, &protos)?;
+                    self.build_message(name, message_proto, syntax, &protos)?;
                 }
                 TyProto::Enum { enum_proto } => {
-                    self.add_enum(name, enum_proto)?;
+                    self.build_enum(name, enum_proto)?;
                 }
             }
         }
@@ -36,7 +36,7 @@ impl TypeMap {
         Ok(())
     }
 
-    fn add_message(
+    fn build_message(
         &mut self,
         name: &str,
         message_proto: &DescriptorProto,
@@ -54,18 +54,18 @@ impl TypeMap {
             None => false,
         };
 
-        let id = self.add_with_name(
-            name.to_owned(),
+        let id = self.add_message(
             // Add a dummy value while we handle any recursive references.
-            Type::Message(MessageDescriptorInner {
+            MessageDescriptorInner {
                 full_name: Default::default(),
                 fields: Default::default(),
                 field_names: Default::default(),
                 field_json_names: Default::default(),
                 oneof_decls: Default::default(),
                 is_map_entry,
-            }),
+            },
         );
+        self.add_name(name, id);
 
         let mut oneof_decls: Vec<_> = message_proto
             .oneof_decl
@@ -198,16 +198,16 @@ impl TypeMap {
             return Err(DescriptorError::invalid_map_entry(name));
         }
 
-        self.set(
+        self.set_message(
             id,
-            Type::Message(MessageDescriptorInner {
+            MessageDescriptorInner {
                 fields,
                 field_names,
                 field_json_names,
                 oneof_decls,
                 full_name: name.to_owned(),
                 is_map_entry,
-            }),
+            },
         );
 
         Ok(id)
@@ -244,8 +244,8 @@ impl TypeMap {
                     Some(&TyProto::Message {
                         message_proto,
                         syntax,
-                    }) => self.add_message(type_name, message_proto, syntax, protos)?,
-                    Some(TyProto::Enum { enum_proto }) => self.add_enum(type_name, enum_proto)?,
+                    }) => self.build_message(type_name, message_proto, syntax, protos)?,
+                    Some(TyProto::Enum { enum_proto }) => self.build_enum(type_name, enum_proto)?,
                 }
             }
         };
@@ -253,7 +253,7 @@ impl TypeMap {
         Ok(ty)
     }
 
-    fn add_enum(
+    fn build_enum(
         &mut self,
         name: &str,
         enum_proto: &EnumDescriptorProto,
@@ -292,7 +292,9 @@ impl TypeMap {
             return Err(DescriptorError::empty_enum());
         }
 
-        Ok(self.add_with_name(name.to_owned(), Type::Enum(ty)))
+        let id = self.add_enum(ty);
+        self.add_name(name, id);
+        Ok(id)
     }
 }
 

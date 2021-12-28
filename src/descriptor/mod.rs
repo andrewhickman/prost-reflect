@@ -82,11 +82,17 @@ impl FileDescriptor {
         (0..self.inner.services.len()).map(move |index| ServiceDescriptor::new(self.clone(), index))
     }
 
-    fn messages(&self) -> impl Iterator<Item = MessageDescriptor> + '_ {
+    /// Gets an iterator over all messages defined in these protobuf files.
+    ///
+    /// The iterator includes nested messages defined in another message.
+    pub fn all_messages(&self) -> impl ExactSizeIterator<Item = MessageDescriptor> + '_ {
         MessageDescriptor::iter(self)
     }
 
-    fn enums(&self) -> impl Iterator<Item = EnumDescriptor> + '_ {
+    /// Gets an iterator over all enums defined in these protobuf files.
+    ///
+    /// The iterator includes nested enums defined in another message.
+    pub fn all_enums(&self) -> impl ExactSizeIterator<Item = EnumDescriptor> + '_ {
         EnumDescriptor::iter(self)
     }
 
@@ -105,8 +111,8 @@ impl fmt::Debug for FileDescriptor {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("FileDescriptor")
             .field("services", &debug_fmt_iter(self.services()))
-            .field("messages", &debug_fmt_iter(self.messages()))
-            .field("enums", &debug_fmt_iter(self.enums()))
+            .field("all_messages", &debug_fmt_iter(self.all_messages()))
+            .field("all_enums", &debug_fmt_iter(self.all_enums()))
             .finish()
     }
 }
