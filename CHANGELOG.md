@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2021-12-27
+
 ### Added
 
 - Added support for serializing and deserializing with [serde](https://crates.io/crates/serde). By default the serialization format is the canonical [JSON encoding](https://developers.google.com/protocol-buffers/docs/proto3#json).
@@ -18,5 +20,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial release, including support for inspecting message types at runtime.
 
-[unreleased]: https://github.com/andrewhickman/prost-reflect/compare/0.1.0...HEAD
+[unreleased]: https://github.com/andrewhickman/prost-reflect/compare/0.2.0...HEAD
+[0.2.0]: https://github.com/andrewhickman/prost-reflect/compare/0.1.0...0.2.0
 [0.1.0]: https://github.com/andrewhickman/prost-reflect/releases/tag/0.1.0
