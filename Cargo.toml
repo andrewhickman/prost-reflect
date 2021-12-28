@@ -1,7 +1,7 @@
 [package]
 name = "prost-reflect"
 description = "A protobuf library extending prost with reflection support and dynamic messages."
-keywords = ["protobuf", "serialization"]
+keywords = ["protobuf", "serialization", "json"]
 categories = ["encoding"]
 version = "0.2.0"
 authors = ["Andrew Hickman <andrew.hickman1@sky.com>"]
