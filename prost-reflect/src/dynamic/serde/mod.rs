@@ -90,14 +90,16 @@ impl DynamicMessage {
 impl DeserializeOptions {
     /// Creates a new instance of [`DeserializeOptions`], with the default options chosen to conform to
     /// the standard JSON mapping.
-    pub fn new() -> Self {
-        Self::default()
+    pub const fn new() -> Self {
+        DeserializeOptions {
+            deny_unknown_fields: true,
+        }
     }
 
     /// Whether to error during deserialization when encountering unknown message fields.
     ///
     /// The default value is `true`.
-    pub fn deny_unknown_fields(mut self, yes: bool) -> Self {
+    pub const fn deny_unknown_fields(mut self, yes: bool) -> Self {
         self.deny_unknown_fields = yes;
         self
     }
@@ -105,17 +107,20 @@ impl DeserializeOptions {
 
 impl Default for DeserializeOptions {
     fn default() -> Self {
-        DeserializeOptions {
-            deny_unknown_fields: true,
-        }
+        Self::new()
     }
 }
 
 impl SerializeOptions {
     /// Creates a new instance of [`SerializeOptions`], with the default options chosen to conform to
     /// the standard JSON mapping.
-    pub fn new() -> Self {
-        Self::default()
+    pub const fn new() -> Self {
+        SerializeOptions {
+            stringify_64_bit_integers: true,
+            use_enum_numbers: false,
+            use_proto_field_name: false,
+            emit_unpopulated_fields: false,
+        }
     }
 
     /// Whether to encode 64-bit integral types as strings.
@@ -125,7 +130,7 @@ impl SerializeOptions {
     /// numbers will be serialized as their corresponding serde types instead.
     ///
     /// The default value is `true`.
-    pub fn stringify_64_bit_integers(mut self, yes: bool) -> Self {
+    pub const fn stringify_64_bit_integers(mut self, yes: bool) -> Self {
         self.stringify_64_bit_integers = yes;
         self
     }
@@ -136,7 +141,7 @@ impl SerializeOptions {
     /// serialized as the string value specified in the proto file.
     ///
     /// The default value is `false`.
-    pub fn use_enum_numbers(mut self, yes: bool) -> Self {
+    pub const fn use_enum_numbers(mut self, yes: bool) -> Self {
         self.use_enum_numbers = yes;
         self
     }
@@ -144,7 +149,7 @@ impl SerializeOptions {
     /// Whether to use the proto field name instead of the lowerCamelCase name in JSON field names.
     ///
     /// The default value is `false`.
-    pub fn use_proto_field_name(mut self, yes: bool) -> Self {
+    pub const fn use_proto_field_name(mut self, yes: bool) -> Self {
         self.use_proto_field_name = yes;
         self
     }
@@ -155,7 +160,7 @@ impl SerializeOptions {
     /// not be serialized. If `true`, they will be serialized with their default value.
     ///
     /// The default value is `false`.
-    pub fn emit_unpopulated_fields(mut self, yes: bool) -> Self {
+    pub const fn emit_unpopulated_fields(mut self, yes: bool) -> Self {
         self.emit_unpopulated_fields = yes;
         self
     }
@@ -163,11 +168,6 @@ impl SerializeOptions {
 
 impl Default for SerializeOptions {
     fn default() -> Self {
-        SerializeOptions {
-            stringify_64_bit_integers: true,
-            use_enum_numbers: false,
-            use_proto_field_name: false,
-            emit_unpopulated_fields: false,
-        }
+        Self::new()
     }
 }
