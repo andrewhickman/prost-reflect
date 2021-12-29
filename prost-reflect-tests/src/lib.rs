@@ -8,46 +8,38 @@ use std::{
     fmt::Debug,
 };
 
-use once_cell::sync::Lazy;
 use proptest::{prelude::*, test_runner::TestCaseError};
 use prost::{bytes::Bytes, Message};
 use prost_reflect::{DynamicMessage, FileDescriptor, MapKey, ReflectMessage, Value};
-use prost_types::FileDescriptorSet;
 
 include!(concat!(env!("OUT_DIR"), "/test.rs"));
 
-pub static TEST_FILE_DESCRIPTOR: Lazy<FileDescriptor> = Lazy::new(|| {
-    FileDescriptor::new(
-        FileDescriptorSet::decode(
-            include_bytes!(concat!(env!("OUT_DIR"), "/file_descriptor_set.bin")).as_ref(),
-        )
-        .unwrap(),
-    )
-    .unwrap()
-});
+const FILE_DESCRIPTOR_SET_BYTES: &[u8] =
+    include_bytes!(concat!(env!("OUT_DIR"), "/file_descriptor_set.bin"));
+
+fn test_file_descriptor() -> FileDescriptor {
+    FileDescriptor::new_cached(FILE_DESCRIPTOR_SET_BYTES).unwrap()
+}
 
 #[test]
 fn clear_message() {
-    let mut dynamic = to_dynamic(
-        &Scalars {
-            double: 1.1,
-            float: 2.2,
-            int32: 3,
-            int64: 4,
-            uint32: 5,
-            uint64: 6,
-            sint32: 7,
-            sint64: 8,
-            fixed32: 9,
-            fixed64: 10,
-            sfixed32: 11,
-            sfixed64: 12,
-            r#bool: true,
-            string: "5".to_owned(),
-            bytes: b"6".to_vec(),
-        },
-        ".test.Scalars",
-    );
+    let mut dynamic = to_dynamic(&Scalars {
+        double: 1.1,
+        float: 2.2,
+        int32: 3,
+        int64: 4,
+        uint32: 5,
+        uint64: 6,
+        sint32: 7,
+        sint64: 8,
+        fixed32: 9,
+        fixed64: 10,
+        sfixed32: 11,
+        sfixed64: 12,
+        r#bool: true,
+        string: "5".to_owned(),
+        bytes: b"6".to_vec(),
+    });
 
     dynamic.clear();
 
@@ -73,7 +65,7 @@ fn clear_message() {
 
 #[test]
 fn test_descriptor_methods() {
-    let message_desc = TEST_FILE_DESCRIPTOR
+    let message_desc = test_file_descriptor()
         .get_message_by_name("my.package.MyMessage")
         .unwrap();
     assert_eq!(message_desc.name(), "MyMessage");
@@ -85,7 +77,7 @@ fn test_descriptor_methods() {
     assert_eq!(field_desc.name(), "my_field");
     assert_eq!(field_desc.full_name(), "my.package.MyMessage.my_field");
 
-    let nested_message_desc = TEST_FILE_DESCRIPTOR
+    let nested_message_desc = test_file_descriptor()
         .get_message_by_name("my.package.MyMessage.MyNestedMessage")
         .unwrap();
     assert_eq!(nested_message_desc.name(), "MyNestedMessage");
@@ -99,7 +91,7 @@ fn test_descriptor_methods() {
     );
     assert_eq!(nested_message_desc.package_name(), "my.package");
 
-    let enum_desc = TEST_FILE_DESCRIPTOR
+    let enum_desc = test_file_descriptor()
         .get_enum_by_name("my.package.MyEnum")
         .unwrap();
     assert_eq!(enum_desc.name(), "MyEnum");
@@ -111,7 +103,7 @@ fn test_descriptor_methods() {
     assert_eq!(enum_value_desc.name(), "MY_VALUE");
     assert_eq!(enum_value_desc.full_name(), "my.package.MY_VALUE");
 
-    let nested_enum_desc = TEST_FILE_DESCRIPTOR
+    let nested_enum_desc = test_file_descriptor()
         .get_enum_by_name("my.package.MyMessage.MyNestedEnum")
         .unwrap();
     assert_eq!(nested_enum_desc.name(), "MyNestedEnum");
@@ -122,7 +114,7 @@ fn test_descriptor_methods() {
     assert_eq!(nested_enum_desc.parent_message(), Some(message_desc));
     assert_eq!(nested_enum_desc.package_name(), "my.package");
 
-    let service_desc = TEST_FILE_DESCRIPTOR
+    let service_desc = test_file_descriptor()
         .services()
         .find(|s| s.full_name() == "my.package.MyService")
         .unwrap();
@@ -140,7 +132,7 @@ fn test_descriptor_methods() {
 
 #[test]
 fn test_descriptor_names_no_package() {
-    let message_desc = TEST_FILE_DESCRIPTOR
+    let message_desc = test_file_descriptor()
         .get_message_by_name("MyMessage")
         .unwrap();
     assert_eq!(message_desc.name(), "MyMessage");
@@ -152,7 +144,7 @@ fn test_descriptor_names_no_package() {
     assert_eq!(field_desc.name(), "my_field");
     assert_eq!(field_desc.full_name(), "MyMessage.my_field");
 
-    let nested_message_desc = TEST_FILE_DESCRIPTOR
+    let nested_message_desc = test_file_descriptor()
         .get_message_by_name("MyMessage.MyNestedMessage")
         .unwrap();
     assert_eq!(nested_message_desc.name(), "MyNestedMessage");
@@ -163,7 +155,7 @@ fn test_descriptor_names_no_package() {
     );
     assert_eq!(nested_message_desc.package_name(), "");
 
-    let enum_desc = TEST_FILE_DESCRIPTOR.get_enum_by_name("MyEnum").unwrap();
+    let enum_desc = test_file_descriptor().get_enum_by_name("MyEnum").unwrap();
     assert_eq!(enum_desc.name(), "MyEnum");
     assert_eq!(enum_desc.full_name(), "MyEnum");
     assert_eq!(enum_desc.parent_message(), None);
@@ -173,7 +165,7 @@ fn test_descriptor_names_no_package() {
     assert_eq!(enum_value_desc.name(), "MY_VALUE");
     assert_eq!(enum_value_desc.full_name(), "MY_VALUE");
 
-    let nested_enum_desc = TEST_FILE_DESCRIPTOR
+    let nested_enum_desc = test_file_descriptor()
         .get_enum_by_name("MyMessage.MyNestedEnum")
         .unwrap();
     assert_eq!(nested_enum_desc.name(), "MyNestedEnum");
@@ -181,7 +173,7 @@ fn test_descriptor_names_no_package() {
     assert_eq!(nested_enum_desc.parent_message(), Some(message_desc));
     assert_eq!(nested_enum_desc.package_name(), "");
 
-    let service_desc = TEST_FILE_DESCRIPTOR
+    let service_desc = test_file_descriptor()
         .services()
         .find(|s| s.full_name() == "MyService")
         .unwrap();
@@ -199,26 +191,23 @@ fn test_descriptor_names_no_package() {
 
 #[test]
 fn decode_scalars() {
-    let dynamic = to_dynamic(
-        &Scalars {
-            double: 1.1,
-            float: 2.2,
-            int32: 3,
-            int64: 4,
-            uint32: 5,
-            uint64: 6,
-            sint32: 7,
-            sint64: 8,
-            fixed32: 9,
-            fixed64: 10,
-            sfixed32: 11,
-            sfixed64: 12,
-            r#bool: true,
-            string: "5".to_owned(),
-            bytes: b"6".to_vec(),
-        },
-        ".test.Scalars",
-    );
+    let dynamic = to_dynamic(&Scalars {
+        double: 1.1,
+        float: 2.2,
+        int32: 3,
+        int64: 4,
+        uint32: 5,
+        uint64: 6,
+        sint32: 7,
+        sint64: 8,
+        fixed32: 9,
+        fixed64: 10,
+        sfixed32: 11,
+        sfixed64: 12,
+        r#bool: true,
+        string: "5".to_owned(),
+        bytes: b"6".to_vec(),
+    });
 
     assert_eq!(
         dynamic.get_field_by_name("double").unwrap().as_f64(),
@@ -284,26 +273,23 @@ fn decode_scalars() {
 
 #[test]
 fn decode_scalar_arrays() {
-    let dynamic = to_dynamic(
-        &ScalarArrays {
-            double: vec![1.1, 2.2],
-            float: vec![3.3f32, 4.4f32],
-            int32: vec![5, -6],
-            int64: vec![7, -8],
-            uint32: vec![9, 10],
-            uint64: vec![11, 12],
-            sint32: vec![13, -14],
-            sint64: vec![15, -16],
-            fixed32: vec![17, 18],
-            fixed64: vec![19, 20],
-            sfixed32: vec![21, -22],
-            sfixed64: vec![23, -24],
-            r#bool: vec![true, false],
-            string: vec!["25".to_owned(), "26".to_owned()],
-            bytes: vec![b"27".to_vec(), b"28".to_vec()],
-        },
-        ".test.ScalarArrays",
-    );
+    let dynamic = to_dynamic(&ScalarArrays {
+        double: vec![1.1, 2.2],
+        float: vec![3.3f32, 4.4f32],
+        int32: vec![5, -6],
+        int64: vec![7, -8],
+        uint32: vec![9, 10],
+        uint64: vec![11, 12],
+        sint32: vec![13, -14],
+        sint64: vec![15, -16],
+        fixed32: vec![17, 18],
+        fixed64: vec![19, 20],
+        sfixed32: vec![21, -22],
+        sfixed64: vec![23, -24],
+        r#bool: vec![true, false],
+        string: vec!["25".to_owned(), "26".to_owned()],
+        bytes: vec![b"27".to_vec(), b"28".to_vec()],
+    });
 
     assert_eq!(
         dynamic.get_field_by_name("double").unwrap().as_list(),
@@ -381,64 +367,61 @@ fn decode_scalar_arrays() {
 
 #[test]
 fn decode_complex_type() {
-    let dynamic = to_dynamic(
-        &ComplexType {
-            string_map: HashMap::from([
-                (
-                    "1".to_owned(),
-                    Scalars {
-                        double: 1.1,
-                        float: 2.2,
-                        int32: 3,
-                        ..Default::default()
-                    },
-                ),
-                (
-                    "2".to_owned(),
-                    Scalars {
-                        int64: 4,
-                        uint32: 5,
-                        uint64: 6,
-                        ..Default::default()
-                    },
-                ),
-            ]),
-            int_map: HashMap::from([
-                (
-                    3,
-                    Scalars {
-                        sint32: 7,
-                        sint64: 8,
-                        fixed32: 9,
-                        ..Default::default()
-                    },
-                ),
-                (
-                    4,
-                    Scalars {
-                        sint64: 8,
-                        fixed32: 9,
-                        fixed64: 10,
-                        ..Default::default()
-                    },
-                ),
-            ]),
-            nested: Some(Scalars {
-                sfixed32: 11,
-                sfixed64: 12,
-                r#bool: true,
-                string: "5".to_owned(),
-                bytes: b"6".to_vec(),
-                ..Default::default()
-            }),
-            my_enum: vec![0, 1, 2, 3],
-        },
-        ".test.ComplexType",
-    );
+    let dynamic = to_dynamic(&ComplexType {
+        string_map: HashMap::from([
+            (
+                "1".to_owned(),
+                Scalars {
+                    double: 1.1,
+                    float: 2.2,
+                    int32: 3,
+                    ..Default::default()
+                },
+            ),
+            (
+                "2".to_owned(),
+                Scalars {
+                    int64: 4,
+                    uint32: 5,
+                    uint64: 6,
+                    ..Default::default()
+                },
+            ),
+        ]),
+        int_map: HashMap::from([
+            (
+                3,
+                Scalars {
+                    sint32: 7,
+                    sint64: 8,
+                    fixed32: 9,
+                    ..Default::default()
+                },
+            ),
+            (
+                4,
+                Scalars {
+                    sint64: 8,
+                    fixed32: 9,
+                    fixed64: 10,
+                    ..Default::default()
+                },
+            ),
+        ]),
+        nested: Some(Scalars {
+            sfixed32: 11,
+            sfixed64: 12,
+            r#bool: true,
+            string: "5".to_owned(),
+            bytes: b"6".to_vec(),
+            ..Default::default()
+        }),
+        my_enum: vec![0, 1, 2, 3],
+    });
 
     fn empty_scalars() -> DynamicMessage {
         DynamicMessage::new(
-            TEST_FILE_DESCRIPTOR
+            test_file_descriptor()
                 .get_message_by_name(".test.Scalars")
                 .unwrap(),
         )
@@ -511,7 +494,7 @@ fn decode_complex_type() {
 #[test]
 fn decode_default_values() {
     let dynamic = DynamicMessage::new(
-        TEST_FILE_DESCRIPTOR
+        test_file_descriptor()
             .get_message_by_name(".test2.DefaultValues")
             .unwrap(),
     );
@@ -594,7 +577,7 @@ fn decode_default_values() {
 #[test]
 fn set_oneof() {
     let mut dynamic = DynamicMessage::new(
-        TEST_FILE_DESCRIPTOR
+        test_file_descriptor()
             .get_message_by_name(".test.MessageWithOneof")
             .unwrap(),
     );
@@ -614,168 +597,156 @@ fn set_oneof() {
 
 #[test]
 fn roundtrip_scalars() {
-    roundtrip(
-        &Scalars {
-            double: 1.1,
-            float: 2.2,
-            int32: 3,
-            int64: 4,
-            uint32: 5,
-            uint64: 6,
-            sint32: 7,
-            sint64: 8,
-            fixed32: 9,
-            fixed64: 10,
-            sfixed32: 11,
-            sfixed64: 12,
-            r#bool: true,
-            string: "5".to_owned(),
-            bytes: b"6".to_vec(),
-        },
-        ".test.Scalars",
-    )
+    roundtrip(&Scalars {
+        double: 1.1,
+        float: 2.2,
+        int32: 3,
+        int64: 4,
+        uint32: 5,
+        uint64: 6,
+        sint32: 7,
+        sint64: 8,
+        fixed32: 9,
+        fixed64: 10,
+        sfixed32: 11,
+        sfixed64: 12,
+        r#bool: true,
+        string: "5".to_owned(),
+        bytes: b"6".to_vec(),
+    })
     .unwrap();
 }
 
 #[test]
 fn roundtrip_scalar_arrays() {
-    roundtrip(
-        &ScalarArrays {
-            double: vec![1.1, 2.2],
-            float: vec![3.3f32, 4.4f32],
-            int32: vec![5, -6],
-            int64: vec![7, -8],
-            uint32: vec![9, 10],
-            uint64: vec![11, 12],
-            sint32: vec![13, -14],
-            sint64: vec![15, -16],
-            fixed32: vec![17, 18],
-            fixed64: vec![19, 20],
-            sfixed32: vec![21, -22],
-            sfixed64: vec![23, 24],
-            r#bool: vec![true, false],
-            string: vec!["25".to_owned(), "26".to_owned()],
-            bytes: vec![b"27".to_vec(), b"28".to_vec()],
-        },
-        ".test.ScalarArrays",
-    )
+    roundtrip(&ScalarArrays {
+        double: vec![1.1, 2.2],
+        float: vec![3.3f32, 4.4f32],
+        int32: vec![5, -6],
+        int64: vec![7, -8],
+        uint32: vec![9, 10],
+        uint64: vec![11, 12],
+        sint32: vec![13, -14],
+        sint64: vec![15, -16],
+        fixed32: vec![17, 18],
+        fixed64: vec![19, 20],
+        sfixed32: vec![21, -22],
+        sfixed64: vec![23, 24],
+        r#bool: vec![true, false],
+        string: vec!["25".to_owned(), "26".to_owned()],
+        bytes: vec![b"27".to_vec(), b"28".to_vec()],
+    })
     .unwrap();
 }
 
 #[test]
 fn roundtrip_complex_type() {
-    roundtrip(
-        &ComplexType {
-            string_map: HashMap::from([
-                (
-                    "1".to_owned(),
-                    Scalars {
-                        double: 1.1,
-                        float: 2.2,
-                        int32: 3,
-                        ..Default::default()
-                    },
-                ),
-                (
-                    "2".to_owned(),
-                    Scalars {
-                        int64: 4,
-                        uint32: 5,
-                        uint64: 6,
-                        ..Default::default()
-                    },
-                ),
-            ]),
-            int_map: HashMap::from([
-                (
-                    3,
-                    Scalars {
-                        sint32: 7,
-                        sint64: 8,
-                        fixed32: 9,
-                        ..Default::default()
-                    },
-                ),
-                (
-                    4,
-                    Scalars {
-                        sint64: 8,
-                        fixed32: 9,
-                        fixed64: 10,
-                        ..Default::default()
-                    },
-                ),
-            ]),
-            nested: Some(Scalars {
-                sfixed32: 11,
-                sfixed64: 12,
-                r#bool: true,
-                string: "5".to_owned(),
-                bytes: b"6".to_vec(),
-                ..Default::default()
-            }),
-            my_enum: vec![0, 1, 2, 3],
-        },
-        ".test.ComplexType",
-    )
+    roundtrip(&ComplexType {
+        string_map: HashMap::from([
+            (
+                "1".to_owned(),
+                Scalars {
+                    double: 1.1,
+                    float: 2.2,
+                    int32: 3,
+                    ..Default::default()
+                },
+            ),
+            (
+                "2".to_owned(),
+                Scalars {
+                    int64: 4,
+                    uint32: 5,
+                    uint64: 6,
+                    ..Default::default()
+                },
+            ),
+        ]),
+        int_map: HashMap::from([
+            (
+                3,
+                Scalars {
+                    sint32: 7,
+                    sint64: 8,
+                    fixed32: 9,
+                    ..Default::default()
+                },
+            ),
+            (
+                4,
+                Scalars {
+                    sint64: 8,
+                    fixed32: 9,
+                    fixed64: 10,
+                    ..Default::default()
+                },
+            ),
+        ]),
+        nested: Some(Scalars {
+            sfixed32: 11,
+            sfixed64: 12,
+            r#bool: true,
+            string: "5".to_owned(),
+            bytes: b"6".to_vec(),
+            ..Default::default()
+        }),
+        my_enum: vec![0, 1, 2, 3],
+    })
     .unwrap();
 }
 
 #[test]
 fn roundtrip_well_known_types() {
-    roundtrip(
-        &WellKnownTypes {
-            timestamp: Some(prost_types::Timestamp {
-                seconds: 63_108_020,
-                nanos: 21_000_000,
-            }),
-            duration: Some(prost_types::Duration {
-                seconds: 1,
-                nanos: 340_012,
-            }),
-            r#struct: Some(prost_types::Struct {
-                fields: BTreeMap::from([
-                    (
-                        "number".to_owned(),
-                        prost_types::Value {
-                            kind: Some(prost_types::value::Kind::NumberValue(42.)),
-                        },
-                    ),
-                    (
-                        "null".to_owned(),
-                        prost_types::Value {
-                            kind: Some(prost_types::value::Kind::NullValue(0)),
-                        },
-                    ),
-                ]),
-            }),
-            float: Some(42.1),
-            double: Some(12.4),
-            int32: Some(1),
-            int64: Some(-2),
-            uint32: Some(3),
-            uint64: Some(4),
-            bool: Some(false),
-            string: Some("hello".to_owned()),
-            bytes: Some(b"hello".to_vec()),
-            mask: Some(prost_types::FieldMask {
-                paths: vec!["field_one".to_owned(), "field_two.b.d".to_owned()],
-            }),
-            list: Some(prost_types::ListValue {
-                values: vec![
+    roundtrip(&WellKnownTypes {
+        timestamp: Some(prost_types::Timestamp {
+            seconds: 63_108_020,
+            nanos: 21_000_000,
+        }),
+        duration: Some(prost_types::Duration {
+            seconds: 1,
+            nanos: 340_012,
+        }),
+        r#struct: Some(prost_types::Struct {
+            fields: BTreeMap::from([
+                (
+                    "number".to_owned(),
                     prost_types::Value {
-                        kind: Some(prost_types::value::Kind::StringValue("foo".to_owned())),
+                        kind: Some(prost_types::value::Kind::NumberValue(42.)),
                     },
+                ),
+                (
+                    "null".to_owned(),
                     prost_types::Value {
-                        kind: Some(prost_types::value::Kind::BoolValue(false)),
+                        kind: Some(prost_types::value::Kind::NullValue(0)),
                     },
-                ],
-            }),
-            null: 0,
-            empty: Some(()),
-        },
-        ".test.WellKnownTypes",
-    )
+                ),
+            ]),
+        }),
+        float: Some(42.1),
+        double: Some(12.4),
+        int32: Some(1),
+        int64: Some(-2),
+        uint32: Some(3),
+        uint64: Some(4),
+        bool: Some(false),
+        string: Some("hello".to_owned()),
+        bytes: Some(b"hello".to_vec()),
+        mask: Some(prost_types::FieldMask {
+            paths: vec!["field_one".to_owned(), "field_two.b.d".to_owned()],
+        }),
+        list: Some(prost_types::ListValue {
+            values: vec![
+                prost_types::Value {
+                    kind: Some(prost_types::value::Kind::StringValue("foo".to_owned())),
+                },
+                prost_types::Value {
+                    kind: Some(prost_types::value::Kind::BoolValue(false)),
+                },
+            ],
+        }),
+        null: 0,
+        empty: Some(()),
+    })
     .unwrap();
 }
 
@@ -787,43 +758,39 @@ proptest! {
 
     #[test]
     fn roundtrip_arb_scalars(message: Scalars) {
-        roundtrip(&message, ".test.Scalars")?;
+        roundtrip(&message)?;
     }
 
     #[test]
     fn roundtrip_arb_scalar_arrays(message: ScalarArrays) {
-        roundtrip(&message, ".test.ScalarArrays")?;
+        roundtrip(&message)?;
     }
 
     #[test]
     fn roundtrip_arb_complex_type(message: ComplexType) {
-        roundtrip(&message, ".test.ComplexType")?;
+        roundtrip(&message)?;
     }
 
     #[test]
     fn roundtrip_arb_well_known_types(message: WellKnownTypes) {
-        roundtrip(&message, ".test.WellKnownTypes")?;
+        roundtrip(&message)?;
     }
 }
 
-fn to_dynamic<T>(message: &T, message_name: &str) -> DynamicMessage
+fn to_dynamic<T>(message: &T) -> DynamicMessage
 where
-    T: PartialEq + Debug + Message + Default,
+    T: PartialEq + Debug + ReflectMessage + Default,
 {
-    let mut dynamic_message = DynamicMessage::new(
-        TEST_FILE_DESCRIPTOR
-            .get_message_by_name(message_name)
-            .expect("message not found"),
-    );
+    let mut dynamic_message = DynamicMessage::new(message.descriptor());
     dynamic_message.transcode_from(message).unwrap();
     dynamic_message
 }
 
-fn roundtrip<T>(message: &T, message_name: &str) -> Result<(), TestCaseError>
+fn roundtrip<T>(message: &T) -> Result<(), TestCaseError>
 where
-    T: PartialEq + Debug + Message + Default,
+    T: PartialEq + Debug + ReflectMessage + Default,
 {
-    let dynamic_message = to_dynamic(message, message_name);
+    let dynamic_message = to_dynamic(message);
     let roundtripped_message: T = dynamic_message.transcode_to().unwrap();
     prop_assert_eq!(message, &roundtripped_message);
     Ok(())

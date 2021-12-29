@@ -1,6 +1,6 @@
 use proc_macro::TokenStream;
-use quote::quote;
-use syn::parse::{Parse, ParseStream};
+use proc_macro2::Span;
+use quote::{quote, ToTokens};
 use syn::spanned::Spanned;
 
 #[proc_macro_derive(ReflectMessage, attributes(prost_reflect))]
@@ -14,37 +14,29 @@ pub fn reflect_message(input: TokenStream) -> TokenStream {
 }
 
 struct Args {
-    message_name: syn::LitStr,
-    file_descriptor_path: syn::LitStr,
+    args_span: Span,
+    message_name: Option<syn::Lit>,
+    package_name: Option<syn::Lit>,
+    file_descriptor_set_path: Option<syn::Lit>,
 }
 
 fn reflect_message_impl(input: syn::DeriveInput) -> Result<proc_macro2::TokenStream, syn::Error> {
     match &input.data {
         syn::Data::Struct(_) => (),
-        syn::Data::Enum(enum_data) => {
-            return Err(syn::Error::new(
-                enum_data.enum_token.span,
-                "cannot derive ReflectMessage for enum",
-            ))
-        }
-        syn::Data::Union(union_data) => {
-            return Err(syn::Error::new(
-                union_data.union_token.span,
-                "cannot derive ReflectMessage for union",
-            ))
-        }
+        syn::Data::Enum(_) => return Ok(Default::default()),
+        syn::Data::Union(_) => return Ok(Default::default()),
     };
 
+    let args = Args::parse(input.ident.span(), &input.attrs)?;
+
     let name = &input.ident;
-    let Args {
-        file_descriptor_path,
-        message_name,
-    } = parse_attrs(input.ident.span(), &input.attrs)?;
+    let file_descriptor_set = args.file_descriptor_set()?;
+    let message_name = args.message_name(name)?;
 
     Ok(quote! {
         impl ::prost_reflect::ReflectMessage for #name {
             fn descriptor(&self) -> ::prost_reflect::MessageDescriptor {
-                ::prost_reflect::FileDescriptor::new_cached(include_bytes!(#file_descriptor_path))
+                ::prost_reflect::FileDescriptor::new_cached(#file_descriptor_set)
                     .expect("invalid file descriptor set")
                     .get_message_by_name(#message_name)
                     .expect("no message found")
@@ -53,69 +45,99 @@ fn reflect_message_impl(input: syn::DeriveInput) -> Result<proc_macro2::TokenStr
     })
 }
 
-fn parse_attrs(
-    input_span: proc_macro2::Span,
-    attrs: &[syn::Attribute],
-) -> Result<Args, syn::Error> {
-    let reflect_attrs: Vec<_> = attrs
-        .iter()
-        .filter(|attr| is_prost_reflect_attribute(attr))
-        .collect();
-
-    match reflect_attrs.len() {
-        0 => {
-            return Err(syn::Error::new(
-                input_span,
-                "missing #[prost_reflect] attribute",
-            ))
-        }
-        1 => (),
-        _ => {
-            return Err(syn::Error::new(
-                reflect_attrs[1].span(),
-                "multiple #[prost_reflect] attributes",
-            ))
-        }
-    };
-
-    reflect_attrs[0].parse_args::<Args>()
-}
-
 fn is_prost_reflect_attribute(attr: &syn::Attribute) -> bool {
     attr.path.is_ident("prost_reflect")
 }
 
-impl Parse for Args {
-    fn parse(parser: ParseStream) -> syn::Result<Self> {
-        let mut file_descriptor_path: Option<syn::LitStr> = None;
-        let mut message_name: Option<syn::LitStr> = None;
-        loop {
-            let ident = parser.parse::<syn::Path>()?;
-            if ident.is_ident("file_descriptor_path") {
-                let _ = parser.parse::<syn::Token!(=)>()?;
-                file_descriptor_path = Some(parser.parse()?);
-            } else if ident.is_ident("message_name") {
-                let _ = parser.parse::<syn::Token!(=)>()?;
-                message_name = Some(parser.parse()?);
-            } else {
-                return Err(syn::Error::new(
-                    ident.span(),
-                    format_args!(
-                        "unknown argument (expected 'file_descriptor_path' or 'message_name')"
-                    ),
-                ));
-            }
+impl Args {
+    fn parse(input_span: proc_macro2::Span, attrs: &[syn::Attribute]) -> Result<Args, syn::Error> {
+        let reflect_attrs: Vec<_> = attrs
+            .iter()
+            .filter(|attr| is_prost_reflect_attribute(attr))
+            .collect();
 
-            if let (Some(file_descriptor_path), Some(message_name)) =
-                (&file_descriptor_path, &message_name)
-            {
-                return Ok(Args {
-                    file_descriptor_path: file_descriptor_path.clone(),
-                    message_name: message_name.clone(),
-                });
-            } else {
-                let _ = parser.parse::<syn::Token!(,)>()?;
+        match reflect_attrs.len() {
+            0 => {
+                return Err(syn::Error::new(
+                    input_span,
+                    "missing #[prost_reflect] attribute",
+                ))
             }
+            1 => (),
+            _ => {
+                return Err(syn::Error::new(
+                    reflect_attrs[1].span(),
+                    "multiple #[prost_reflect] attributes",
+                ))
+            }
+        };
+
+        let meta = match reflect_attrs[0].parse_meta()? {
+            syn::Meta::List(list) => list,
+            meta => return Err(syn::Error::new(meta.span(), "expected list of attributes")),
+        };
+
+        let mut args = Args {
+            args_span: meta.span(),
+            file_descriptor_set_path: None,
+            package_name: None,
+            message_name: None,
+        };
+        for item in meta.nested {
+            match item {
+                syn::NestedMeta::Meta(syn::Meta::NameValue(value)) => {
+                    if value.path.is_ident("file_descriptor_set_path") {
+                        args.file_descriptor_set_path = Some(value.lit);
+                    } else if value.path.is_ident("package_name") {
+                        args.package_name = Some(value.lit);
+                    } else if value.path.is_ident("message_name") {
+                        args.message_name = Some(value.lit);
+                    } else {
+                        return Err(syn::Error::new(value.span(),
+                        "unknown argument (expected 'file_descriptor_set_path', 'package_name' or 'message_name')"));
+                    }
+                }
+                _ => return Err(syn::Error::new(item.span(), "unexpected attribute")),
+            }
+        }
+
+        Ok(args)
+    }
+
+    fn file_descriptor_set(&self) -> Result<proc_macro2::TokenStream, syn::Error> {
+        if let Some(file_descriptor_set_path) = &self.file_descriptor_set_path {
+            Ok(quote!(include_bytes!(#file_descriptor_set_path)))
+        } else {
+            Err(syn::Error::new(
+                self.args_span,
+                "missing 'file_descriptor_set_path' argument",
+            ))
+        }
+    }
+
+    fn message_name(
+        &self,
+        struct_name: &syn::Ident,
+    ) -> Result<proc_macro2::TokenStream, syn::Error> {
+        if let Some(message_name) = &self.message_name {
+            Ok(message_name.to_token_stream())
+        } else if let Some(package_name) = &self.package_name {
+            match package_name {
+                syn::Lit::Str(package_name) => Ok(syn::LitStr::new(
+                    &format!("{}.{}", package_name.value(), struct_name),
+                    self.args_span,
+                )
+                .to_token_stream()),
+                _ => Err(syn::Error::new(
+                    self.args_span,
+                    "'package_name' must be a string literal",
+                )),
+            }
+        } else {
+            Err(syn::Error::new(
+                self.args_span,
+                "at least one of the 'message_name' or 'package_name' arguments is required",
+            ))
         }
     }
 }

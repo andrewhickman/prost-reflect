@@ -5,33 +5,30 @@ use std::{
 
 use proptest::{prelude::*, test_runner::TestCaseError};
 use prost::Message;
-use prost_reflect::{DeserializeOptions, DynamicMessage, SerializeOptions};
+use prost_reflect::{DeserializeOptions, DynamicMessage, ReflectMessage, SerializeOptions};
 use serde_json::json;
 
-use crate::{to_dynamic, ComplexType, ScalarArrays, Scalars, WellKnownTypes, TEST_FILE_DESCRIPTOR};
+use crate::{test_file_descriptor, to_dynamic, ComplexType, ScalarArrays, Scalars, WellKnownTypes};
 
 #[test]
 fn serialize_scalars() {
-    let value = to_json(
-        &Scalars {
-            double: 1.1,
-            float: 2.2,
-            int32: 3,
-            int64: 4,
-            uint32: 5,
-            uint64: 6,
-            sint32: 7,
-            sint64: 8,
-            fixed32: 9,
-            fixed64: 10,
-            sfixed32: 11,
-            sfixed64: 12,
-            r#bool: true,
-            string: "5".to_owned(),
-            bytes: b"i\xa6\xbem\xb6\xffX".to_vec(),
-        },
-        ".test.Scalars",
-    );
+    let value = to_json(&Scalars {
+        double: 1.1,
+        float: 2.2,
+        int32: 3,
+        int64: 4,
+        uint32: 5,
+        uint64: 6,
+        sint32: 7,
+        sint64: 8,
+        fixed32: 9,
+        fixed64: 10,
+        sfixed32: 11,
+        sfixed64: 12,
+        r#bool: true,
+        string: "5".to_owned(),
+        bytes: b"i\xa6\xbem\xb6\xffX".to_vec(),
+    });
 
     assert_eq!(
         value,
@@ -57,30 +54,21 @@ fn serialize_scalars() {
 
 #[test]
 fn serialize_scalars_float_extrema() {
-    let inf = to_json(
-        &Scalars {
-            float: f32::INFINITY,
-            double: f64::INFINITY,
-            ..Default::default()
-        },
-        ".test.Scalars",
-    );
-    let neg_inf = to_json(
-        &Scalars {
-            float: f32::NEG_INFINITY,
-            double: f64::NEG_INFINITY,
-            ..Default::default()
-        },
-        ".test.Scalars",
-    );
-    let nan = to_json(
-        &Scalars {
-            float: f32::NAN,
-            double: f64::NAN,
-            ..Default::default()
-        },
-        ".test.Scalars",
-    );
+    let inf = to_json(&Scalars {
+        float: f32::INFINITY,
+        double: f64::INFINITY,
+        ..Default::default()
+    });
+    let neg_inf = to_json(&Scalars {
+        float: f32::NEG_INFINITY,
+        double: f64::NEG_INFINITY,
+        ..Default::default()
+    });
+    let nan = to_json(&Scalars {
+        float: f32::NAN,
+        double: f64::NAN,
+        ..Default::default()
+    });
 
     assert_eq!(
         inf,
@@ -107,20 +95,17 @@ fn serialize_scalars_float_extrema() {
 
 #[test]
 fn serialize_scalars_default() {
-    let value = to_json(&Scalars::default(), ".test.Scalars");
+    let value = to_json(&Scalars::default());
 
     assert_eq!(value, json!({}));
 }
 
 #[test]
 fn serialize_array() {
-    let value = to_json(
-        &ScalarArrays {
-            double: vec![1.1, 2.2],
-            ..Default::default()
-        },
-        ".test.ScalarArrays",
-    );
+    let value = to_json(&ScalarArrays {
+        double: vec![1.1, 2.2],
+        ..Default::default()
+    });
 
     assert_eq!(
         value,
@@ -132,60 +117,57 @@ fn serialize_array() {
 
 #[test]
 fn serialize_complex_type() {
-    let value = to_json(
-        &ComplexType {
-            string_map: HashMap::from([
-                (
-                    "1".to_owned(),
-                    Scalars {
-                        double: 1.1,
-                        float: 2.2,
-                        int32: 3,
-                        ..Default::default()
-                    },
-                ),
-                (
-                    "2".to_owned(),
-                    Scalars {
-                        int64: 4,
-                        uint32: 5,
-                        uint64: 6,
-                        ..Default::default()
-                    },
-                ),
-            ]),
-            int_map: HashMap::from([
-                (
-                    3,
-                    Scalars {
-                        sint32: 7,
-                        sint64: 8,
-                        fixed32: 9,
-                        ..Default::default()
-                    },
-                ),
-                (
-                    4,
-                    Scalars {
-                        sint64: 8,
-                        fixed32: 9,
-                        fixed64: 10,
-                        ..Default::default()
-                    },
-                ),
-            ]),
-            nested: Some(Scalars {
-                sfixed32: 11,
-                sfixed64: 12,
-                r#bool: true,
-                string: "5".to_owned(),
-                bytes: b"6".to_vec(),
-                ..Default::default()
-            }),
-            my_enum: vec![0, 1, 2, 3],
-        },
-        ".test.ComplexType",
-    );
+    let value = to_json(&ComplexType {
+        string_map: HashMap::from([
+            (
+                "1".to_owned(),
+                Scalars {
+                    double: 1.1,
+                    float: 2.2,
+                    int32: 3,
+                    ..Default::default()
+                },
+            ),
+            (
+                "2".to_owned(),
+                Scalars {
+                    int64: 4,
+                    uint32: 5,
+                    uint64: 6,
+                    ..Default::default()
+                },
+            ),
+        ]),
+        int_map: HashMap::from([
+            (
+                3,
+                Scalars {
+                    sint32: 7,
+                    sint64: 8,
+                    fixed32: 9,
+                    ..Default::default()
+                },
+            ),
+            (
+                4,
+                Scalars {
+                    sint64: 8,
+                    fixed32: 9,
+                    fixed64: 10,
+                    ..Default::default()
+                },
+            ),
+        ]),
+        nested: Some(Scalars {
+            sfixed32: 11,
+            sfixed64: 12,
+            r#bool: true,
+            string: "5".to_owned(),
+            bytes: b"6".to_vec(),
+            ..Default::default()
+        }),
+        my_enum: vec![0, 1, 2, 3],
+    });
 
     assert_eq!(
         value,
@@ -228,59 +210,56 @@ fn serialize_complex_type() {
 
 #[test]
 fn serialize_well_known_types() {
-    let value = to_json(
-        &WellKnownTypes {
-            timestamp: Some(prost_types::Timestamp {
-                seconds: 63_108_020,
-                nanos: 21_000_000,
-            }),
-            duration: Some(prost_types::Duration {
-                seconds: 1,
-                nanos: 340_012,
-            }),
-            r#struct: Some(prost_types::Struct {
-                fields: BTreeMap::from([
-                    (
-                        "number".to_owned(),
-                        prost_types::Value {
-                            kind: Some(prost_types::value::Kind::NumberValue(42.)),
-                        },
-                    ),
-                    (
-                        "null".to_owned(),
-                        prost_types::Value {
-                            kind: Some(prost_types::value::Kind::NullValue(0)),
-                        },
-                    ),
-                ]),
-            }),
-            float: Some(42.1),
-            double: Some(12.4),
-            int32: Some(1),
-            int64: Some(-2),
-            uint32: Some(3),
-            uint64: Some(4),
-            bool: Some(false),
-            string: Some("hello".to_owned()),
-            bytes: Some(b"hello".to_vec()),
-            mask: Some(prost_types::FieldMask {
-                paths: vec!["field_one".to_owned(), "field_two.b.d".to_owned()],
-            }),
-            list: Some(prost_types::ListValue {
-                values: vec![
+    let value = to_json(&WellKnownTypes {
+        timestamp: Some(prost_types::Timestamp {
+            seconds: 63_108_020,
+            nanos: 21_000_000,
+        }),
+        duration: Some(prost_types::Duration {
+            seconds: 1,
+            nanos: 340_012,
+        }),
+        r#struct: Some(prost_types::Struct {
+            fields: BTreeMap::from([
+                (
+                    "number".to_owned(),
                     prost_types::Value {
-                        kind: Some(prost_types::value::Kind::StringValue("foo".to_owned())),
+                        kind: Some(prost_types::value::Kind::NumberValue(42.)),
                     },
+                ),
+                (
+                    "null".to_owned(),
                     prost_types::Value {
-                        kind: Some(prost_types::value::Kind::BoolValue(false)),
+                        kind: Some(prost_types::value::Kind::NullValue(0)),
                     },
-                ],
-            }),
-            null: 0,
-            empty: Some(()),
-        },
-        ".test.WellKnownTypes",
-    );
+                ),
+            ]),
+        }),
+        float: Some(42.1),
+        double: Some(12.4),
+        int32: Some(1),
+        int64: Some(-2),
+        uint32: Some(3),
+        uint64: Some(4),
+        bool: Some(false),
+        string: Some("hello".to_owned()),
+        bytes: Some(b"hello".to_vec()),
+        mask: Some(prost_types::FieldMask {
+            paths: vec!["field_one".to_owned(), "field_two.b.d".to_owned()],
+        }),
+        list: Some(prost_types::ListValue {
+            values: vec![
+                prost_types::Value {
+                    kind: Some(prost_types::value::Kind::StringValue("foo".to_owned())),
+                },
+                prost_types::Value {
+                    kind: Some(prost_types::value::Kind::BoolValue(false)),
+                },
+            ],
+        }),
+        null: 0,
+        empty: Some(()),
+    });
 
     assert_eq!(
         value,
@@ -323,7 +302,6 @@ fn serialize_no_stringify_64_bit_integers() {
             sfixed64: -12,
             ..Default::default()
         },
-        ".test.Scalars",
         &SerializeOptions::new().stringify_64_bit_integers(false),
     );
 
@@ -351,7 +329,6 @@ fn serialize_use_proto_field_name() {
             my_enum: vec![0, 1, 2, 3],
             ..Default::default()
         },
-        ".test.ComplexType",
         &SerializeOptions::new().use_proto_field_name(true),
     );
 
@@ -370,7 +347,6 @@ fn serialize_use_enum_numbers() {
             my_enum: vec![0, 1, 2, 3],
             ..Default::default()
         },
-        ".test.ComplexType",
         &SerializeOptions::new().use_enum_numbers(true),
     );
 
@@ -396,7 +372,6 @@ fn serialize_emit_unpopulated_fields() {
             nested: None,
             my_enum: vec![],
         },
-        ".test.ComplexType",
         &SerializeOptions::new().emit_unpopulated_fields(true),
     );
 
@@ -449,7 +424,7 @@ fn deserialize_scalars() {
             "string": "5",
             "bytes": "aaa+bbb/WA==",
         }),
-        ".test.Scalars",
+        "test.Scalars",
     );
 
     assert_eq!(
@@ -481,21 +456,21 @@ fn deserialize_scalars_float_extrema() {
             "double": "Infinity",
             "float": "Infinity",
         }),
-        ".test.Scalars",
+        "test.Scalars",
     );
     let neg_inf: Scalars = from_json(
         json!({
             "double": "-Infinity",
             "float": "-Infinity",
         }),
-        ".test.Scalars",
+        "test.Scalars",
     );
     let nan: Scalars = from_json(
         json!({
             "double": "NaN",
             "float": "NaN",
         }),
-        ".test.Scalars",
+        "test.Scalars",
     );
 
     assert_eq!(
@@ -520,7 +495,7 @@ fn deserialize_scalars_float_extrema() {
 
 #[test]
 fn deserialize_scalars_empty() {
-    let value: Scalars = from_json(json!({}), ".test.Scalars");
+    let value: Scalars = from_json(json!({}), "test.Scalars");
 
     assert_eq!(value, Scalars::default());
 }
@@ -532,7 +507,7 @@ fn deserialize_deny_unknown_fields() {
         json!({
             "unknown_field": 123,
         }),
-        ".test.Scalars",
+        "test.Scalars",
         &DeserializeOptions::new(),
     );
 }
@@ -543,7 +518,7 @@ fn deserialize_allow_unknown_fields() {
         json!({
             "unknown_field": 123,
         }),
-        ".test.Scalars",
+        "test.Scalars",
         &DeserializeOptions::new().deny_unknown_fields(false),
     );
 
@@ -570,7 +545,7 @@ fn deserialize_scalars_null() {
             "string": null,
             "bytes": null,
         }),
-        ".test.Scalars",
+        "test.Scalars",
     );
 
     assert_eq!(value, Scalars::default());
@@ -596,7 +571,7 @@ fn deserialize_scalars_alt() {
             "string": "5",
             "bytes": "aaa-bbb_WA==",
         }),
-        ".test.Scalars",
+        "test.Scalars",
     );
 
     assert_eq!(
@@ -824,14 +799,13 @@ proptest! {
 
     #[test]
     fn roundtrip_arb_scalars(message: Scalars) {
-        roundtrip_json(&message, ".test.Scalars")?;
+        roundtrip_json(&message)?;
     }
 
     #[test]
     fn roundtrip_arb_scalars_options(message: Scalars) {
         roundtrip_json_with_options(
             &message,
-            ".test.Scalars",
             &SerializeOptions::new()
                 .stringify_64_bit_integers(false)
                 .use_enum_numbers(true)
@@ -844,14 +818,13 @@ proptest! {
 
     #[test]
     fn roundtrip_arb_scalar_arrays(message: ScalarArrays) {
-        roundtrip_json(&message, ".test.ScalarArrays")?;
+        roundtrip_json(&message)?;
     }
 
     #[test]
     fn roundtrip_arb_scalar_arrays_options(message: ScalarArrays) {
         roundtrip_json_with_options(
             &message,
-            ".test.ScalarArrays",
             &SerializeOptions::new()
                 .stringify_64_bit_integers(false)
                 .use_enum_numbers(true)
@@ -864,14 +837,13 @@ proptest! {
 
     #[test]
     fn roundtrip_arb_complex_type(message: ComplexType) {
-        roundtrip_json(&message, ".test.ComplexType")?;
+        roundtrip_json(&message)?;
     }
 
     #[test]
     fn roundtrip_arb_complex_type_options(message: ComplexType) {
         roundtrip_json_with_options(
             &message,
-            ".test.ComplexType",
             &SerializeOptions::new()
                 .stringify_64_bit_integers(false)
                 .use_enum_numbers(true)
@@ -884,14 +856,13 @@ proptest! {
 
     #[test]
     fn roundtrip_arb_well_known_types(message: WellKnownTypes) {
-        roundtrip_json(&message, ".test.WellKnownTypes")?;
+        roundtrip_json(&message)?;
     }
 
     #[test]
     fn roundtrip_arb_well_known_types_options(message: WellKnownTypes) {
         roundtrip_json_with_options(
             &message,
-            ".test.WellKnownTypes",
             &SerializeOptions::new()
                 .stringify_64_bit_integers(false)
                 .use_enum_numbers(true)
@@ -903,22 +874,18 @@ proptest! {
     }
 }
 
-fn to_json<T>(message: &T, message_name: &str) -> serde_json::Value
+fn to_json<T>(message: &T) -> serde_json::Value
 where
-    T: PartialEq + Debug + Message + Default,
+    T: PartialEq + Debug + ReflectMessage + Default,
 {
-    to_json_with_options(message, message_name, &Default::default())
+    to_json_with_options(message, &Default::default())
 }
 
-fn to_json_with_options<T>(
-    message: &T,
-    message_name: &str,
-    options: &SerializeOptions,
-) -> serde_json::Value
+fn to_json_with_options<T>(message: &T, options: &SerializeOptions) -> serde_json::Value
 where
-    T: PartialEq + Debug + Message + Default,
+    T: PartialEq + Debug + ReflectMessage + Default,
 {
-    to_dynamic(message, message_name)
+    to_dynamic(message)
         .serialize_with_options(serde_json::value::Serializer, options)
         .unwrap()
 }
@@ -939,7 +906,7 @@ where
     T: PartialEq + Debug + Message + Default,
 {
     DynamicMessage::deserialize_with_options(
-        TEST_FILE_DESCRIPTOR
+        test_file_descriptor()
             .get_message_by_name(message_name)
             .unwrap(),
         json,
@@ -950,29 +917,24 @@ where
     .unwrap()
 }
 
-fn roundtrip_json<T>(message: &T, message_name: &str) -> Result<(), TestCaseError>
+fn roundtrip_json<T>(message: &T) -> Result<(), TestCaseError>
 where
-    T: PartialEq + Debug + Message + Default,
+    T: PartialEq + Debug + ReflectMessage + Default,
 {
-    roundtrip_json_with_options(
-        message,
-        message_name,
-        &Default::default(),
-        &Default::default(),
-    )
+    roundtrip_json_with_options(message, &Default::default(), &Default::default())
 }
 
 fn roundtrip_json_with_options<T>(
     message: &T,
-    message_name: &str,
     ser_options: &SerializeOptions,
     de_options: &DeserializeOptions,
 ) -> Result<(), TestCaseError>
 where
-    T: PartialEq + Debug + Message + Default,
+    T: PartialEq + Debug + ReflectMessage + Default,
 {
-    let json = to_json_with_options(message, message_name, ser_options);
-    let roundtripped_message = from_json_with_options(json, message_name, de_options);
+    let json = to_json_with_options(message, ser_options);
+    let roundtripped_message =
+        from_json_with_options(json, message.descriptor().full_name(), de_options);
     prop_assert_eq!(message, &roundtripped_message);
     Ok(())
 }

@@ -4,7 +4,7 @@ use prost_reflect::ReflectMessage;
 #[derive(Message, ReflectMessage)]
 #[prost_reflect(
     file_descriptor_set_path = "file_descriptor_set.bin",
-    message_name = "package.MyMessage"
+    package_name = "package"
 )]
 pub struct MyMessage {}
 
