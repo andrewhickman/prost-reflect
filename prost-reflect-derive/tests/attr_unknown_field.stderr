@@ -1,0 +1,5 @@
+error: unknown argument (expected 'file_descriptor_path' or 'message_name')
+ --> tests/attr_unknown_field.rs:4:17
+  |
+4 | #[prost_reflect(foo = 123)]
+  |                 ^^^

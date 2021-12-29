@@ -1,0 +1,5 @@
+error: cannot derive ReflectMessage for enum
+ --> tests/enum.rs:5:5
+  |
+5 | pub enum MyMessage {}
+  |     ^^^^
