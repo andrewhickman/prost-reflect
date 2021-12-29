@@ -93,7 +93,7 @@ use prost_build::Config;
 
 Config::new()
     .file_descriptor_set_path("file_descriptor_set.bin")
-    .type_attribute("package", "#[prost_reflect(file_descriptor = \"FILE_DESCRIPTOR\", package_name = \"package\")]")
+    .type_attribute("package", "#[prost_reflect(file_descriptor = \"FILE_DESCRIPTOR\", message_name = \"package.MyMessage\")]")
     .compile_protos(&["src/package.proto"], &["src"])
     .unwrap();
 ```

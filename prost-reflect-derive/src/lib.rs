@@ -23,7 +23,6 @@ pub fn reflect_message(input: TokenStream) -> TokenStream {
 struct Args {
     args_span: Span,
     message_name: Option<syn::Lit>,
-    package_name: Option<syn::Lit>,
     file_descriptor: Option<syn::Lit>,
 }
 
@@ -38,7 +37,7 @@ fn reflect_message_impl(input: syn::DeriveInput) -> Result<proc_macro2::TokenStr
 
     let name = &input.ident;
     let file_descriptor_set = args.file_descriptor()?;
-    let message_name = args.message_name(name)?;
+    let message_name = args.message_name()?;
 
     Ok(quote! {
         impl ::prost_reflect::ReflectMessage for #name {
@@ -85,7 +84,6 @@ impl Args {
         let mut args = Args {
             args_span: span.unwrap_or_else(Span::call_site),
             file_descriptor: None,
-            package_name: None,
             message_name: None,
         };
         for item in nested {
@@ -93,8 +91,6 @@ impl Args {
                 syn::NestedMeta::Meta(syn::Meta::NameValue(value)) => {
                     if value.path.is_ident("file_descriptor") {
                         args.file_descriptor = Some(value.lit);
-                    } else if value.path.is_ident("package_name") {
-                        args.package_name = Some(value.lit);
                     } else if value.path.is_ident("message_name") {
                         args.message_name = Some(value.lit);
                     } else {
@@ -129,24 +125,9 @@ impl Args {
         }
     }
 
-    fn message_name(
-        &self,
-        struct_name: &syn::Ident,
-    ) -> Result<proc_macro2::TokenStream, syn::Error> {
+    fn message_name(&self) -> Result<proc_macro2::TokenStream, syn::Error> {
         if let Some(message_name) = &self.message_name {
             Ok(message_name.to_token_stream())
-        } else if let Some(package_name) = &self.package_name {
-            match package_name {
-                syn::Lit::Str(package_name) => Ok(syn::LitStr::new(
-                    &format!("{}.{}", package_name.value(), struct_name),
-                    self.args_span,
-                )
-                .to_token_stream()),
-                _ => Err(syn::Error::new(
-                    self.args_span,
-                    "'package_name' must be a string literal",
-                )),
-            }
         } else {
             Err(syn::Error::new(
                 self.args_span,

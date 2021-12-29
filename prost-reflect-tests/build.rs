@@ -9,8 +9,24 @@ fn main() -> io::Result<()> {
         .type_attribute(".test", "#[derive(::proptest_derive::Arbitrary)]")
         .type_attribute(".test", "#[derive(::prost_reflect::ReflectMessage)]")
         .type_attribute(
-            ".test",
-            "#[prost_reflect(file_descriptor = \"TEST_FILE_DESCRIPTOR\", package_name = \"test\")]",
+            ".test.Scalars",
+            "#[prost_reflect(file_descriptor = \"TEST_FILE_DESCRIPTOR\", message_name = \"test.Scalars\")]",
+        )
+        .type_attribute(
+            ".test.ScalarArrays",
+            "#[prost_reflect(file_descriptor = \"TEST_FILE_DESCRIPTOR\", message_name = \"test.ScalarArrays\")]",
+        )
+        .type_attribute(
+            ".test.ComplexType",
+            "#[prost_reflect(file_descriptor = \"TEST_FILE_DESCRIPTOR\", message_name = \"test.ComplexType\")]",
+        )
+        .type_attribute(
+            ".test.WellKnownTypes",
+            "#[prost_reflect(file_descriptor = \"TEST_FILE_DESCRIPTOR\", message_name = \"test.WellKnownTypes\")]",
+        )
+        .type_attribute(
+            ".test.MessageWithOneof",
+            "#[prost_reflect(file_descriptor = \"TEST_FILE_DESCRIPTOR\", message_name = \"test.MessageWithOneof\")]",
         )
         .field_attribute(
             ".test.WellKnownTypes.timestamp",
