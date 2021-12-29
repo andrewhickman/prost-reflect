@@ -83,3 +83,8 @@ message MessageWithOneof {
     int32 oneof_field_2 = 2;
   }
 }
+
+message Point {
+  int32 latitude = 1;
+  int32 longitude = 2;
+}

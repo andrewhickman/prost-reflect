@@ -8,7 +8,9 @@ use prost::Message;
 use prost_reflect::{DeserializeOptions, DynamicMessage, ReflectMessage, SerializeOptions};
 use serde_json::json;
 
-use crate::{test_file_descriptor, to_dynamic, ComplexType, ScalarArrays, Scalars, WellKnownTypes};
+use crate::{
+    test_file_descriptor, to_dynamic, ComplexType, Point, ScalarArrays, Scalars, WellKnownTypes,
+};
 
 #[test]
 fn serialize_scalars() {
@@ -401,6 +403,26 @@ fn serialize_emit_unpopulated_fields() {
             "nested": null,
             "myEnum": [],
         })
+    );
+}
+
+#[test]
+fn serialize_string_emit_unpopulated_fields() {
+    let value = Point::default();
+    let mut dynamic = DynamicMessage::new(value.descriptor());
+    dynamic.transcode_from(&value).unwrap();
+    let mut s = serde_json::Serializer::new(vec![]);
+
+    dynamic
+        .serialize_with_options(
+            &mut s,
+            &SerializeOptions::new().emit_unpopulated_fields(true),
+        )
+        .unwrap();
+
+    assert_eq!(
+        String::from_utf8(s.into_inner()).unwrap(),
+        "{\"latitude\":0,\"longitude\":0}"
     );
 }
 

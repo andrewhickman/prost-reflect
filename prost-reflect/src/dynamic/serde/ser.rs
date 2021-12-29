@@ -89,12 +89,15 @@ impl<'a> Serialize for SerializeWrapper<'a, DynamicMessage> {
             _ => (),
         };
 
-        let len = self
-            .value
-            .fields
-            .values()
-            .filter(|v| v.is_populated())
-            .count();
+        let len = if self.options.emit_unpopulated_fields {
+            self.value.fields.len()
+        } else {
+            self.value
+                .fields
+                .values()
+                .filter(|v| v.is_populated())
+                .count()
+        };
         let mut map = serializer.serialize_map(Some(len))?;
         for field in self.value.fields.values() {
             if field.is_populated() || self.options.emit_unpopulated_fields {

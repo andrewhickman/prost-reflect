@@ -91,7 +91,7 @@ impl FileDescriptor {
         })
     }
 
-    /// Gets a reference the [`FileDescriptorSet`] wrapped by this [`FileDescriptor`].
+    /// Gets a reference to the [`FileDescriptorSet`] wrapped by this [`FileDescriptor`].
     pub fn file_descriptor_set(&self) -> &FileDescriptorSet {
         &self.inner.raw
     }

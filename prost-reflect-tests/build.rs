@@ -28,6 +28,10 @@ fn main() -> io::Result<()> {
             ".test.MessageWithOneof",
             "#[prost_reflect(file_descriptor = \"TEST_FILE_DESCRIPTOR\", message_name = \"test.MessageWithOneof\")]",
         )
+        .type_attribute(
+            ".test.Point",
+            "#[prost_reflect(file_descriptor = \"TEST_FILE_DESCRIPTOR\", message_name = \"test.Point\")]",
+        )
         .field_attribute(
             ".test.WellKnownTypes.timestamp",
             "#[proptest(strategy = \"::proptest::option::of(crate::arbitrary::timestamp())\")]",
