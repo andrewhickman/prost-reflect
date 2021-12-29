@@ -62,34 +62,33 @@ impl Args {
             .filter(|attr| is_prost_reflect_attribute(attr))
             .collect();
 
-        match reflect_attrs.len() {
-            0 => {
-                return Err(syn::Error::new(
-                    input_span,
-                    "missing #[prost_reflect] attribute",
-                ))
-            }
-            1 => (),
-            _ => {
-                return Err(syn::Error::new(
-                    reflect_attrs[1].span(),
-                    "multiple #[prost_reflect] attributes",
-                ))
-            }
-        };
+        if reflect_attrs.is_empty() {
+            return Err(syn::Error::new(
+                input_span,
+                "missing #[prost_reflect] attribute",
+            ));
+        }
 
-        let meta = match reflect_attrs[0].parse_meta()? {
-            syn::Meta::List(list) => list,
-            meta => return Err(syn::Error::new(meta.span(), "expected list of attributes")),
-        };
+        let mut span: Option<Span> = None;
+        let mut nested = Vec::new();
+        for attr in reflect_attrs {
+            span = match span {
+                Some(span) => span.join(attr.span()),
+                None => Some(attr.span()),
+            };
+            match attr.parse_meta()? {
+                syn::Meta::List(list) => nested.extend(list.nested),
+                meta => return Err(syn::Error::new(meta.span(), "expected list of attributes")),
+            }
+        }
 
         let mut args = Args {
-            args_span: meta.span(),
+            args_span: span.unwrap_or_else(Span::call_site),
             file_descriptor: None,
             package_name: None,
             message_name: None,
         };
-        for item in meta.nested {
+        for item in nested {
             match item {
                 syn::NestedMeta::Meta(syn::Meta::NameValue(value)) => {
                     if value.path.is_ident("file_descriptor") {
