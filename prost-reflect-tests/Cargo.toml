@@ -23,3 +23,6 @@ serde = "1.0.132"
 [build-dependencies]
 prost-build = "0.9.0"
 prost-reflect = { path = "../prost-reflect" }
+
+[dependencies]
+once_cell = "1.9.0"

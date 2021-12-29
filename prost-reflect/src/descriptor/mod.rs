@@ -60,7 +60,7 @@ impl FileDescriptor {
 
     /// Decodes a [`FileDescriptorSet`] from its protobuf byte representation and
     /// creates a new [`FileDescriptor`] wrapping it.
-    pub fn from_bytes<B>(bytes: B) -> Result<Self, DescriptorError>
+    pub fn decode<B>(bytes: B) -> Result<Self, DescriptorError>
     where
         B: Buf,
     {

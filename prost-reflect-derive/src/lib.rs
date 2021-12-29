@@ -17,7 +17,7 @@ struct Args {
     args_span: Span,
     message_name: Option<syn::Lit>,
     package_name: Option<syn::Lit>,
-    file_descriptor_set_path: Option<syn::Lit>,
+    file_descriptor: Option<syn::Lit>,
 }
 
 fn reflect_message_impl(input: syn::DeriveInput) -> Result<proc_macro2::TokenStream, syn::Error> {
@@ -30,14 +30,13 @@ fn reflect_message_impl(input: syn::DeriveInput) -> Result<proc_macro2::TokenStr
     let args = Args::parse(input.ident.span(), &input.attrs)?;
 
     let name = &input.ident;
-    let file_descriptor_set = args.file_descriptor_set()?;
+    let file_descriptor_set = args.file_descriptor()?;
     let message_name = args.message_name(name)?;
 
     Ok(quote! {
         impl ::prost_reflect::ReflectMessage for #name {
             fn descriptor(&self) -> ::prost_reflect::MessageDescriptor {
-                ::prost_reflect::FileDescriptor::new_cached(#file_descriptor_set)
-                    .expect("invalid file descriptor set")
+                #file_descriptor_set
                     .get_message_by_name(#message_name)
                     .expect("no message found")
             }
@@ -79,22 +78,22 @@ impl Args {
 
         let mut args = Args {
             args_span: meta.span(),
-            file_descriptor_set_path: None,
+            file_descriptor: None,
             package_name: None,
             message_name: None,
         };
         for item in meta.nested {
             match item {
                 syn::NestedMeta::Meta(syn::Meta::NameValue(value)) => {
-                    if value.path.is_ident("file_descriptor_set_path") {
-                        args.file_descriptor_set_path = Some(value.lit);
+                    if value.path.is_ident("file_descriptor") {
+                        args.file_descriptor = Some(value.lit);
                     } else if value.path.is_ident("package_name") {
                         args.package_name = Some(value.lit);
                     } else if value.path.is_ident("message_name") {
                         args.message_name = Some(value.lit);
                     } else {
                         return Err(syn::Error::new(value.span(),
-                        "unknown argument (expected 'file_descriptor_set_path', 'package_name' or 'message_name')"));
+                        "unknown argument (expected 'file_descriptor', 'package_name' or 'message_name')"));
                     }
                 }
                 _ => return Err(syn::Error::new(item.span(), "unexpected attribute")),
@@ -104,13 +103,22 @@ impl Args {
         Ok(args)
     }
 
-    fn file_descriptor_set(&self) -> Result<proc_macro2::TokenStream, syn::Error> {
-        if let Some(file_descriptor_set_path) = &self.file_descriptor_set_path {
-            Ok(quote!(include_bytes!(#file_descriptor_set_path)))
+    fn file_descriptor(&self) -> Result<proc_macro2::TokenStream, syn::Error> {
+        if let Some(file_descriptor_set) = &self.file_descriptor {
+            match file_descriptor_set {
+                syn::Lit::Str(expr_str) => {
+                    let expr: syn::Expr = syn::parse_str(&expr_str.value())?;
+                    Ok(expr.to_token_stream())
+                }
+                _ => Err(syn::Error::new(
+                    self.args_span,
+                    "'file_descriptor_set' must be a string literal",
+                )),
+            }
         } else {
             Err(syn::Error::new(
                 self.args_span,
-                "missing 'file_descriptor_set_path' argument",
+                "missing 'file_descriptor' argument",
             ))
         }
     }

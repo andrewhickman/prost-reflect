@@ -33,7 +33,7 @@ impl FileDescriptor {
         // The descriptor is not in the hashmap, build and add it.
         let mut cache = CACHE.write().unwrap();
 
-        let desc = FileDescriptor::from_bytes(bytes)?;
+        let desc = FileDescriptor::decode(bytes)?;
         cache.insert(bytes.as_ptr() as usize, (bytes, desc.clone()));
         Ok(desc)
     }

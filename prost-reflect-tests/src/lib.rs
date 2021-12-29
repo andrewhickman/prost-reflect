@@ -8,6 +8,7 @@ use std::{
     fmt::Debug,
 };
 
+use once_cell::sync::Lazy;
 use proptest::{prelude::*, test_runner::TestCaseError};
 use prost::{bytes::Bytes, Message};
 use prost_reflect::{DynamicMessage, FileDescriptor, MapKey, ReflectMessage, Value};
@@ -17,8 +18,11 @@ include!(concat!(env!("OUT_DIR"), "/test.rs"));
 const FILE_DESCRIPTOR_SET_BYTES: &[u8] =
     include_bytes!(concat!(env!("OUT_DIR"), "/file_descriptor_set.bin"));
 
+static TEST_FILE_DESCRIPTOR: Lazy<FileDescriptor> =
+    Lazy::new(|| FileDescriptor::decode(FILE_DESCRIPTOR_SET_BYTES).unwrap());
+
 fn test_file_descriptor() -> FileDescriptor {
-    FileDescriptor::new_cached(FILE_DESCRIPTOR_SET_BYTES).unwrap()
+    TEST_FILE_DESCRIPTOR.clone()
 }
 
 #[test]

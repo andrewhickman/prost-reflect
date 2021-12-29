@@ -1,4 +1,4 @@
-use std::{ascii, env, fmt::Write, io, path::PathBuf};
+use std::{env, io, path::PathBuf};
 
 fn main() -> io::Result<()> {
     let file_descriptor_set_path =
@@ -10,10 +10,7 @@ fn main() -> io::Result<()> {
         .type_attribute(".test", "#[derive(::prost_reflect::ReflectMessage)]")
         .type_attribute(
             ".test",
-            &format!(
-                "#[prost_reflect(file_descriptor_set_path = \"{}\", package_name = \"test\")]",
-                escape_str(file_descriptor_set_path.to_str().unwrap())
-            ),
+            "#[prost_reflect(file_descriptor = \"TEST_FILE_DESCRIPTOR\", package_name = \"test\")]",
         )
         .field_attribute(
             ".test.WellKnownTypes.timestamp",
@@ -51,12 +48,4 @@ fn main() -> io::Result<()> {
             &["src/"],
         )?;
     Ok(())
-}
-
-fn escape_str(s: &str) -> String {
-    let mut result = String::new();
-    for ch in s.bytes() {
-        write!(result, "{}", ascii::escape_default(ch)).unwrap();
-    }
-    result
 }
