@@ -8,9 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.2] - 2021-12-29
+
 ### Added
 
 - Builder methods on `SerializeOptions` and `DeserializeOptions` are now `const`.
+
+### Fixed
+
+- Fixed a case where serialization could produce invalid JSON.
 
 ## [0.3.1] - 2021-12-29
 
@@ -43,7 +49,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial release, including support for inspecting message types at runtime.
 
-[unreleased]: https://github.com/andrewhickman/prost-reflect/compare/0.3.1...HEAD
+[unreleased]: https://github.com/andrewhickman/prost-reflect/compare/0.3.2...HEAD
+[0.3.2]: https://github.com/andrewhickman/prost-reflect/compare/0.3.2...0.3.2
 [0.3.1]: https://github.com/andrewhickman/prost-reflect/compare/0.3.0...0.3.1
 [0.3.0]: https://github.com/andrewhickman/prost-reflect/compare/0.2.0...0.3.0
 [0.2.0]: https://github.com/andrewhickman/prost-reflect/compare/0.1.0...0.2.0
