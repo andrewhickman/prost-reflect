@@ -44,7 +44,7 @@ fn reflect_message_impl(input: syn::DeriveInput) -> Result<proc_macro2::TokenStr
     Ok(quote! {
         impl ::prost_reflect::ReflectMessage for #name {
             fn descriptor(&self) -> ::prost_reflect::MessageDescriptor {
-                ::prost_reflect::FileDescriptor::get_cached(include_bytes!(#file_descriptor_path))
+                ::prost_reflect::FileDescriptor::new_cached(include_bytes!(#file_descriptor_path))
                     .expect("invalid file descriptor set")
                     .get_message_by_name(#message_name)
                     .expect("no message found")

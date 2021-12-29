@@ -73,3 +73,6 @@ pub use self::reflect::ReflectMessage;
 
 #[cfg(feature = "serde")]
 pub use self::dynamic::{DeserializeOptions, SerializeOptions};
+
+#[cfg(feature = "derive")]
+pub use prost_reflect_derive::ReflectMessage;

@@ -1,5 +1,5 @@
 error: multiple #[prost_reflect] attributes
  --> tests/duplicate_attr.rs:5:1
   |
-5 | #[prost_reflect(file_descriptor_path = b"123", message_name = "msg")]
+5 | #[prost_reflect(file_descriptor_path = "file_descriptor_set.bin", message_name = "msg")]
   | ^

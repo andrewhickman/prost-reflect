@@ -12,6 +12,7 @@ readme = "../README.md"
 edition = "2018"
 rust-version = "1.53.0"
 autotests = false
+exclude = ["tests"]
 
 [lib]
 proc-macro = true
@@ -27,5 +28,5 @@ syn = "1.0.84"
 
 [dev-dependencies]
 prost = "0.9.0"
-prost-reflect = { path = "../prost-reflect", features = ["serde"] }
+prost-reflect = { path = "../prost-reflect", features = ["derive"] }
 trybuild = "1.0.53"
