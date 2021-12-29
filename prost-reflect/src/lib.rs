@@ -38,12 +38,10 @@ defined for protobuf messages.
 
 ```
 use prost::Message;
-use prost_types::FileDescriptorSet;
 use prost_reflect::{DynamicMessage, FileDescriptor, Value};
 use serde_json::de::Deserializer;
 
-let file_descriptor_set = FileDescriptorSet::decode(include_bytes!("file_descriptor_set.bin").as_ref()).unwrap();
-let file_descriptor = FileDescriptor::new(file_descriptor_set).unwrap();
+let file_descriptor = FileDescriptor::decode(include_bytes!("file_descriptor_set.bin").as_ref()).unwrap();
 let message_descriptor = file_descriptor.get_message_by_name("package.MyMessage").unwrap();
 
 let json = r#"{ "foo": 150 }"#;
@@ -52,6 +50,52 @@ let dynamic_message = DynamicMessage::deserialize(message_descriptor, &mut deser
 deserializer.end().unwrap();
 
 assert_eq!(dynamic_message.get_field_by_name("foo").unwrap().as_ref(), &Value::I32(150));
+```
+"##
+)]
+#![cfg_attr(
+    feature = "derive",
+    doc = r##"
+# Deriving [`ReflectMessage`]
+
+The [`ReflectMessage`] trait provides a `.descriptor()` method to get type information for a message.
+
+When the `derive` feature is enabled, it can be derived for [`Message`][prost::Message] implementations. The
+derive macro takes the following parameters:
+
+| Name            | Value |
+|-----------------|-------|
+| file_descriptor | An expression that resolves to a [`FileDescriptor`] containing the message type. The descriptor should be cached to avoid re-building it. |
+| message_name    | The name of the message, used to look it up within [`FileDescriptor`]. This may be omitted if `package_name` is provided |
+| package_name    | The name of the package the message is defined in. This is required if `message_name` is omitted, in which case the message name will be built from the package and the name of the struct.
+
+```
+use prost::Message;
+use prost_reflect::{FileDescriptor, ReflectMessage};
+use once_cell::sync::Lazy;
+
+static FILE_DESCRIPTOR: Lazy<FileDescriptor> 
+    = Lazy::new(|| FileDescriptor::decode(include_bytes!("file_descriptor_set.bin").as_ref()).unwrap());
+
+#[derive(Message, ReflectMessage)]
+#[prost_reflect(file_descriptor = "FILE_DESCRIPTOR", message_name = "package.MyMessage")]
+pub struct MyMessage {}
+
+let message = MyMessage {};
+assert_eq!(message.descriptor().full_name(), "package.MyMessage");
+```
+
+If you are using `prost-build`, it can be configured to generate [`ReflectMessage`] implementations
+for a package:
+
+```rust,no_run
+use prost_build::Config;
+
+Config::new()
+    .file_descriptor_set_path("file_descriptor_set.bin")
+    .type_attribute("package", "#[prost_reflect(file_descriptor = \"FILE_DESCRIPTOR\", package_name = \"package\")]")
+    .compile_protos(&["src/package.proto"], &["src"])
+    .unwrap();
 ```
 "##
 )]
