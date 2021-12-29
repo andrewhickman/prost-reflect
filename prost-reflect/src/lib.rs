@@ -66,7 +66,7 @@ derive macro takes the following parameters:
 | Name            | Value |
 |-----------------|-------|
 | file_descriptor | An expression that resolves to a [`FileDescriptor`] containing the message type. The descriptor should be cached to avoid re-building it. |
-| message_name    | The full name of the message, used to look it up within [`FileDescriptor`]. This may be omitted if `package_name` is provided |
+| message_name    | The full name of the message, used to look it up within [`FileDescriptor`]. |
 
 ```
 use prost::Message;

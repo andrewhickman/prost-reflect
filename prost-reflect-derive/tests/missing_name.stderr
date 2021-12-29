@@ -1,4 +1,4 @@
-error: at least one of the 'message_name' or 'package_name' arguments is required
+error: missing required argument 'message_name'
  --> tests/missing_name.rs:4:1
   |
 4 | #[prost_reflect(file_descriptor = "FILE_DESCRIPTOR")]

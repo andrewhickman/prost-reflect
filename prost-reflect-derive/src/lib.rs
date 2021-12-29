@@ -94,8 +94,10 @@ impl Args {
                     } else if value.path.is_ident("message_name") {
                         args.message_name = Some(value.lit);
                     } else {
-                        return Err(syn::Error::new(value.span(),
-                        "unknown argument (expected 'file_descriptor', 'package_name' or 'message_name')"));
+                        return Err(syn::Error::new(
+                            value.span(),
+                            "unknown argument (expected 'file_descriptor' or 'message_name')",
+                        ));
                     }
                 }
                 _ => return Err(syn::Error::new(item.span(), "unexpected attribute")),
@@ -120,7 +122,7 @@ impl Args {
         } else {
             Err(syn::Error::new(
                 self.args_span,
-                "missing 'file_descriptor' argument",
+                "missing required argument 'file_descriptor'",
             ))
         }
     }
@@ -131,7 +133,7 @@ impl Args {
         } else {
             Err(syn::Error::new(
                 self.args_span,
-                "at least one of the 'message_name' or 'package_name' arguments is required",
+                "missing required argument 'message_name'",
             ))
         }
     }
