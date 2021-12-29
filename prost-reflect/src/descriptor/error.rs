@@ -8,6 +8,9 @@ pub struct DescriptorError {
 
 #[derive(Debug)]
 enum DescriptorErrorKind {
+    DecodeFileDescriptorSet {
+        err: prost::DecodeError,
+    },
     TypeNotFound {
         name: String,
     },
@@ -33,6 +36,12 @@ enum DescriptorErrorKind {
 }
 
 impl DescriptorError {
+    pub(super) fn decode_file_descriptor_set(err: prost::DecodeError) -> Self {
+        DescriptorError {
+            kind: DescriptorErrorKind::DecodeFileDescriptorSet { err },
+        }
+    }
+
     pub(super) fn type_not_found(name: impl ToString) -> Self {
         DescriptorError {
             kind: DescriptorErrorKind::TypeNotFound {
@@ -95,11 +104,21 @@ impl DescriptorError {
     }
 }
 
-impl std::error::Error for DescriptorError {}
+impl std::error::Error for DescriptorError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match &self.kind {
+            DescriptorErrorKind::DecodeFileDescriptorSet { err } => Some(err),
+            _ => None,
+        }
+    }
+}
 
 impl fmt::Display for DescriptorError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.kind {
+            DescriptorErrorKind::DecodeFileDescriptorSet { .. } => {
+                write!(f, "failed to decode file descriptor set")
+            }
             DescriptorErrorKind::TypeNotFound { name } => {
                 write!(f, "the message or enum type '{}' was not found", name)
             }

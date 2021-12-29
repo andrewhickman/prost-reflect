@@ -1,3 +1,5 @@
+#[cfg(feature = "derive")]
+mod cache;
 mod error;
 mod service;
 mod ty;
@@ -13,6 +15,7 @@ pub use self::{
 
 use std::{fmt, sync::Arc};
 
+use prost::{bytes::Buf, Message};
 use prost_types::FileDescriptorSet;
 
 use self::service::ServiceDescriptorInner;
@@ -55,9 +58,16 @@ impl FileDescriptor {
         })
     }
 
-    /// Get a shared [`FileDescriptor`], cached on the byte input.
-    pub fn get_cached(_bytes: &[u8]) -> Result<Self, DescriptorError> {
-        todo!()
+    /// Decodes a [`FileDescriptorSet`] from its protobuf byte representation and
+    /// creates a new [`FileDescriptor`] wrapping it.
+    pub fn from_bytes<B>(bytes: B) -> Result<Self, DescriptorError>
+    where
+        B: Buf,
+    {
+        FileDescriptor::new(
+            FileDescriptorSet::decode(bytes)
+                .map_err(DescriptorError::decode_file_descriptor_set)?,
+        )
     }
 
     fn from_raw(raw: FileDescriptorSet) -> Result<FileDescriptorInner, DescriptorError> {
