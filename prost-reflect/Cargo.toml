@@ -14,7 +14,7 @@ rust-version = "1.53.0"
 exclude = ["src/file_descriptor_set.bin"]
 
 [features]
-derive = ["once_cell", "prost-reflect-derive"]
+derive = ["prost-reflect-derive"]
 serde = ["serde1", "base64", "chrono"]
 
 [dependencies]
@@ -22,7 +22,6 @@ base64 = { version = "0.13.0", optional = true }
 chrono = { version = "0.4.19", optional = true, default-features = false, features = [
     "std"
 ] }
-once_cell = { version = "1.9.0", optional = true }
 prost = "0.9.0"
 prost-reflect-derive = { path = '../prost-reflect-derive', optional = true }
 prost-types = "0.9.0"

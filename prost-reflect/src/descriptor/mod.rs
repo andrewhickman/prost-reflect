@@ -1,5 +1,3 @@
-#[cfg(feature = "derive")]
-mod cache;
 mod error;
 mod service;
 mod ty;
