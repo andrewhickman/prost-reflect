@@ -99,6 +99,7 @@ Config::new()
 ```
 "##
 )]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 #![warn(missing_debug_implementations, missing_docs)]
 
 #[cfg(feature = "serde1")]
@@ -119,4 +120,5 @@ pub use self::reflect::ReflectMessage;
 pub use self::dynamic::{DeserializeOptions, SerializeOptions};
 
 #[cfg(feature = "derive")]
+#[cfg_attr(docsrs, doc(cfg(feature = "derive")))]
 pub use prost_reflect_derive::ReflectMessage;

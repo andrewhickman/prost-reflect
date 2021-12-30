@@ -10,6 +10,7 @@ use crate::{DynamicMessage, MessageDescriptor};
 
 /// Options to control serialization of messages.
 #[derive(Debug, Clone)]
+#[cfg_attr(docsrs, doc(cfg(feature = "serde")))]
 pub struct SerializeOptions {
     stringify_64_bit_integers: bool,
     use_enum_numbers: bool,
@@ -19,14 +20,14 @@ pub struct SerializeOptions {
 
 /// Options to control deserialization of messages.
 #[derive(Debug, Clone)]
+#[cfg_attr(docsrs, doc(cfg(feature = "serde")))]
 pub struct DeserializeOptions {
     deny_unknown_fields: bool,
 }
 
+#[cfg_attr(docsrs, doc(cfg(feature = "serde")))]
 impl Serialize for DynamicMessage {
     /// Serialize this message into `serializer` using the [canonical JSON encoding](https://developers.google.com/protocol-buffers/docs/proto3#json).
-    ///
-    /// This method is only available if the `serde` feature is enabled.
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -35,9 +36,11 @@ impl Serialize for DynamicMessage {
     }
 }
 
+#[cfg_attr(docsrs, doc(cfg(feature = "serde")))]
 impl<'de> DeserializeSeed<'de> for MessageDescriptor {
     type Value = DynamicMessage;
 
+    /// Deserialize a [`DynamicMessage`] from `deserializer` using the [canonical JSON encoding](https://developers.google.com/protocol-buffers/docs/proto3#json).
     fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
     where
         D: Deserializer<'de>,
@@ -48,8 +51,7 @@ impl<'de> DeserializeSeed<'de> for MessageDescriptor {
 
 impl DynamicMessage {
     /// Serialize this message into `serializer` using the encoding specified by `options`.
-    ///
-    /// This method is only available if the `serde` feature is enabled.
+    #[cfg_attr(docsrs, doc(cfg(feature = "serde")))]
     pub fn serialize_with_options<S>(
         &self,
         serializer: S,
@@ -62,8 +64,7 @@ impl DynamicMessage {
     }
 
     /// Deserialize an instance of the message type described by `desc` from `deserializer`.
-    ///
-    /// This method is only available if the `serde` feature is enabled.
+    #[cfg_attr(docsrs, doc(cfg(feature = "serde")))]
     pub fn deserialize<'de, D>(desc: MessageDescriptor, deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
@@ -73,8 +74,7 @@ impl DynamicMessage {
 
     /// Deserialize an instance of the message type described by `desc` from `deserializer`, using
     /// the encoding specified by `options`.
-    ///
-    /// This method is only available if the `serde` feature is enabled.
+    #[cfg_attr(docsrs, doc(cfg(feature = "serde")))]
     pub fn deserialize_with_options<'de, D>(
         desc: MessageDescriptor,
         deserializer: D,
