@@ -1,0 +1,7 @@
+syntax = "proto3";
+
+import "google/protobuf/any.proto";
+
+message Dummy {
+  google.protobuf.Any dummy = 1;
+}

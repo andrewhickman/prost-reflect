@@ -813,6 +813,92 @@ fn deserialize_well_known_types() {
     );
 }
 
+#[test]
+fn serialize_any() {
+    let json = wkt_to_json(
+        &prost_types::Any {
+            type_url: "type.googleapis.com/test.Point".to_owned(),
+            value: Point {
+                longitude: 1,
+                latitude: 2,
+            }
+            .encode_to_vec(),
+        },
+        "google.protobuf.Any",
+    );
+
+    assert_eq!(
+        json,
+        json!({
+            "@type": "type.googleapis.com/test.Point",
+            "longitude": 1,
+            "latitude": 2,
+        })
+    );
+}
+
+#[test]
+fn serialize_any_wkt() {
+    let json = wkt_to_json(
+        &prost_types::Any {
+            type_url: "type.googleapis.com/google.protobuf.Int32Value".to_owned(),
+            value: 5i32.encode_to_vec(),
+        },
+        "google.protobuf.Any",
+    );
+
+    assert_eq!(
+        json,
+        json!({
+            "@type": "type.googleapis.com/google.protobuf.Int32Value",
+            "value": 5,
+        })
+    );
+}
+
+#[test]
+fn deserialize_any() {
+    let value: prost_types::Any = from_json(
+        json!({
+            "@type": "type.googleapis.com/test.Point",
+            "longitude": 1,
+            "latitude": 2,
+        }),
+        "google.protobuf.Any",
+    );
+
+    assert_eq!(
+        value,
+        prost_types::Any {
+            type_url: "type.googleapis.com/test.Point".to_owned(),
+            value: Point {
+                longitude: 1,
+                latitude: 2,
+            }
+            .encode_to_vec(),
+        }
+    );
+}
+
+#[test]
+fn deserialize_any_wkt() {
+    let value: prost_types::Any = from_json(
+        json!({
+            "@type": "type.googleapis.com/google.protobuf.Int32Value",
+            "value": 5,
+        }),
+        "google.protobuf.Any",
+    );
+
+    assert_eq!(
+        value,
+        prost_types::Any {
+            type_url: "type.googleapis.com/google.protobuf.Int32Value".to_owned(),
+            value: 5i32.encode_to_vec(),
+        }
+    );
+}
+
 proptest! {
     #![proptest_config(ProptestConfig {
         cases: 32,
@@ -910,6 +996,19 @@ where
     to_dynamic(message)
         .serialize_with_options(serde_json::value::Serializer, options)
         .unwrap()
+}
+
+fn wkt_to_json<T>(message: &T, message_name: &str) -> serde_json::Value
+where
+    T: Message,
+{
+    let mut dynamic_message = DynamicMessage::new(
+        test_file_descriptor()
+            .get_message_by_name(message_name)
+            .unwrap(),
+    );
+    dynamic_message.transcode_from(message).unwrap();
+    serde_json::to_value(&dynamic_message).unwrap()
 }
 
 fn from_json<T>(json: serde_json::Value, message_name: &str) -> T
