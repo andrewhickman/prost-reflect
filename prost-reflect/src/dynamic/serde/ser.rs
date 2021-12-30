@@ -2,7 +2,7 @@ use std::convert::TryFrom;
 
 use base64::display::Base64Display;
 use chrono::{TimeZone, Utc};
-use prost::DecodeError;
+use prost::{DecodeError, Message};
 use serde::ser::{Error, Serialize, SerializeMap, SerializeSeq, Serializer};
 
 use crate::{
@@ -36,88 +36,52 @@ impl<'a> Serialize for SerializeWrapper<'a, DynamicMessage> {
     where
         S: Serializer,
     {
-        // Special cases for well-known types
-        match self.value.descriptor().full_name() {
-            "google.protobuf.Timestamp" => {
-                return serialize_timestamp(self.value, serializer, self.options)
-            }
-            "google.protobuf.Duration" => {
-                return serialize_duration(self.value, serializer, self.options)
-            }
-            "google.protobuf.Struct" => {
-                return serialize_struct(self.value, serializer, self.options)
-            }
-            "google.protobuf.FloatValue" => {
-                return serialize_float(self.value, serializer, self.options)
-            }
-            "google.protobuf.DoubleValue" => {
-                return serialize_double(self.value, serializer, self.options)
-            }
-            "google.protobuf.Int32Value" => {
-                return serialize_int32(self.value, serializer, self.options)
-            }
-            "google.protobuf.Int64Value" => {
-                return serialize_int64(self.value, serializer, self.options)
-            }
-            "google.protobuf.UInt32Value" => {
-                return serialize_uint32(self.value, serializer, self.options)
-            }
-            "google.protobuf.UInt64Value" => {
-                return serialize_uint64(self.value, serializer, self.options)
-            }
-            "google.protobuf.BoolValue" => {
-                return serialize_bool(self.value, serializer, self.options)
-            }
-            "google.protobuf.StringValue" => {
-                return serialize_string(self.value, serializer, self.options)
-            }
-            "google.protobuf.BytesValue" => {
-                return serialize_bytes(self.value, serializer, self.options)
-            }
-            "google.protobuf.FieldMask" => {
-                return serialize_field_mask(self.value, serializer, self.options)
-            }
-            "google.protobuf.ListValue" => {
-                return serialize_list(self.value, serializer, self.options)
-            }
-            "google.protobuf.Value" => {
-                return serialize_value(self.value, serializer, self.options)
-            }
-            "google.protobuf.Empty" => {
-                return serialize_empty(self.value, serializer, self.options)
-            }
-            _ => (),
-        };
-
-        let len = if self.options.emit_unpopulated_fields {
-            self.value.fields.len()
+        let message_desc = self.value.descriptor();
+        if let Some(serialize) = get_well_known_type_serializer(message_desc.full_name()) {
+            serialize(self.value, serializer, self.options)
         } else {
-            self.value
-                .fields
-                .values()
-                .filter(|v| v.is_populated())
-                .count()
-        };
-        let mut map = serializer.serialize_map(Some(len))?;
-        for field in self.value.fields.values() {
-            if field.is_populated() || self.options.emit_unpopulated_fields {
-                let name = if self.options.use_proto_field_name {
-                    field.desc.name()
-                } else {
-                    field.desc.json_name()
-                };
-
-                map.serialize_entry(
-                    name,
-                    &SerializeWrapper {
-                        value: field,
-                        options: self.options,
-                    },
-                )?;
-            }
+            let mut map = serializer
+                .serialize_map(Some(count_dynamic_message_fields(self.value, self.options)))?;
+            serialize_dynamic_message_fields(&mut map, self.value, self.options)?;
+            map.end()
         }
-        map.end()
     }
+}
+
+fn count_dynamic_message_fields(value: &DynamicMessage, options: &SerializeOptions) -> usize {
+    if options.emit_unpopulated_fields {
+        value.fields.len()
+    } else {
+        value.fields.values().filter(|v| v.is_populated()).count()
+    }
+}
+
+fn serialize_dynamic_message_fields<S>(
+    map: &mut S,
+    value: &DynamicMessage,
+    options: &SerializeOptions,
+) -> Result<(), S::Error>
+where
+    S: SerializeMap,
+{
+    for field in value.fields.values() {
+        if field.is_populated() || options.emit_unpopulated_fields {
+            let name = if options.use_proto_field_name {
+                field.desc.name()
+            } else {
+                field.desc.json_name()
+            };
+
+            map.serialize_entry(
+                name,
+                &SerializeWrapper {
+                    value: field,
+                    options,
+                },
+            )?;
+        }
+    }
+    Ok(())
 }
 
 impl<'a> Serialize for SerializeWrapper<'a, DynamicMessageField> {
@@ -277,6 +241,85 @@ impl<'a> Serialize for SerializeWrapper<'a, MapKey> {
             MapKey::U64(value) => serializer.collect_str(value),
             MapKey::String(value) => serializer.serialize_str(value),
         }
+    }
+}
+
+#[allow(type_alias_bounds)]
+type WellKnownTypeSerializer<S: Serializer> =
+    fn(&DynamicMessage, S, &SerializeOptions) -> Result<S::Ok, S::Error>;
+
+fn get_well_known_type_serializer<S>(full_name: &str) -> Option<WellKnownTypeSerializer<S>>
+where
+    S: Serializer,
+{
+    match full_name {
+        "google.protobuf.Any" => Some(serialize_any),
+        "google.protobuf.Timestamp" => Some(serialize_timestamp),
+        "google.protobuf.Duration" => Some(serialize_duration),
+        "google.protobuf.Struct" => Some(serialize_struct),
+        "google.protobuf.FloatValue" => Some(serialize_float),
+        "google.protobuf.DoubleValue" => Some(serialize_double),
+        "google.protobuf.Int32Value" => Some(serialize_int32),
+        "google.protobuf.Int64Value" => Some(serialize_int64),
+        "google.protobuf.UInt32Value" => Some(serialize_uint32),
+        "google.protobuf.UInt64Value" => Some(serialize_uint64),
+        "google.protobuf.BoolValue" => Some(serialize_bool),
+        "google.protobuf.StringValue" => Some(serialize_string),
+        "google.protobuf.BytesValue" => Some(serialize_bytes),
+        "google.protobuf.FieldMask" => Some(serialize_field_mask),
+        "google.protobuf.ListValue" => Some(serialize_list),
+        "google.protobuf.Value" => Some(serialize_value),
+        "google.protobuf.Empty" => Some(serialize_empty),
+        _ => None,
+    }
+}
+
+fn serialize_any<S>(
+    msg: &DynamicMessage,
+    serializer: S,
+    options: &SerializeOptions,
+) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    let raw: prost_types::Any = msg.transcode_to().map_err(decode_to_ser_err)?;
+
+    if let Some(message_name) = raw.type_url.strip_prefix("type.googleapis.com/") {
+        let message_desc = msg
+            .descriptor()
+            .parent_file()
+            .get_message_by_name(message_name)
+            .ok_or_else(|| Error::custom(format!("message '{}' not found", message_name)))?;
+
+        let mut payload_message = DynamicMessage::new(message_desc);
+        payload_message
+            .merge(raw.value.as_ref())
+            .map_err(decode_to_ser_err)?;
+
+        if get_well_known_type_serializer::<S>(message_name).is_some() {
+            let mut map = serializer.serialize_map(Some(2))?;
+            map.serialize_entry("@type", &raw.type_url)?;
+            map.serialize_entry(
+                "value",
+                &SerializeWrapper {
+                    value: &payload_message,
+                    options,
+                },
+            )?;
+            map.end()
+        } else {
+            let mut map = serializer.serialize_map(Some(
+                1 + count_dynamic_message_fields(&payload_message, options),
+            ))?;
+            map.serialize_entry("@type", &raw.type_url)?;
+            serialize_dynamic_message_fields(&mut map, &payload_message, options)?;
+            map.end()
+        }
+    } else {
+        Err(Error::custom(format!(
+            "unsupported type url '{}'",
+            raw.type_url
+        )))
     }
 }
 
