@@ -23,7 +23,7 @@
 //! let message_descriptor = file_descriptor.get_message_by_name("package.MyMessage").unwrap();
 //!
 //! let mut dynamic_message = DynamicMessage::new(message_descriptor);
-//! dynamic_message.merge(b"\x08\x96\x01".as_ref());
+//! dynamic_message.merge(b"\x08\x96\x01".as_ref()).unwrap();
 //!
 //! assert_eq!(dynamic_message.get_field_by_name("foo").unwrap().as_ref(), &Value::I32(150));
 //! ```
