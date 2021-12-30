@@ -7,7 +7,10 @@ use serde::ser::{Error, Serialize, SerializeMap, SerializeSeq, Serializer};
 
 use crate::{
     descriptor::{Kind, MAP_ENTRY_VALUE_NUMBER},
-    dynamic::{serde::SerializeOptions, DynamicMessage, DynamicMessageField, MapKey, Value},
+    dynamic::{
+        serde::{is_well_known_type, SerializeOptions},
+        DynamicMessage, DynamicMessageField, MapKey, Value,
+    },
     ReflectMessage,
 };
 
@@ -270,7 +273,10 @@ where
         "google.protobuf.ListValue" => Some(serialize_list),
         "google.protobuf.Value" => Some(serialize_value),
         "google.protobuf.Empty" => Some(serialize_empty),
-        _ => None,
+        _ => {
+            debug_assert!(!is_well_known_type(full_name));
+            None
+        }
     }
 }
 
@@ -296,7 +302,7 @@ where
             .merge(raw.value.as_ref())
             .map_err(decode_to_ser_err)?;
 
-        if get_well_known_type_serializer::<S>(message_name).is_some() {
+        if is_well_known_type(message_name) {
             let mut map = serializer.serialize_map(Some(2))?;
             map.serialize_entry("@type", &raw.type_url)?;
             map.serialize_entry(

@@ -171,3 +171,26 @@ impl Default for SerializeOptions {
         Self::new()
     }
 }
+
+fn is_well_known_type(full_name: &str) -> bool {
+    matches!(
+        full_name,
+        "google.protobuf.Any"
+            | "google.protobuf.Timestamp"
+            | "google.protobuf.Duration"
+            | "google.protobuf.Struct"
+            | "google.protobuf.FloatValue"
+            | "google.protobuf.DoubleValue"
+            | "google.protobuf.Int32Value"
+            | "google.protobuf.Int64Value"
+            | "google.protobuf.UInt32Value"
+            | "google.protobuf.UInt64Value"
+            | "google.protobuf.BoolValue"
+            | "google.protobuf.StringValue"
+            | "google.protobuf.BytesValue"
+            | "google.protobuf.FieldMask"
+            | "google.protobuf.ListValue"
+            | "google.protobuf.Value"
+            | "google.protobuf.Empty"
+    )
+}

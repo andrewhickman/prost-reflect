@@ -8,12 +8,18 @@ use std::{
 
 use chrono::{DateTime, Utc};
 use prost::{bytes::Bytes, Message};
-use serde::de::{DeserializeSeed, Deserializer, Error, IgnoredAny, MapAccess, SeqAccess, Visitor};
+use serde::de::{
+    DeserializeSeed, Deserializer, Error, IgnoredAny, IntoDeserializer, MapAccess, SeqAccess,
+    Visitor,
+};
 
 use crate::{
     descriptor::{MAP_ENTRY_KEY_NUMBER, MAP_ENTRY_VALUE_NUMBER},
-    dynamic::{serde::DeserializeOptions, DynamicMessage, MapKey, Value},
-    EnumDescriptor, FieldDescriptor, Kind, MessageDescriptor,
+    dynamic::{
+        serde::{is_well_known_type, DeserializeOptions},
+        DynamicMessage, MapKey, Value,
+    },
+    EnumDescriptor, FieldDescriptor, FileDescriptor, Kind, MessageDescriptor, ReflectMessage,
 };
 
 pub(super) fn deserialize_message<'de, D>(
@@ -25,6 +31,9 @@ where
     D: Deserializer<'de>,
 {
     match desc.full_name() {
+        "google.protobuf.Any" => deserializer
+            .deserialize_any(GoogleProtobufAnyVisitor(desc.parent_file(), options))
+            .and_then(|timestamp| make_message(desc, timestamp)),
         "google.protobuf.Timestamp" => deserializer
             .deserialize_str(GoogleProtobufTimestampVisitor)
             .and_then(|timestamp| make_message(desc, timestamp)),
@@ -84,6 +93,19 @@ where
     match desc.full_name() {
         "google.protobuf.NullValue" => deserializer.deserialize_unit(GoogleProtobufNullVisitor),
         _ => deserializer.deserialize_any(EnumVisitor(desc)),
+    }
+}
+
+struct MessageSeed<'a>(&'a MessageDescriptor, &'a DeserializeOptions);
+
+impl<'a, 'de> DeserializeSeed<'de> for MessageSeed<'a> {
+    type Value = DynamicMessage;
+
+    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserialize_message(self.0, deserializer, self.1)
     }
 }
 
@@ -206,6 +228,7 @@ struct StringVisitor;
 struct BoolVisitor;
 struct BytesVisitor;
 struct MessageVisitor<'a>(&'a MessageDescriptor, &'a DeserializeOptions);
+struct MessageVisitorInner<'a>(&'a mut DynamicMessage, &'a DeserializeOptions);
 struct EnumVisitor<'a>(&'a EnumDescriptor);
 
 impl<'a, 'de> Visitor<'de> for ListVisitor<'a> {
@@ -598,22 +621,39 @@ impl<'a, 'de> Visitor<'de> for MessageVisitor<'a> {
         write!(f, "a map")
     }
 
-    fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+    fn visit_map<A>(self, map: A) -> Result<Self::Value, A::Error>
     where
         A: MapAccess<'de>,
     {
         let mut message = DynamicMessage::new(self.0.clone());
 
+        MessageVisitorInner(&mut message, self.1).visit_map(map)?;
+
+        Ok(message)
+    }
+}
+
+impl<'a, 'de> Visitor<'de> for MessageVisitorInner<'a> {
+    type Value = ();
+
+    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "a map")
+    }
+
+    fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+    where
+        A: MapAccess<'de>,
+    {
+        let desc = self.0.descriptor();
         while let Some(key) = map.next_key::<Cow<str>>()? {
-            if let Some(field) = self
-                .0
+            if let Some(field) = desc
                 .get_field_by_json_name(key.as_ref())
-                .or_else(|| self.0.get_field_by_name(key.as_ref()))
+                .or_else(|| desc.get_field_by_name(key.as_ref()))
             {
                 if let Some(value) =
                     map.next_value_seed(OptionalFieldDescriptorSeed(&field, self.1))?
                 {
-                    message.set_field(field.number(), value);
+                    self.0.set_field(field.number(), value);
                 }
             } else if self.1.deny_unknown_fields {
                 return Err(Error::custom(format!("unrecognized field name '{}'", key)));
@@ -622,7 +662,7 @@ impl<'a, 'de> Visitor<'de> for MessageVisitor<'a> {
             }
         }
 
-        Ok(message)
+        Ok(())
     }
 }
 
@@ -669,6 +709,7 @@ impl<'a, 'de> Visitor<'de> for EnumVisitor<'a> {
     }
 }
 
+struct GoogleProtobufAnyVisitor<'a>(&'a FileDescriptor, &'a DeserializeOptions);
 struct GoogleProtobufNullVisitor;
 struct GoogleProtobufTimestampVisitor;
 struct GoogleProtobufDurationVisitor;
@@ -677,6 +718,95 @@ struct GoogleProtobufListVisitor;
 struct GoogleProtobufStructVisitor;
 struct GoogleProtobufValueVisitor;
 struct GoogleProtobufEmptyVisitor;
+
+impl<'a, 'de> Visitor<'de> for GoogleProtobufAnyVisitor<'a> {
+    type Value = prost_types::Any;
+
+    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "a map")
+    }
+
+    fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+    where
+        A: MapAccess<'de>,
+    {
+        let mut buffered_entries = HashMap::new();
+
+        let type_url = loop {
+            match map.next_key::<Cow<str>>()? {
+                Some(key) if key == "@type" => {
+                    break map.next_value::<String>()?;
+                }
+                Some(key) => {
+                    let value: serde_value::Value = map.next_value()?;
+                    buffered_entries.insert(key, value);
+                }
+                None => return Err(Error::custom("expected '@type' field")),
+            }
+        };
+
+        if let Some(message_name) = type_url.strip_prefix("type.googleapis.com/") {
+            let message_desc = self
+                .0
+                .get_message_by_name(message_name)
+                .ok_or_else(|| Error::custom(format!("message '{}' not found", message_name)))?;
+
+            let payload_message = if is_well_known_type(message_name) {
+                let payload_message = match buffered_entries.remove("value") {
+                    Some(value) => {
+                        deserialize_message(&message_desc, value, self.1).map_err(Error::custom)?
+                    }
+                    None => loop {
+                        match map.next_key::<Cow<str>>()? {
+                            Some(key) if key == "value" => {
+                                break map.next_value_seed(MessageSeed(&message_desc, self.1))?
+                            }
+                            Some(key) => {
+                                if self.1.deny_unknown_fields {
+                                    return Err(Error::custom(format!(
+                                        "unrecognized field name '{}'",
+                                        key
+                                    )));
+                                } else {
+                                    let _ = map.next_value::<IgnoredAny>()?;
+                                }
+                            }
+                            None => return Err(Error::custom("expected '@type' field")),
+                        }
+                    },
+                };
+
+                if let Some(key) = buffered_entries.keys().next() {
+                    return Err(Error::custom(format!("unrecognized field name '{}'", key)));
+                }
+                if let Some(key) = map.next_key::<Cow<str>>()? {
+                    return Err(Error::custom(format!("unrecognized field name '{}'", key)));
+                }
+
+                payload_message
+            } else {
+                let mut payload_message = DynamicMessage::new(message_desc);
+
+                buffered_entries
+                    .into_deserializer()
+                    .deserialize_map(MessageVisitorInner(&mut payload_message, self.1))
+                    .map_err(Error::custom)?;
+
+                MessageVisitorInner(&mut payload_message, self.1).visit_map(map)?;
+
+                payload_message
+            };
+
+            let value = payload_message.encode_to_vec();
+            Ok(prost_types::Any { type_url, value })
+        } else {
+            Err(Error::custom(format!(
+                "unsupported type url '{}'",
+                type_url
+            )))
+        }
+    }
+}
 
 impl<'de> Visitor<'de> for GoogleProtobufNullVisitor {
     type Value = i32;
