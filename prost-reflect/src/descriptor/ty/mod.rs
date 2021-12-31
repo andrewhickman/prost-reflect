@@ -340,7 +340,8 @@ impl FieldDescriptor {
 
     /// Gets the name used for JSON serialization.
     ///
-    /// This is usually the camel-cased form of the field name.
+    /// This is usually the camel-cased form of the field name, unless
+    /// another value is set in the proto file.
     pub fn json_name(&self) -> &str {
         &self.message_field_ty().json_name
     }
