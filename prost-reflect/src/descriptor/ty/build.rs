@@ -83,7 +83,8 @@ impl TypeMap {
                     Label::Repeated => Cardinality::Repeated,
                 };
 
-                let is_packed = self.get(ty).is_packable()
+                let is_packed = cardinality == Cardinality::Repeated
+                    && self.get(ty).is_packable()
                     && (field_proto
                         .options
                         .as_ref()

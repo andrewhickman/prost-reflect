@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed `FieldDescriptor::is_packed` returning true for non-repeated fields.
+
 ## [0.3.3] - 2021-12-30
 
 ### Added
