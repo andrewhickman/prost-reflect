@@ -776,11 +776,16 @@ impl<'a, 'de> Visitor<'de> for GoogleProtobufAnyVisitor<'a> {
                     },
                 };
 
-                if let Some(key) = buffered_entries.keys().next() {
-                    return Err(Error::custom(format!("unrecognized field name '{}'", key)));
-                }
-                if let Some(key) = map.next_key::<Cow<str>>()? {
-                    return Err(Error::custom(format!("unrecognized field name '{}'", key)));
+                if self.1.deny_unknown_fields {
+                    if let Some(key) = buffered_entries.keys().next() {
+                        return Err(Error::custom(format!("unrecognized field name '{}'", key)));
+                    }
+                    if let Some(key) = map.next_key::<Cow<str>>()? {
+                        return Err(Error::custom(format!("unrecognized field name '{}'", key)));
+                    }
+                } else {
+                    drop(buffered_entries);
+                    while map.next_entry::<IgnoredAny, IgnoredAny>()?.is_some() {}
                 }
 
                 payload_message
