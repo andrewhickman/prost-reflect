@@ -279,7 +279,7 @@ impl MessageDescriptor {
     /// Returns `true` if this is an auto-generated message type to
     /// represent the entry type for a map field.
     //
-    /// If this method returns `true`, [`fields`][Self::fields] is guaranteed
+    /// If this method returns `true`, [`fields`][Self::fields] is guaranteed to
     /// yield the following two fields:
     /// * A "key" field with a field number of 1
     /// * A "value" field with a field number of 2
@@ -701,7 +701,7 @@ impl OneofDescriptor {
         &self.oneof_ty().full_name
     }
 
-    /// Gets an iterator yield a [`FieldDescriptor`] for each field of the parent message this oneof contains.
+    /// Gets an iterator yielding a [`FieldDescriptor`] for each field of the parent message this oneof contains.
     pub fn fields(&self) -> impl ExactSizeIterator<Item = FieldDescriptor> + '_ {
         self.oneof_ty()
             .fields
