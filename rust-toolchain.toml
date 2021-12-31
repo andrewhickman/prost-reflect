@@ -1,2 +1,3 @@
+# https://github.com/dtolnay/trybuild/issues/126
 [toolchain]
 components = ["rust-src"]
