@@ -881,6 +881,30 @@ fn deserialize_any() {
 }
 
 #[test]
+fn deserialize_any_buffer_fields() {
+    let value: prost_types::Any = from_json(
+        json!({
+            "longitude": 1,
+            "latitude": 2,
+            "@type": "type.googleapis.com/test.Point",
+        }),
+        "google.protobuf.Any",
+    );
+
+    assert_eq!(
+        value,
+        prost_types::Any {
+            type_url: "type.googleapis.com/test.Point".to_owned(),
+            value: Point {
+                longitude: 1,
+                latitude: 2,
+            }
+            .encode_to_vec(),
+        }
+    );
+}
+
+#[test]
 fn deserialize_any_wkt() {
     let value: prost_types::Any = from_json(
         json!({
@@ -895,6 +919,66 @@ fn deserialize_any_wkt() {
         prost_types::Any {
             type_url: "type.googleapis.com/google.protobuf.Int32Value".to_owned(),
             value: 5i32.encode_to_vec(),
+        }
+    );
+}
+
+#[test]
+#[should_panic(expected = "unrecognized field name 'unknown'")]
+fn deserialize_any_deny_unknown_fields() {
+    from_json::<prost_types::Any>(
+        json!({
+            "@type": "type.googleapis.com/google.protobuf.Int32Value",
+            "value": 5,
+            "unknown": "hello",
+        }),
+        "google.protobuf.Any",
+    );
+}
+
+#[test]
+#[should_panic(expected = "unrecognized field name 'unknown'")]
+fn deserialize_any_deny_unknown_buffered_fields() {
+    from_json::<prost_types::Any>(
+        json!({
+            "value": 5,
+            "unknown": "hello",
+            "@type": "type.googleapis.com/google.protobuf.Int32Value",
+        }),
+        "google.protobuf.Any",
+    );
+}
+
+#[test]
+fn deserialize_any_allow_unknown_fields() {
+    let value: prost_types::Any = from_json_with_options(
+        json!({
+            "value": 5,
+            "unknown": "hello",
+            "@type": "type.googleapis.com/google.protobuf.Int32Value",
+        }),
+        "google.protobuf.Any",
+        &DeserializeOptions::new().deny_unknown_fields(false),
+    );
+
+    assert_eq!(
+        value,
+        prost_types::Any {
+            type_url: "type.googleapis.com/google.protobuf.Int32Value".to_owned(),
+            value: 5i32.encode_to_vec(),
+        }
+    );
+}
+
+#[test]
+fn deserialize_duration_fraction_digits() {
+    let value: prost_types::Duration = from_json(json!("1.00034s"), "google.protobuf.Duration");
+
+    assert_eq!(
+        value,
+        prost_types::Duration {
+            seconds: 1,
+            nanos: 340_000,
         }
     );
 }
