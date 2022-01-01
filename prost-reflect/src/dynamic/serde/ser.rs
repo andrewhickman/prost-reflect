@@ -6,7 +6,7 @@ use prost::{DecodeError, Message};
 use serde::ser::{Error, Serialize, SerializeMap, SerializeSeq, Serializer};
 
 use crate::{
-    descriptor::{Kind, MAP_ENTRY_VALUE_NUMBER},
+    descriptor::Kind,
     dynamic::{
         serde::{is_well_known_type, SerializeOptions},
         DynamicMessage, DynamicMessageField, MapKey, Value,
@@ -201,7 +201,7 @@ impl<'a> Serialize for SerializeWrapper<'a, ValueAndKind<'a>> {
             Value::Map(values) => {
                 let value_kind = match self.value.kind {
                     Kind::Message(message) if message.is_map_entry() => {
-                        message.get_field(MAP_ENTRY_VALUE_NUMBER).unwrap().kind()
+                        message.map_entry_value_field().kind()
                     }
                     _ => panic!(
                         "mismatch between DynamicMessage value {:?} and type {:?}",

@@ -516,8 +516,8 @@ impl Value {
                 }
             }
             (Value::Map(values), Kind::Message(map_entry)) if field_desc.is_map() => {
-                let key_desc = map_entry.get_field(MAP_ENTRY_KEY_NUMBER).unwrap();
-                let value_desc = map_entry.get_field(MAP_ENTRY_VALUE_NUMBER).unwrap();
+                let key_desc = map_entry.map_entry_key_field();
+                let value_desc = map_entry.map_entry_value_field();
 
                 let key_len = prost::encoding::key_len(number);
                 values

@@ -14,7 +14,6 @@ use serde::de::{
 };
 
 use crate::{
-    descriptor::{MAP_ENTRY_KEY_NUMBER, MAP_ENTRY_VALUE_NUMBER},
     dynamic::{
         serde::{is_well_known_type, DeserializeOptions},
         DynamicMessage, MapKey, Value,
@@ -267,11 +266,8 @@ impl<'a, 'de> Visitor<'de> for MapVisitor<'a> {
         let mut result = HashMap::with_capacity(map.size_hint().unwrap_or(0));
 
         let map_entry_message = self.0.as_message().unwrap();
-        let key_kind = map_entry_message
-            .get_field(MAP_ENTRY_KEY_NUMBER)
-            .unwrap()
-            .kind();
-        let value_desc = map_entry_message.get_field(MAP_ENTRY_VALUE_NUMBER).unwrap();
+        let key_kind = map_entry_message.map_entry_key_field().kind();
+        let value_desc = map_entry_message.map_entry_value_field();
 
         while let Some(key_str) = map.next_key::<Cow<str>>()? {
             let key = match key_kind {

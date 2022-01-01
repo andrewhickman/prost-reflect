@@ -8,7 +8,10 @@ use std::{
     fmt,
 };
 
-use crate::descriptor::{debug_fmt_iter, parse_name, parse_namespace, FileDescriptor};
+use crate::descriptor::{
+    debug_fmt_iter, parse_name, parse_namespace, FileDescriptor, MAP_ENTRY_KEY_NUMBER,
+    MAP_ENTRY_VALUE_NUMBER,
+};
 
 /// A protobuf message definition.
 #[derive(Clone, PartialEq, Eq)]
@@ -281,10 +284,37 @@ impl MessageDescriptor {
     //
     /// If this method returns `true`, [`fields`][Self::fields] is guaranteed to
     /// yield the following two fields:
+    ///
     /// * A "key" field with a field number of 1
     /// * A "value" field with a field number of 2
+    ///
+    /// See [`map_entry_key_field`][MessageDescriptor::map_entry_key_field] and
+    /// [`map_entry_value_field`][MessageDescriptor::map_entry_value_field] for more a convenient way
+    /// to get these fields.
     pub fn is_map_entry(&self) -> bool {
         self.message_ty().is_map_entry
+    }
+
+    /// If this is a [map entry](MessageDescriptor::is_map_entry), returns a [`FieldDescriptor`] for the key.
+    ///
+    /// # Panics
+    ///
+    /// This method may panic if [`is_map_entry`][MessageDescriptor::is_map_entry] returns `false`.
+    pub fn map_entry_key_field(&self) -> FieldDescriptor {
+        debug_assert!(self.is_map_entry());
+        self.get_field(MAP_ENTRY_KEY_NUMBER)
+            .expect("map entry should have key field")
+    }
+
+    /// If this is a [map entry](MessageDescriptor::is_map_entry), returns a [`FieldDescriptor`] for the value.
+    ///
+    /// # Panics
+    ///
+    /// This method may panic if [`is_map_entry`][MessageDescriptor::is_map_entry] returns `false`.
+    pub fn map_entry_value_field(&self) -> FieldDescriptor {
+        debug_assert!(self.is_map_entry());
+        self.get_field(MAP_ENTRY_VALUE_NUMBER)
+            .expect("map entry should have key field")
     }
 
     fn message_ty(&self) -> &MessageDescriptorInner {
