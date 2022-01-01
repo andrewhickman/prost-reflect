@@ -1,6 +1,7 @@
 use std::{
     collections::{BTreeMap, HashMap},
     fmt::Debug,
+    iter::FromIterator,
 };
 
 use proptest::{prelude::*, test_runner::TestCaseError};
@@ -120,7 +121,7 @@ fn serialize_array() {
 #[test]
 fn serialize_complex_type() {
     let value = to_json(&ComplexType {
-        string_map: HashMap::from([
+        string_map: HashMap::from_iter([
             (
                 "1".to_owned(),
                 Scalars {
@@ -140,7 +141,7 @@ fn serialize_complex_type() {
                 },
             ),
         ]),
-        int_map: HashMap::from([
+        int_map: HashMap::from_iter([
             (
                 3,
                 Scalars {
@@ -222,7 +223,7 @@ fn serialize_well_known_types() {
             nanos: 340_012,
         }),
         r#struct: Some(prost_types::Struct {
-            fields: BTreeMap::from([
+            fields: BTreeMap::from_iter([
                 (
                     "number".to_owned(),
                     prost_types::Value {
@@ -364,7 +365,7 @@ fn serialize_use_enum_numbers() {
 fn serialize_emit_unpopulated_fields() {
     let value = to_json_with_options(
         &ComplexType {
-            string_map: HashMap::from([(
+            string_map: HashMap::from_iter([(
                 "1".to_owned(),
                 Scalars {
                     ..Default::default()
@@ -679,7 +680,7 @@ fn deserialize_complex_type() {
     assert_eq!(
         value,
         ComplexType {
-            string_map: HashMap::from([
+            string_map: HashMap::from_iter([
                 (
                     "1".to_owned(),
                     Scalars {
@@ -699,7 +700,7 @@ fn deserialize_complex_type() {
                     },
                 ),
             ]),
-            int_map: HashMap::from([
+            int_map: HashMap::from_iter([
                 (
                     3,
                     Scalars {
@@ -770,7 +771,7 @@ fn deserialize_well_known_types() {
                 nanos: 340_012,
             }),
             r#struct: Some(prost_types::Struct {
-                fields: BTreeMap::from([
+                fields: BTreeMap::from_iter([
                     (
                         "number".to_owned(),
                         prost_types::Value {

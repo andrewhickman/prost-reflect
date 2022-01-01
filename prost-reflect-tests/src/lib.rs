@@ -6,6 +6,7 @@ mod json;
 use std::{
     collections::{BTreeMap, HashMap},
     fmt::Debug,
+    iter::FromIterator,
 };
 
 use once_cell::sync::Lazy;
@@ -372,7 +373,7 @@ fn decode_scalar_arrays() {
 #[test]
 fn decode_complex_type() {
     let dynamic = to_dynamic(&ComplexType {
-        string_map: HashMap::from([
+        string_map: HashMap::from_iter([
             (
                 "1".to_owned(),
                 Scalars {
@@ -392,7 +393,7 @@ fn decode_complex_type() {
                 },
             ),
         ]),
-        int_map: HashMap::from([
+        int_map: HashMap::from_iter([
             (
                 3,
                 Scalars {
@@ -433,7 +434,7 @@ fn decode_complex_type() {
 
     assert_eq!(
         dynamic.get_field_by_name("string_map").unwrap().as_map(),
-        Some(&HashMap::from([
+        Some(&HashMap::from_iter([
             (MapKey::String("1".to_owned()), {
                 let mut msg = empty_scalars();
                 msg.set_field_by_name("double", Value::F64(1.1));
@@ -452,7 +453,7 @@ fn decode_complex_type() {
     );
     assert_eq!(
         dynamic.get_field_by_name("int_map").unwrap().as_map(),
-        Some(&HashMap::from([
+        Some(&HashMap::from_iter([
             (MapKey::I32(3), {
                 let mut msg = empty_scalars();
                 msg.set_field_by_name("sint32", Value::I32(7));
@@ -646,7 +647,7 @@ fn roundtrip_scalar_arrays() {
 #[test]
 fn roundtrip_complex_type() {
     roundtrip(&ComplexType {
-        string_map: HashMap::from([
+        string_map: HashMap::from_iter([
             (
                 "1".to_owned(),
                 Scalars {
@@ -666,7 +667,7 @@ fn roundtrip_complex_type() {
                 },
             ),
         ]),
-        int_map: HashMap::from([
+        int_map: HashMap::from_iter([
             (
                 3,
                 Scalars {
@@ -711,7 +712,7 @@ fn roundtrip_well_known_types() {
             nanos: 340_012,
         }),
         r#struct: Some(prost_types::Struct {
-            fields: BTreeMap::from([
+            fields: BTreeMap::from_iter([
                 (
                     "number".to_owned(),
                     prost_types::Value {
