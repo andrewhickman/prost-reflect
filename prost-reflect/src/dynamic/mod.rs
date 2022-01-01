@@ -121,8 +121,8 @@ impl DynamicMessage {
     ///
     /// # Panics
     ///
-    /// This method may panic if the value type is not compatible with the field type.
-    /// (Note this is not currently implemented, so you may get a panic while encoding or decoding instead)
+    /// This method may panic if the value type is not compatible with the field type, as defined
+    /// by [`Value::is_valid_for_field`].
     pub fn set_field(&mut self, number: u32, value: Value) {
         if let Some(field) = self.fields.get_mut(&number) {
             field.set(value);
@@ -250,7 +250,12 @@ impl DynamicMessageField {
     }
 
     pub fn set(&mut self, value: Value) {
-        // TODO need to check validity
+        debug_assert!(
+            value.is_valid_for_field(&self.desc),
+            "invalid value {:?} for field {:?}",
+            value,
+            self.desc,
+        );
         self.value = Some(value);
     }
 
@@ -265,6 +270,12 @@ impl DynamicMessageField {
 
 impl Value {
     /// Returns the default value for the given protobuf field.
+    ///
+    /// This is equivalent to [default_value][Value::default_value] except for the following cases:
+    ///
+    /// * If the field is a map, an empty map is returned.
+    /// * If the field is `repeated`, an empty list is returned.
+    /// * If the field has a custom default value specified, that is returned (proto2 only).
     pub fn default_value_for_field(field_desc: &FieldDescriptor) -> Self {
         if field_desc.is_list() {
             Value::List(Vec::default())
@@ -302,6 +313,47 @@ impl Value {
     /// Returns `true` if this is the default value for the given protobuf type `kind`.
     pub fn is_default(&self, kind: &Kind) -> bool {
         *self == Value::default_value(kind)
+    }
+
+    /// Returns `true` if this value can be set for a given field.
+    ///
+    /// Note this only checks if the value can be successfully encoded. It doesn't
+    /// check, for example, that enum values are in the defined range.
+    pub fn is_valid_for_field(&self, field_desc: &FieldDescriptor) -> bool {
+        match (self, field_desc.kind()) {
+            (Value::List(list), kind) if field_desc.is_list() => {
+                list.iter().all(|value| value.is_valid(&kind))
+            }
+            (Value::Map(map), Kind::Message(message_desc)) if field_desc.is_map() => {
+                let key_desc = message_desc.map_entry_key_field().kind();
+                let value_desc = message_desc.map_entry_value_field();
+                map.iter().all(|(key, value)| {
+                    key.is_valid(&key_desc) && value.is_valid_for_field(&value_desc)
+                })
+            }
+            (value, kind) => value.is_valid(&kind),
+        }
+    }
+
+    /// Returns `true` if this value can be encoded as the given [`Kind`].
+    ///
+    /// Unlike [`is_valid_for_field`](Value::is_valid_for_field), this method does not
+    /// look at field cardinality, so it will never return `true` for lists or maps.
+    pub fn is_valid(&self, kind: &Kind) -> bool {
+        matches!(
+            (self, kind),
+            (Value::Bool(_), Kind::Bool)
+                | (Value::I32(_), Kind::Int32 | Kind::Sint32 | Kind::Sfixed32)
+                | (Value::I64(_), Kind::Int64 | Kind::Sint64 | Kind::Sfixed64)
+                | (Value::U32(_), Kind::Uint32 | Kind::Fixed32)
+                | (Value::U64(_), Kind::Uint64 | Kind::Fixed64)
+                | (Value::F32(_), Kind::Float)
+                | (Value::F64(_), Kind::Double)
+                | (Value::String(_), Kind::String)
+                | (Value::Bytes(_), Kind::Bytes)
+                | (Value::EnumNumber(_), Kind::Enum(_))
+                | (Value::Message(_), Kind::Message(_))
+        )
     }
 
     /// Returns the value if it is a `Value::Bool`, or `None` if it is any other type.
@@ -538,6 +590,19 @@ impl MapKey {
     /// Panics if `kind` is not a valid map key type (an integral type or string).
     pub fn is_default(&self, kind: &Kind) -> bool {
         *self == MapKey::default_value(kind)
+    }
+
+    /// Returns `true` if this map key can be encoded as the given [`Kind`].
+    pub fn is_valid(&self, kind: &Kind) -> bool {
+        matches!(
+            (self, kind),
+            (MapKey::Bool(_), Kind::Bool)
+                | (MapKey::I32(_), Kind::Int32 | Kind::Sint32 | Kind::Sfixed32)
+                | (MapKey::I64(_), Kind::Int64 | Kind::Sint64 | Kind::Sfixed64)
+                | (MapKey::U32(_), Kind::Uint32 | Kind::Fixed32)
+                | (MapKey::U64(_), Kind::Uint64 | Kind::Fixed64)
+                | (MapKey::String(_), Kind::String)
+        )
     }
 
     /// Returns the value if it is a `MapKey::Bool`, or `None` if it is any other type.

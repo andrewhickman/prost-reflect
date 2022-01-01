@@ -69,6 +69,14 @@ fn clear_message() {
 }
 
 #[test]
+#[should_panic(expected = "nvalid value U32(5) for field")]
+fn set_field_validates_type() {
+    let mut dynamic = to_dynamic(&Scalars::default());
+
+    dynamic.set_field_by_name("double", Value::U32(5));
+}
+
+#[test]
 fn test_descriptor_methods() {
     let message_desc = test_file_descriptor()
         .get_message_by_name("my.package.MyMessage")

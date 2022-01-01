@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Added `MessageDescriptor::map_entry_key_field` and `MessageDescriptor::map_entry_value_field` to help with inspecting message types.
+- Added `Value::is_valid_for_field` to validate that value types are compatible with message fields.
+- `DynamicMessage::set_value` now asserts that the value type is compatible with the field type.
 
 ### Fixed
 
