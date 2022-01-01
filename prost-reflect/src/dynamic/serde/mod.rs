@@ -156,7 +156,7 @@ impl SerializeOptions {
 
     /// Whether to emit unpopulated fields.
     ///
-    /// If `false`, any fields for which [`has_field`][DynamicMessage::has_field] returns `true` will
+    /// If `false`, any fields for which [`has_field`][DynamicMessage::has_field] returns `false` will
     /// not be serialized. If `true`, they will be serialized with their default value.
     ///
     /// The default value is `false`.
