@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.5] - 2022-01-02
+
 ### Fixed
 
 - Fixed deserialization of negative durations
@@ -71,7 +73,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial release, including support for inspecting message types at runtime.
 
-[unreleased]: https://github.com/andrewhickman/prost-reflect/compare/0.3.4...HEAD
+[unreleased]: https://github.com/andrewhickman/prost-reflect/compare/0.3.5...HEAD
+[0.3.5]: https://github.com/andrewhickman/prost-reflect/compare/0.3.4...0.3.5
 [0.3.4]: https://github.com/andrewhickman/prost-reflect/compare/0.3.3...0.3.4
 [0.3.3]: https://github.com/andrewhickman/prost-reflect/compare/0.3.2...0.3.3
 [0.3.2]: https://github.com/andrewhickman/prost-reflect/compare/0.3.1...0.3.2
