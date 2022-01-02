@@ -115,12 +115,12 @@ impl FileDescriptor {
         EnumDescriptor::iter(self)
     }
 
-    /// Gets a [`MessageDescriptor`] by its fully qualified name, for example `PackageName.MessageName`.
+    /// Gets a [`MessageDescriptor`] by its fully qualified name, for example `my.package.MessageName`.
     pub fn get_message_by_name(&self, name: &str) -> Option<MessageDescriptor> {
         MessageDescriptor::try_get_by_name(self, name)
     }
 
-    /// Gets an [`EnumDescriptor`] by its fully qualified name, for example `PackageName.EnumName`.
+    /// Gets an [`EnumDescriptor`] by its fully qualified name, for example `my.package.EnumName`.
     pub fn get_enum_by_name(&self, name: &str) -> Option<EnumDescriptor> {
         EnumDescriptor::try_get_by_name(self, name)
     }
