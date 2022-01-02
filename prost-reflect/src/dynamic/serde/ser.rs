@@ -1,4 +1,4 @@
-use std::convert::TryFrom;
+use std::{cmp::Ordering, convert::TryFrom};
 
 use base64::display::Base64Display;
 use chrono::{TimeZone, Utc};
@@ -358,12 +358,28 @@ fn serialize_duration<S>(
 where
     S: Serializer,
 {
-    let raw: prost_types::Duration = msg.transcode_to().map_err(decode_to_ser_err)?;
+    let mut raw: prost_types::Duration = msg.transcode_to().map_err(decode_to_ser_err)?;
 
-    if raw.nanos == 0 {
-        serializer.collect_str(&format_args!("{}s", raw.seconds))
-    } else {
-        serializer.collect_str(&format_args!("{}.{:0>9}s", raw.seconds, raw.nanos))
+    raw.normalize();
+    match (raw.seconds.cmp(&0), raw.nanos.cmp(&0)) {
+        (_, Ordering::Equal) => serializer.collect_str(&format_args!("{}s", raw.seconds)),
+        (Ordering::Less, Ordering::Greater) | (Ordering::Greater, Ordering::Less) => {
+            Err(Error::custom("inconsistent signs for duration"))
+        }
+        (Ordering::Equal | Ordering::Less, Ordering::Less) => {
+            serializer.collect_str(&format_args!(
+                "-{}.{:0>9}s",
+                raw.seconds.unsigned_abs(),
+                raw.nanos.unsigned_abs()
+            ))
+        }
+        (Ordering::Equal | Ordering::Greater, Ordering::Greater) => {
+            serializer.collect_str(&format_args!(
+                "{}.{:0>9}s",
+                raw.seconds.unsigned_abs(),
+                raw.nanos.unsigned_abs()
+            ))
+        }
     }
 }
 

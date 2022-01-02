@@ -984,6 +984,29 @@ fn deserialize_duration_fraction_digits() {
     );
 }
 
+#[test]
+fn deserialize_duration_out_of_range() {
+    let value: prost_types::Duration =
+        from_json(json!("-15.000340123s"), "google.protobuf.Duration");
+
+    assert_eq!(
+        value,
+        prost_types::Duration {
+            seconds: -15,
+            nanos: -340_123,
+        }
+    );
+}
+
+#[test]
+#[should_panic(expected = "duration out of range")]
+fn deserialize_negative_duration() {
+    from_json::<prost_types::Duration>(
+        json!("-18446744073709551615.000340123s"),
+        "google.protobuf.Duration",
+    );
+}
+
 proptest! {
     #![proptest_config(ProptestConfig {
         cases: 32,

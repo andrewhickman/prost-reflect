@@ -8,8 +8,15 @@ pub fn timestamp() -> impl Strategy<Value = Timestamp> {
     any::<SystemTime>().prop_map(Into::into)
 }
 
-pub fn duration() -> impl Strategy<Value = Duration> {
-    any::<std::time::Duration>().prop_map(Into::into)
+prop_compose! {
+    pub fn duration()(
+        seconds in (-315_576_000_000i64..=315_576_000_000),
+        nanos in (-999_999_999i32..=999_999_999),
+    ) -> Duration {
+        let mut duration = Duration { seconds, nanos };
+        duration.normalize();
+        duration
+    }
 }
 
 pub fn struct_() -> impl Strategy<Value = Struct> {

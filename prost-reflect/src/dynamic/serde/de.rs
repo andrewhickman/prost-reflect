@@ -859,13 +859,17 @@ impl<'de> Visitor<'de> for GoogleProtobufDurationVisitor {
     where
         E: Error,
     {
-        if !v.ends_with('s') {
-            return Err(Error::custom("invalid duration string"));
-        }
-        let v = &v[..v.len() - 1];
+        let v = v
+            .strip_suffix('s')
+            .ok_or_else(|| Error::custom("invalid duration string"))?;
 
-        if let Some((seconds_str, nanos_str)) = v.split_once('.') {
-            let seconds = i64::from_str(seconds_str).map_err(Error::custom)?;
+        let (negative, v) = match v.strip_prefix('-') {
+            Some(v) => (true, v),
+            None => (false, v),
+        };
+
+        let (seconds, nanos) = if let Some((seconds_str, nanos_str)) = v.split_once('.') {
+            let seconds = u64::from_str(seconds_str).map_err(Error::custom)?;
             let nanos = match nanos_str.len() {
                 0 => 0,
                 len @ 1..=9 => {
@@ -873,16 +877,33 @@ impl<'de> Visitor<'de> for GoogleProtobufDurationVisitor {
                     for _ in 0..9 - len {
                         nanos *= 10;
                     }
-                    nanos as i32
+                    nanos
                 }
                 _ => return Err(Error::custom("too many fractional digits for duration")),
             };
 
-            Ok(prost_types::Duration { seconds, nanos })
+            (seconds, nanos)
         } else {
-            let seconds = i64::from_str(v).map_err(Error::custom)?;
+            let seconds = u64::from_str(v).map_err(Error::custom)?;
 
-            Ok(prost_types::Duration { seconds, nanos: 0 })
+            (seconds, 0)
+        };
+
+        if seconds > 315_576_000_000 {
+            return Err(Error::custom("duration out of range"));
+        }
+        debug_assert!(nanos < 1_000_000_000);
+
+        if negative {
+            Ok(prost_types::Duration {
+                seconds: -(seconds as i64),
+                nanos: -(nanos as i32),
+            })
+        } else {
+            Ok(prost_types::Duration {
+                seconds: seconds as i64,
+                nanos: nanos as i32,
+            })
         }
     }
 }
