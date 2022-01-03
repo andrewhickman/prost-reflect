@@ -1,2 +1,7 @@
 [workspace]
-members = ["prost-reflect", "prost-reflect-derive", "prost-reflect-tests"]
+members = [
+    "prost-reflect",
+    "prost-reflect-derive",
+    "prost-reflect-tests",
+    "prost-reflect-conformance-tests"
+]
