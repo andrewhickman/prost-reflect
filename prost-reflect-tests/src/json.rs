@@ -1117,6 +1117,20 @@ fn value_null_in_oneof() {
     );
 }
 
+#[test]
+fn null_old_format() {
+    let json = json!({ "null": "NULL_VALUE" });
+
+    let value: WellKnownTypes = from_json(json, "test.WellKnownTypes");
+    assert_eq!(
+        value,
+        WellKnownTypes {
+            null: 0,
+            ..Default::default()
+        }
+    );
+}
+
 proptest! {
     #![proptest_config(ProptestConfig {
         cases: 32,

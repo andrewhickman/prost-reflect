@@ -81,7 +81,7 @@ where
 {
     match desc.full_name() {
         "google.protobuf.NullValue" => {
-            deserializer.deserialize_unit(wkt::GoogleProtobufNullVisitor)
+            deserializer.deserialize_any(wkt::GoogleProtobufNullVisitor)
         }
         _ => deserializer.deserialize_any(kind::EnumVisitor(desc)),
     }
@@ -97,53 +97,6 @@ impl<'a, 'de> DeserializeSeed<'de> for MessageSeed<'a> {
         D: Deserializer<'de>,
     {
         deserialize_message(self.0, deserializer, self.1)
-    }
-}
-
-struct OptionalMessageSeed<'a>(&'a MessageDescriptor, &'a DeserializeOptions);
-
-impl<'a, 'de> DeserializeSeed<'de> for OptionalMessageSeed<'a> {
-    type Value = Option<DynamicMessage>;
-
-    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        deserializer.deserialize_option(self)
-    }
-}
-
-impl<'a, 'de> Visitor<'de> for OptionalMessageSeed<'a> {
-    type Value = Option<DynamicMessage>;
-
-    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "option")
-    }
-
-    #[inline]
-    fn visit_unit<E>(self) -> Result<Self::Value, E>
-    where
-        E: Error,
-    {
-        Ok(None)
-    }
-
-    #[inline]
-    fn visit_none<E>(self) -> Result<Self::Value, E>
-    where
-        E: Error,
-    {
-        Ok(None)
-    }
-
-    #[inline]
-    fn visit_some<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        MessageSeed(self.0, self.1)
-            .deserialize(deserializer)
-            .map(Some)
     }
 }
 

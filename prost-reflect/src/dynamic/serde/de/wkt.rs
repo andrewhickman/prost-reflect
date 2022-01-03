@@ -133,6 +133,16 @@ impl<'de> Visitor<'de> for GoogleProtobufNullVisitor {
         write!(f, "null")
     }
 
+    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+    where
+            E: Error, {
+        if v == "NULL_VALUE" {
+            Ok(0)
+        } else {
+            Err(Error::custom("expected null"))
+        }
+    }
+
     #[inline]
     fn visit_unit<E>(self) -> Result<Self::Value, E>
     where
