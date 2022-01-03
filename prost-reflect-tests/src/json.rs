@@ -7,6 +7,7 @@ use std::{
 use proptest::{prelude::*, test_runner::TestCaseError};
 use prost::Message;
 use prost_reflect::{DeserializeOptions, DynamicMessage, ReflectMessage, SerializeOptions};
+use serde::de::IntoDeserializer;
 use serde_json::json;
 
 use crate::{
@@ -1011,6 +1012,27 @@ fn deserialize_negative_duration() {
         json!("-18446744073709551615.000340123s"),
         "google.protobuf.Duration",
     );
+}
+
+#[test]
+fn oneof_set_multiple_values() {
+    let json = json!({
+        "oneofField1": "hello",
+        "oneofField2": 5,
+    });
+
+    let dynamic_message = DynamicMessage::deserialize(
+        test_file_descriptor().get_message_by_name("test.MessageWithOneof").unwrap(),
+        json.into_deserializer(),
+    ).unwrap();
+
+    assert!(!dynamic_message.has_field_by_name("oneof_field_1"));
+    assert!(dynamic_message.has_field_by_name("oneof_field_2"));
+
+    assert_eq!(dynamic_message.encode_to_vec().as_slice(), b"\x10\x05");
+    assert_eq!(serde_json::to_value(&dynamic_message).unwrap(), json!({
+        "oneofField2": 5,
+    }));
 }
 
 proptest! {

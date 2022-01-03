@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed unpacked fields not accepting packed bytes
 - Unknown fields are now preserved and roundtripped.
 - Fixed default value for enums with negative values
+- When receiving multiple fields of a oneof in the byte representation, only the last is set.
 
 ## [0.3.5] - 2022-01-02
 

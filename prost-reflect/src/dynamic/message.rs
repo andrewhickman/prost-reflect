@@ -39,7 +39,11 @@ impl Message for DynamicMessage {
             let field_desc = &field.desc;
             field_value
                 .get_or_insert_with(|| Value::default_value_for_field(field_desc))
-                .merge_field(field_desc, wire_type, buf, ctx)
+                .merge_field(field_desc, wire_type, buf, ctx)?;
+            if let Some(oneof_desc) = field_desc.containing_oneof() {
+                self.clear_oneof_fields(oneof_desc, number);
+            }
+            Ok(())
         } else {
             self.unknown_fields.merge_field(number, wire_type, buf, ctx)
         }

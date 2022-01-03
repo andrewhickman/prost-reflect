@@ -14,7 +14,7 @@ pub use self::serde::{DeserializeOptions, SerializeOptions};
 use prost::{bytes::{Bytes, Buf}, DecodeError, Message};
 
 use self::unknown::UnknownFieldSet;
-use crate::{descriptor::Kind, FieldDescriptor, MessageDescriptor, ReflectMessage};
+use crate::{descriptor::Kind, FieldDescriptor, MessageDescriptor, ReflectMessage, OneofDescriptor};
 
 /// [`DynamicMessage`] provides encoding, decoding and reflection of a protobuf message.
 ///
@@ -139,13 +139,16 @@ impl DynamicMessage {
     pub fn set_field(&mut self, number: u32, value: Value) {
         if let Some(field) = self.fields.get_mut(&number) {
             field.set(value);
+            if let Some(oneof_desc) = field.desc.containing_oneof() {
+                self.clear_oneof_fields(oneof_desc, number);
+            }
+        }
+    }
 
-            if let Some(oneof) = field.desc.containing_oneof() {
-                for oneof_field in oneof.fields() {
-                    if oneof_field.number() != number {
-                        self.clear_field(oneof_field.number());
-                    }
-                }
+    fn clear_oneof_fields(&mut self, oneof_desc: OneofDescriptor, set_field: u32) {
+        for oneof_field in oneof_desc.fields() {
+            if oneof_field.number() != set_field {
+                self.clear_field(oneof_field.number());
             }
         }
     }
