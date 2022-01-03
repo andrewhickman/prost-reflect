@@ -11,10 +11,15 @@ use std::{
 #[cfg(feature = "serde")]
 pub use self::serde::{DeserializeOptions, SerializeOptions};
 
-use prost::{bytes::{Bytes, Buf}, DecodeError, Message};
+use prost::{
+    bytes::{Buf, Bytes},
+    DecodeError, Message,
+};
 
 use self::unknown::UnknownFieldSet;
-use crate::{descriptor::Kind, FieldDescriptor, MessageDescriptor, ReflectMessage, OneofDescriptor};
+use crate::{
+    descriptor::Kind, FieldDescriptor, MessageDescriptor, OneofDescriptor, ReflectMessage,
+};
 
 /// [`DynamicMessage`] provides encoding, decoding and reflection of a protobuf message.
 ///
@@ -99,7 +104,9 @@ impl DynamicMessage {
 
     /// Decodes an instance of the message type specified by the [`MessageDescriptor`] from the buffer and merges it into a
     /// new instance of [`DynamicMessage`].
-    pub fn decode<B>(desc: MessageDescriptor, buf: B) -> Result<Self, DecodeError> where B: Buf
+    pub fn decode<B>(desc: MessageDescriptor, buf: B) -> Result<Self, DecodeError>
+    where
+        B: Buf,
     {
         let mut message = DynamicMessage::new(desc);
         message.merge(buf)?;

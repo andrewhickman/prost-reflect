@@ -863,16 +863,25 @@ fn proto3_default_fields_are_not_encoded() {
 fn oneof_set_multiple_values() {
     let mut value = Vec::new();
     MessageWithOneof {
-        test_oneof: Some(message_with_oneof::TestOneof::OneofField1("hello".to_owned())),
-    }.encode(&mut value).unwrap();
+        test_oneof: Some(message_with_oneof::TestOneof::OneofField1(
+            "hello".to_owned(),
+        )),
+    }
+    .encode(&mut value)
+    .unwrap();
     MessageWithOneof {
         test_oneof: Some(message_with_oneof::TestOneof::OneofField2(5)),
-    }.encode(&mut value).unwrap();
+    }
+    .encode(&mut value)
+    .unwrap();
 
     let dynamic_message = DynamicMessage::decode(
-        TEST_FILE_DESCRIPTOR.get_message_by_name("test.MessageWithOneof").unwrap(),
+        TEST_FILE_DESCRIPTOR
+            .get_message_by_name("test.MessageWithOneof")
+            .unwrap(),
         value.as_ref(),
-    ).unwrap();
+    )
+    .unwrap();
 
     assert!(!dynamic_message.has_field_by_name("oneof_field_1"));
     assert!(dynamic_message.has_field_by_name("oneof_field_2"));

@@ -11,7 +11,8 @@ use serde::de::IntoDeserializer;
 use serde_json::json;
 
 use crate::{
-    test_file_descriptor, to_dynamic, ComplexType, Point, ScalarArrays, Scalars, WellKnownTypes,
+    message_with_oneof, test_file_descriptor, to_dynamic, ComplexType, MessageWithOneof, Point,
+    ScalarArrays, Scalars, WellKnownTypes,
 };
 
 #[test]
@@ -1022,17 +1023,23 @@ fn oneof_set_multiple_values() {
     });
 
     let dynamic_message = DynamicMessage::deserialize(
-        test_file_descriptor().get_message_by_name("test.MessageWithOneof").unwrap(),
+        test_file_descriptor()
+            .get_message_by_name("test.MessageWithOneof")
+            .unwrap(),
         json.into_deserializer(),
-    ).unwrap();
+    )
+    .unwrap();
 
     assert!(!dynamic_message.has_field_by_name("oneof_field_1"));
     assert!(dynamic_message.has_field_by_name("oneof_field_2"));
 
     assert_eq!(dynamic_message.encode_to_vec().as_slice(), b"\x10\x05");
-    assert_eq!(serde_json::to_value(&dynamic_message).unwrap(), json!({
+    assert_eq!(
+        serde_json::to_value(&dynamic_message).unwrap(),
+        json!({
         "oneofField2": 5,
-    }));
+        })
+    );
 }
 
 #[test]
@@ -1046,18 +1053,24 @@ fn ints_allow_trailing_zeros() {
 
     let mut s = serde_json::de::Deserializer::from_str(json);
     let dynamic_message = DynamicMessage::deserialize(
-        test_file_descriptor().get_message_by_name("test.Scalars").unwrap(),
+        test_file_descriptor()
+            .get_message_by_name("test.Scalars")
+            .unwrap(),
         &mut s,
-    ).unwrap();
+    )
+    .unwrap();
     s.end().unwrap();
 
-    assert_eq!(dynamic_message.transcode_to::<Scalars>().unwrap(), Scalars {
-        int32: -1,
-        uint32: 2,
-        int64: -3,
-        uint64: 4,
-        ..Default::default()
-    });
+    assert_eq!(
+        dynamic_message.transcode_to::<Scalars>().unwrap(),
+        Scalars {
+            int32: -1,
+            uint32: 2,
+            int64: -3,
+            uint64: 4,
+            ..Default::default()
+        }
+    );
 }
 
 #[test]
@@ -1069,10 +1082,39 @@ fn ints_deny_fractional() {
 
     let mut s = serde_json::de::Deserializer::from_str(json);
     let _ = DynamicMessage::deserialize(
-        test_file_descriptor().get_message_by_name("test.Scalars").unwrap(),
+        test_file_descriptor()
+            .get_message_by_name("test.Scalars")
+            .unwrap(),
         &mut s,
-    ).unwrap();
+    )
+    .unwrap();
     s.end().unwrap();
+}
+
+#[test]
+fn null_in_oneof() {
+    let json = json!({ "oneofNull": null });
+
+    let value: MessageWithOneof = from_json(json, "test.MessageWithOneof");
+    assert_eq!(
+        value.test_oneof,
+        Some(message_with_oneof::TestOneof::OneofNull(0))
+    );
+}
+
+#[test]
+fn value_null_in_oneof() {
+    let json = json!({ "oneofValueNull": null });
+
+    let value: MessageWithOneof = from_json(json, "test.MessageWithOneof");
+    assert_eq!(
+        value.test_oneof,
+        Some(message_with_oneof::TestOneof::OneofValueNull(
+            prost_types::Value {
+                kind: Some(prost_types::value::Kind::NullValue(0)),
+            }
+        )),
+    );
 }
 
 proptest! {

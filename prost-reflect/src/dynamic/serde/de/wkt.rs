@@ -129,15 +129,16 @@ impl<'a, 'de> Visitor<'de> for GoogleProtobufAnyVisitor<'a> {
 impl<'de> Visitor<'de> for GoogleProtobufNullVisitor {
     type Value = i32;
 
+    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "null")
+    }
+
+    #[inline]
     fn visit_unit<E>(self) -> Result<Self::Value, E>
     where
         E: Error,
     {
         Ok(0)
-    }
-
-    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "null")
     }
 }
 
@@ -380,6 +381,7 @@ impl<'de> Visitor<'de> for GoogleProtobufValueVisitor {
         })
     }
 
+    #[inline]
     fn visit_unit<E>(self) -> Result<Self::Value, E>
     where
         E: Error,

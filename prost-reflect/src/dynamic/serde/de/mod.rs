@@ -8,7 +8,7 @@ use serde::de::{DeserializeSeed, Deserializer, Error, Visitor};
 
 use crate::{
     dynamic::{serde::DeserializeOptions, DynamicMessage, Value},
-    EnumDescriptor, FieldDescriptor, MessageDescriptor,
+    EnumDescriptor, FieldDescriptor, MessageDescriptor, Kind,
 };
 
 pub(super) fn deserialize_message<'de, D>(
@@ -100,10 +100,10 @@ impl<'a, 'de> DeserializeSeed<'de> for MessageSeed<'a> {
     }
 }
 
-struct OptionalFieldDescriptorSeed<'a>(&'a FieldDescriptor, &'a DeserializeOptions);
+struct OptionalMessageSeed<'a>(&'a MessageDescriptor, &'a DeserializeOptions);
 
-impl<'a, 'de> DeserializeSeed<'de> for OptionalFieldDescriptorSeed<'a> {
-    type Value = Option<Value>;
+impl<'a, 'de> DeserializeSeed<'de> for OptionalMessageSeed<'a> {
+    type Value = Option<DynamicMessage>;
 
     fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
     where
@@ -113,8 +113,12 @@ impl<'a, 'de> DeserializeSeed<'de> for OptionalFieldDescriptorSeed<'a> {
     }
 }
 
-impl<'a, 'de> Visitor<'de> for OptionalFieldDescriptorSeed<'a> {
-    type Value = Option<Value>;
+impl<'a, 'de> Visitor<'de> for OptionalMessageSeed<'a> {
+    type Value = Option<DynamicMessage>;
+
+    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "option")
+    }
 
     #[inline]
     fn visit_unit<E>(self) -> Result<Self::Value, E>
@@ -137,13 +141,9 @@ impl<'a, 'de> Visitor<'de> for OptionalFieldDescriptorSeed<'a> {
     where
         D: Deserializer<'de>,
     {
-        FieldDescriptorSeed(self.0, self.1)
+        MessageSeed(self.0, self.1)
             .deserialize(deserializer)
             .map(Some)
-    }
-
-    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "option")
     }
 }
 
@@ -167,6 +167,62 @@ impl<'a, 'de> DeserializeSeed<'de> for FieldDescriptorSeed<'a> {
         } else {
             kind::KindSeed(&self.0.kind(), self.1).deserialize(deserializer)
         }
+    }
+}
+
+struct OptionalFieldDescriptorSeed<'a>(&'a FieldDescriptor, &'a DeserializeOptions);
+
+impl<'a, 'de> DeserializeSeed<'de> for OptionalFieldDescriptorSeed<'a> {
+    type Value = Option<Value>;
+
+    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_option(self)
+    }
+}
+
+impl<'a, 'de> Visitor<'de> for OptionalFieldDescriptorSeed<'a> {
+    type Value = Option<Value>;
+
+    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "option")
+    }
+
+    #[inline]
+    fn visit_unit<E>(self) -> Result<Self::Value, E>
+    where
+        E: Error,
+    {
+        self.visit_none()
+    }
+
+    #[inline]
+    fn visit_none<E>(self) -> Result<Self::Value, E>
+    where
+        E: Error,
+    {
+        if let Kind::Message(message_desc) = self.0.kind() {
+            match message_desc.full_name() {
+                "google.protobuf.Value" => make_message(&message_desc, prost_types::Value {
+                    kind: Some(prost_types::value::Kind::NullValue(0)),
+                }).map(|v| Some(Value::Message(v))),
+                _ => Ok(None),
+            }
+        } else {
+            return Ok(Some(Value::default_value_for_field(&self.0)))
+        }
+    }
+
+    #[inline]
+    fn visit_some<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        FieldDescriptorSeed(self.0, self.1)
+            .deserialize(deserializer)
+            .map(Some)
     }
 }
 

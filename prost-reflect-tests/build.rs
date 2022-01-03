@@ -6,7 +6,10 @@ fn main() -> io::Result<()> {
             .join("file_descriptor_set.bin");
 
     prost_build::Config::new()
-        .type_attribute(".test", "#[derive(::proptest_derive::Arbitrary)]")
+        .type_attribute(".test.Scalars", "#[derive(::proptest_derive::Arbitrary)]")
+        .type_attribute(".test.ScalarArrays", "#[derive(::proptest_derive::Arbitrary)]")
+        .type_attribute(".test.ComplexType", "#[derive(::proptest_derive::Arbitrary)]")
+        .type_attribute(".test.WellKnownTypes", "#[derive(::proptest_derive::Arbitrary)]")
         .type_attribute(".test", "#[derive(::prost_reflect::ReflectMessage)]")
         .type_attribute(
             ".test.Scalars",
