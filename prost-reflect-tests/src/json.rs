@@ -1131,6 +1131,14 @@ fn null_old_format() {
     );
 }
 
+#[test]
+#[should_panic(expected = "float value out of range")]
+fn float_out_of_range() {
+    let json = json!({ "float": -3.502823e+38 });
+
+    let _: Scalars = from_json(json, "test.Scalars");
+}
+
 proptest! {
     #![proptest_config(ProptestConfig {
         cases: 32,

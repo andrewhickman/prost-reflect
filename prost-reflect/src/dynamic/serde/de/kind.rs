@@ -198,7 +198,11 @@ impl<'de> Visitor<'de> for FloatVisitor {
     where
         E: Error,
     {
-        Ok(v as f32)
+        if v < (f32::MIN as f64) || v > (f32::MAX as f64) {
+            Err(Error::custom("float value out of range"))
+        } else {
+            Ok(v as f32)
+        }
     }
 
     #[inline]

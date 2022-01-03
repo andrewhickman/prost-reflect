@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Trailing zeros (e.g. `10.00`) are now accepted when parsing integers from the JSON representation.
 - Fixed handling of `null` in JSON deserialization.
 - Deserialization of `google.protobuf.NullValue` now accepts the `"NULL_VALUE"` string.
+- Deserialization of floats from JSON now validates the value is in range.
 
 ## [0.3.5] - 2022-01-02
 
