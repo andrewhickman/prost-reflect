@@ -1139,6 +1139,17 @@ fn float_out_of_range() {
     let _: Scalars = from_json(json, "test.Scalars");
 }
 
+#[test]
+fn bytes_forgiving_decode() {
+    let json = json!({ "bytes": "-_" });
+
+    let scalars: Scalars = from_json(json, "test.Scalars");
+    assert_eq!(scalars, Scalars {
+        bytes: b"\xfb".to_vec(),
+        ..Default::default()
+    });
+}
+
 proptest! {
     #![proptest_config(ProptestConfig {
         cases: 32,

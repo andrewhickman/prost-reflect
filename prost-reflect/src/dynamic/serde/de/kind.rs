@@ -494,11 +494,11 @@ impl<'de> Visitor<'de> for BytesVisitor {
         use base64::{decode_config_buf, DecodeError, STANDARD, URL_SAFE};
 
         let mut buf = Vec::new();
-        match decode_config_buf(v, STANDARD, &mut buf) {
+        match decode_config_buf(v, STANDARD.decode_allow_trailing_bits(true), &mut buf) {
             Ok(()) => Ok(buf.into()),
             Err(DecodeError::InvalidByte(_, b'-')) | Err(DecodeError::InvalidByte(_, b'_')) => {
                 buf.clear();
-                match decode_config_buf(v, URL_SAFE, &mut buf) {
+                match decode_config_buf(v, URL_SAFE.decode_allow_trailing_bits(true), &mut buf) {
                     Ok(()) => Ok(buf.into()),
                     Err(err) => Err(Error::custom(format!("invalid base64: {}", err))),
                 }

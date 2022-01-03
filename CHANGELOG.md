@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed handling of `null` in JSON deserialization.
 - Deserialization of `google.protobuf.NullValue` now accepts the `"NULL_VALUE"` string.
 - Deserialization of floats from JSON now validates the value is in range.
+- Nonzero trailing bits are allowed when deserializing JSON bytes from base64.
 
 ## [0.3.5] - 2022-01-02
 
