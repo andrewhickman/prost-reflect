@@ -20,6 +20,7 @@ impl Message for DynamicMessage {
                 value.encode_field(&field.desc, buf);
             }
         }
+        self.unknown_fields.encode_raw(buf);
     }
 
     fn merge_field<B>(
@@ -40,7 +41,7 @@ impl Message for DynamicMessage {
                 .get_or_insert_with(|| Value::default_value_for_field(field_desc))
                 .merge_field(field_desc, wire_type, buf, ctx)
         } else {
-            prost::encoding::skip_field(wire_type, number, buf, ctx)
+            self.unknown_fields.merge_field(number, wire_type, buf, ctx)
         }
     }
 
@@ -51,6 +52,7 @@ impl Message for DynamicMessage {
                 len += value.encoded_len(&field.desc);
             }
         }
+        len += self.unknown_fields.encoded_len();
         len
     }
 
@@ -58,6 +60,7 @@ impl Message for DynamicMessage {
         for value in self.fields.values_mut() {
             value.clear();
         }
+        self.unknown_fields.clear();
     }
 }
 

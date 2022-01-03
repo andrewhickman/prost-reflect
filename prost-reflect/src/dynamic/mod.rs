@@ -1,6 +1,7 @@
 mod message;
 #[cfg(feature = "serde")]
 mod serde;
+mod unknown;
 
 use std::{
     borrow::Cow,
@@ -12,6 +13,7 @@ pub use self::serde::{DeserializeOptions, SerializeOptions};
 
 use prost::{bytes::Bytes, DecodeError, Message};
 
+use self::unknown::UnknownFieldSet;
 use crate::{descriptor::Kind, FieldDescriptor, MessageDescriptor, ReflectMessage};
 
 /// [`DynamicMessage`] provides encoding, decoding and reflection of a protobuf message.
@@ -22,6 +24,7 @@ use crate::{descriptor::Kind, FieldDescriptor, MessageDescriptor, ReflectMessage
 pub struct DynamicMessage {
     desc: MessageDescriptor,
     fields: BTreeMap<u32, DynamicMessageField>,
+    unknown_fields: UnknownFieldSet,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -89,6 +92,7 @@ impl DynamicMessage {
                 .fields()
                 .map(|field_desc| (field_desc.number(), DynamicMessageField::new(field_desc)))
                 .collect(),
+            unknown_fields: UnknownFieldSet::new(),
             desc,
         }
     }

@@ -826,6 +826,19 @@ fn unpacked_fields_accept_packed_bytes() {
     );
 }
 
+#[test]
+fn unknown_fields_are_roundtripped() {
+    const BYTES: &[u8] = b"\x08\x96\x01";
+
+    let desc = TEST_FILE_DESCRIPTOR
+        .get_message_by_name("google.protobuf.Empty")
+        .unwrap();
+    let mut message = DynamicMessage::new(desc);
+    message.merge(BYTES).unwrap();
+
+    assert_eq!(&message.encode_to_vec(), BYTES);
+}
+
 fn to_dynamic<T>(message: &T) -> DynamicMessage
 where
     T: PartialEq + Debug + ReflectMessage + Default,
