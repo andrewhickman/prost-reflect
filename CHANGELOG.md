@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Unknown fields are now preserved and roundtripped.
 - Fixed default value for enums with negative values
 - When receiving multiple fields of a oneof in the byte representation, only the last is set.
+- Trailing zeros (e.g. `10.00`) are now accepted when parsing integers from the JSON representation.
 
 ## [0.3.5] - 2022-01-02
 

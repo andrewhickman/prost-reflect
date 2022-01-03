@@ -435,6 +435,21 @@ impl<'de> Visitor<'de> for Int32Visitor {
     {
         v.try_into().map_err(Error::custom)
     }
+
+    fn visit_f64<E>(self, v: f64) -> Result<Self::Value, E>
+    where
+        E: Error,
+    {
+        if v.fract() != 0.0 {
+            return Err(Error::custom("expected integer value"));
+        }
+
+        if v < (i32::MIN as f64) || v > (i32::MAX as f64) {
+            return Err(Error::custom("float value out of range"));
+        }
+
+        Ok(v as i32)
+    }
 }
 
 impl<'de> Visitor<'de> for Uint32Visitor {
@@ -475,6 +490,21 @@ impl<'de> Visitor<'de> for Uint32Visitor {
     {
         v.try_into().map_err(Error::custom)
     }
+
+    fn visit_f64<E>(self, v: f64) -> Result<Self::Value, E>
+    where
+        E: Error,
+    {
+        if v.fract() != 0.0 {
+            return Err(Error::custom("expected integer value"));
+        }
+
+        if v < (u32::MIN as f64) || v > (u32::MAX as f64) {
+            return Err(Error::custom("float value out of range"));
+        }
+
+        Ok(v as u32)
+    }
 }
 
 impl<'de> Visitor<'de> for Int64Visitor {
@@ -507,6 +537,21 @@ impl<'de> Visitor<'de> for Int64Visitor {
     {
         v.try_into().map_err(Error::custom)
     }
+
+    fn visit_f64<E>(self, v: f64) -> Result<Self::Value, E>
+    where
+        E: Error,
+    {
+        if v.fract() != 0.0 {
+            return Err(Error::custom("expected integer value"));
+        }
+
+        if v < (i64::MIN as f64) || v > (i64::MAX as f64) {
+            return Err(Error::custom("float value out of range"));
+        }
+
+        Ok(v as i64)
+    }
 }
 
 impl<'de> Visitor<'de> for Uint64Visitor {
@@ -538,6 +583,21 @@ impl<'de> Visitor<'de> for Uint64Visitor {
         E: Error,
     {
         v.try_into().map_err(Error::custom)
+    }
+
+    fn visit_f64<E>(self, v: f64) -> Result<Self::Value, E>
+    where
+        E: Error,
+    {
+        if v.fract() != 0.0 {
+            return Err(Error::custom("expected integer value"));
+        }
+
+        if v < (u64::MIN as f64) || v > (u64::MAX as f64) {
+            return Err(Error::custom("float value out of range"));
+        }
+
+        Ok(v as u64)
     }
 }
 

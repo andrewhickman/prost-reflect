@@ -1035,6 +1035,46 @@ fn oneof_set_multiple_values() {
     }));
 }
 
+#[test]
+fn ints_allow_trailing_zeros() {
+    let json = r#"{
+        "int32": -1.000,
+        "uint32": 2.000,
+        "int64": -3.000,
+        "uint64": 4.000
+    }"#;
+
+    let mut s = serde_json::de::Deserializer::from_str(json);
+    let dynamic_message = DynamicMessage::deserialize(
+        test_file_descriptor().get_message_by_name("test.Scalars").unwrap(),
+        &mut s,
+    ).unwrap();
+    s.end().unwrap();
+
+    assert_eq!(dynamic_message.transcode_to::<Scalars>().unwrap(), Scalars {
+        int32: -1,
+        uint32: 2,
+        int64: -3,
+        uint64: 4,
+        ..Default::default()
+    });
+}
+
+#[test]
+#[should_panic(expected = "expected integer value")]
+fn ints_deny_fractional() {
+    let json = r#"{
+        "int32": -1.01,
+    }"#;
+
+    let mut s = serde_json::de::Deserializer::from_str(json);
+    let _ = DynamicMessage::deserialize(
+        test_file_descriptor().get_message_by_name("test.Scalars").unwrap(),
+        &mut s,
+    ).unwrap();
+    s.end().unwrap();
+}
+
 proptest! {
     #![proptest_config(ProptestConfig {
         cases: 32,
