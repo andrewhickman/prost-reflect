@@ -14,7 +14,7 @@ use serde::de::{
 
 use crate::{
     dynamic::{
-        serde::{is_well_known_type, DeserializeOptions},
+        serde::{is_well_known_type, DeserializeOptions, case::camel_case_to_snake_case},
         DynamicMessage,
     },
     FileDescriptor,
@@ -269,21 +269,6 @@ impl<'de> Visitor<'de> for GoogleProtobufFieldMaskVisitor {
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "a field mask string")
     }
-}
-
-fn camel_case_to_snake_case(result: &mut String, part: &str) -> Result<(), ()> {
-    for ch in part.chars() {
-        if ch.is_ascii_uppercase() {
-            result.push('_');
-            result.push(ch.to_ascii_lowercase());
-        } else if ch == '_' {
-            return Err(());
-        } else {
-            result.push(ch);
-        }
-    }
-
-    Ok(())
 }
 
 impl<'de> DeserializeSeed<'de> for GoogleProtobufValueVisitor {

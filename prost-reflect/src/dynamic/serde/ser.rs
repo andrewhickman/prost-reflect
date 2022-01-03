@@ -8,7 +8,7 @@ use serde::ser::{Error, Serialize, SerializeMap, SerializeSeq, Serializer};
 use crate::{
     descriptor::Kind,
     dynamic::{
-        serde::{is_well_known_type, SerializeOptions},
+        serde::{is_well_known_type, SerializeOptions, case::snake_case_to_camel_case},
         DynamicMessage, DynamicMessageField, MapKey, Value,
     },
     ReflectMessage,
@@ -529,26 +529,13 @@ where
             if !first {
                 result.push('.');
             }
-            snake_case_to_camel_case(&mut result, part);
+            snake_case_to_camel_case(&mut result, part)
+                .map_err(|()| Error::custom("cannot roundtrip field name through camelcase"))?;
             first = false;
         }
     }
 
     serializer.serialize_str(&result)
-}
-
-fn snake_case_to_camel_case(dst: &mut String, src: &str) {
-    let mut ucase_next = false;
-    for mut ch in src.chars() {
-        if ch == '_' {
-            ucase_next = true;
-            continue;
-        } else if ucase_next {
-            ch = ch.to_ascii_uppercase();
-            ucase_next = false;
-        }
-        dst.push(ch)
-    }
 }
 
 fn serialize_empty<S>(
