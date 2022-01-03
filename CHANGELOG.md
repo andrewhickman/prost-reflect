@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fixed unpacked fields not accepting packed bytes
 - Unknown fields are now preserved and roundtripped.
+- Fixed default value for enums with negative values
 
 ## [0.3.5] - 2022-01-02
 

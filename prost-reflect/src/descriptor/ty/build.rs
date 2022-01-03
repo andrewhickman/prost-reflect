@@ -261,7 +261,8 @@ impl TypeMap {
             Some(&TyProto::Enum {
                 enum_proto,
                 ref parent,
-            }) => self.build_enum(type_name, parent.as_deref(), enum_proto, protos)?,
+                syntax,
+            }) => self.build_enum(type_name, parent.as_deref(), enum_proto, syntax, protos)?,
         })
     }
 
@@ -270,6 +271,7 @@ impl TypeMap {
         name: &str,
         parent: Option<&str>,
         enum_proto: &EnumDescriptorProto,
+        syntax: Syntax,
         protos: &HashMap<String, TyProto>,
     ) -> Result<TypeId, DescriptorError> {
         if let Some(id) = self.try_get_by_name(name) {
@@ -298,19 +300,30 @@ impl TypeMap {
             })
             .collect();
 
-        if values.is_empty() {
-            return Err(DescriptorError::empty_enum());
-        }
-
         let parent = parent
             .map(|p| self.build_named_type(protos, p))
             .transpose()?;
+
+        let default_value = if syntax == Syntax::Proto2 {
+            enum_proto
+                .value
+                .get(0)
+                .map(|v| v.number())
+                .ok_or_else(DescriptorError::empty_enum)?
+        } else {
+            if !values.contains_key(&0) {
+                return Err(DescriptorError::empty_enum());
+            }
+
+            0
+        };
 
         let id = self.add_enum(EnumDescriptorInner {
             full_name: name.to_owned(),
             parent,
             value_names,
             values,
+            default_value,
         });
         self.add_name(name, id);
         Ok(id)
@@ -333,6 +346,7 @@ enum TyProto<'a> {
     Enum {
         enum_proto: &'a EnumDescriptorProto,
         parent: Option<String>,
+        syntax: Syntax,
     },
 }
 
@@ -373,6 +387,7 @@ fn iter_tys(raw: &FileDescriptorSet) -> Result<HashMap<String, TyProto<'_>>, Des
                     TyProto::Enum {
                         enum_proto,
                         parent: None,
+                        syntax,
                     },
                 )
                 .is_some()
@@ -417,6 +432,7 @@ fn iter_message<'a>(
                 TyProto::Enum {
                     enum_proto,
                     parent: Some(namespace.to_string()),
+                    syntax,
                 },
             )
             .is_some()

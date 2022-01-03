@@ -169,7 +169,8 @@ fn serialize_complex_type() {
             bytes: b"6".to_vec(),
             ..Default::default()
         }),
-        my_enum: vec![0, 1, 2, 3],
+        my_enum: vec![0, 1, 2, 3, -4],
+        optional_enum: 1,
     });
 
     assert_eq!(
@@ -206,7 +207,8 @@ fn serialize_complex_type() {
                 "string": "5",
                 "bytes": "Ng==",
             },
-            "myEnum": ["DEFAULT", "FOO", 2, "BAR"],
+            "myEnum": ["DEFAULT", "FOO", 2, "BAR", "NEG"],
+            "optionalEnum": "FOO",
         })
     );
 }
@@ -329,7 +331,7 @@ fn serialize_no_stringify_64_bit_integers() {
 fn serialize_use_proto_field_name() {
     let value = to_json_with_options(
         &ComplexType {
-            my_enum: vec![0, 1, 2, 3],
+            my_enum: vec![0, 1, 2, 3, -4],
             ..Default::default()
         },
         &SerializeOptions::new().use_proto_field_name(true),
@@ -338,7 +340,7 @@ fn serialize_use_proto_field_name() {
     assert_eq!(
         value,
         json!({
-            "my_enum": ["DEFAULT", "FOO", 2, "BAR"],
+            "my_enum": ["DEFAULT", "FOO", 2, "BAR", "NEG"],
         })
     );
 }
@@ -347,7 +349,7 @@ fn serialize_use_proto_field_name() {
 fn serialize_use_enum_numbers() {
     let value = to_json_with_options(
         &ComplexType {
-            my_enum: vec![0, 1, 2, 3],
+            my_enum: vec![0, 1, 2, 3, -4],
             ..Default::default()
         },
         &SerializeOptions::new().use_enum_numbers(true),
@@ -356,7 +358,7 @@ fn serialize_use_enum_numbers() {
     assert_eq!(
         value,
         json!({
-            "myEnum": [0, 1, 2, 3],
+            "myEnum": [0, 1, 2, 3, -4],
         })
     );
 }
@@ -374,6 +376,7 @@ fn serialize_emit_unpopulated_fields() {
             int_map: HashMap::default(),
             nested: None,
             my_enum: vec![],
+            optional_enum: 0,
         },
         &SerializeOptions::new().emit_unpopulated_fields(true),
     );
@@ -403,6 +406,7 @@ fn serialize_emit_unpopulated_fields() {
             "intMap": {},
             "nested": null,
             "myEnum": [],
+            "optionalEnum": "DEFAULT"
         })
     );
 }
@@ -672,7 +676,8 @@ fn deserialize_complex_type() {
                 "string": "5",
                 "bytes": "Ng==",
             },
-            "myEnum": ["DEFAULT", "FOO", 2, "BAR"],
+            "myEnum": ["DEFAULT", "FOO", 2, "BAR", "NEG"],
+            "optionalEnum": "FOO",
         }),
         ".test.ComplexType",
     );
@@ -728,7 +733,8 @@ fn deserialize_complex_type() {
                 bytes: b"6".to_vec(),
                 ..Default::default()
             }),
-            my_enum: vec![0, 1, 2, 3],
+            my_enum: vec![0, 1, 2, 3, -4],
+            optional_enum: 1,
         }
     );
 }

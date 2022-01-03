@@ -429,7 +429,8 @@ fn decode_complex_type() {
             bytes: b"6".to_vec(),
             ..Default::default()
         }),
-        my_enum: vec![0, 1, 2, 3],
+        my_enum: vec![0, 1, 2, 3, -4],
+        optional_enum: 1,
     });
 
     fn empty_scalars() -> DynamicMessage {
@@ -498,9 +499,17 @@ fn decode_complex_type() {
                 Value::EnumNumber(1),
                 Value::EnumNumber(2),
                 Value::EnumNumber(3),
+                Value::EnumNumber(-4),
             ]
             .as_ref()
         ),
+    );
+    assert_eq!(
+        dynamic
+            .get_field_by_name("optional_enum")
+            .unwrap()
+            .as_enum_number(),
+        Some(1),
     );
 }
 
@@ -703,7 +712,8 @@ fn roundtrip_complex_type() {
             bytes: b"6".to_vec(),
             ..Default::default()
         }),
-        my_enum: vec![0, 1, 2, 3],
+        my_enum: vec![0, 1, 2, 3, -4],
+        optional_enum: 1,
     })
     .unwrap();
 }
@@ -837,6 +847,16 @@ fn unknown_fields_are_roundtripped() {
     message.merge(BYTES).unwrap();
 
     assert_eq!(&message.encode_to_vec(), BYTES);
+}
+
+#[test]
+fn proto3_default_fields_are_not_encoded() {
+    let message = to_dynamic(&ComplexType {
+        optional_enum: 0,
+        ..Default::default()
+    });
+
+    assert!(message.encode_to_vec().is_empty());
 }
 
 fn to_dynamic<T>(message: &T) -> DynamicMessage

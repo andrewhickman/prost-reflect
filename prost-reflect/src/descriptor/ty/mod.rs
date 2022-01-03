@@ -75,6 +75,7 @@ struct EnumDescriptorInner {
     parent: Option<TypeId>,
     value_names: HashMap<String, i32>,
     values: BTreeMap<i32, EnumValueDescriptorInner>,
+    default_value: i32,
 }
 
 /// A value in a protobuf enum type.
@@ -609,7 +610,10 @@ impl EnumDescriptor {
 
     /// Gets the default value for the enum type.
     pub fn default_value(&self) -> EnumValueDescriptor {
-        self.values().next().unwrap()
+        EnumValueDescriptor {
+            parent: self.clone(),
+            number: self.enum_ty().default_value,
+        }
     }
 
     /// Gets a [`EnumValueDescriptor`] for the enum value with the given name, or `None` if no such value exists.
