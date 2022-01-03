@@ -10,8 +10,8 @@
 //! # Example - decoding
 //!
 //! [`DynamicMessage`] does not implement [`Default`] since it needs a message descriptor to
-//! function. To decode a protobuf byte stream into an instance of this type, create a default
-//! value for the [`MessageDescriptor`] instance and merge into it:
+//! function. To decode a protobuf byte stream into an instance of this type, use [`DynamicMessage::decode`]
+//! to create a default value for the [`MessageDescriptor`] instance and merge into it:
 //!
 //! ```
 //! use prost::Message;
@@ -22,8 +22,7 @@
 //! let file_descriptor = FileDescriptor::new(file_descriptor_set).unwrap();
 //! let message_descriptor = file_descriptor.get_message_by_name("package.MyMessage").unwrap();
 //!
-//! let mut dynamic_message = DynamicMessage::new(message_descriptor);
-//! dynamic_message.merge(b"\x08\x96\x01".as_ref()).unwrap();
+//! let dynamic_message = DynamicMessage::decode(message_descriptor, b"\x08\x96\x01".as_ref()).unwrap();
 //!
 //! assert_eq!(dynamic_message.get_field_by_name("foo").unwrap().as_ref(), &Value::I32(150));
 //! ```
@@ -33,7 +32,7 @@
 # Example - JSON mapping
 
 When the `serde` feature is enabled, `DynamicMessage` can be deserialized to and from the
-[canonical JSON mapping](https://developers.google.com/protocol-buffers/docs/proto3#json) 
+[canonical JSON mapping](https://developers.google.com/protocol-buffers/docs/proto3#json)
 defined for protobuf messages.
 
 ```
@@ -73,7 +72,7 @@ use prost::Message;
 use prost_reflect::{FileDescriptor, ReflectMessage};
 use once_cell::sync::Lazy;
 
-static FILE_DESCRIPTOR: Lazy<FileDescriptor> 
+static FILE_DESCRIPTOR: Lazy<FileDescriptor>
     = Lazy::new(|| FileDescriptor::decode(include_bytes!("file_descriptor_set.bin").as_ref()).unwrap());
 
 #[derive(Message, ReflectMessage)]

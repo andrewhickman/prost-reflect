@@ -11,7 +11,7 @@ use std::{
 #[cfg(feature = "serde")]
 pub use self::serde::{DeserializeOptions, SerializeOptions};
 
-use prost::{bytes::Bytes, DecodeError, Message};
+use prost::{bytes::{Bytes, Buf}, DecodeError, Message};
 
 use self::unknown::UnknownFieldSet;
 use crate::{descriptor::Kind, FieldDescriptor, MessageDescriptor, ReflectMessage};
@@ -85,7 +85,7 @@ pub enum MapKey {
 }
 
 impl DynamicMessage {
-    /// Creates a new, empty instance of [`DynamicMessage`] for the message type specified by [`MessageDescriptor`].
+    /// Creates a new, empty instance of [`DynamicMessage`] for the message type specified by the [`MessageDescriptor`].
     pub fn new(desc: MessageDescriptor) -> Self {
         DynamicMessage {
             fields: desc
@@ -95,6 +95,15 @@ impl DynamicMessage {
             unknown_fields: UnknownFieldSet::new(),
             desc,
         }
+    }
+
+    /// Decodes an instance of the message type specified by the [`MessageDescriptor`] from the buffer and merges it into a
+    /// new instance of [`DynamicMessage`].
+    pub fn decode<B>(desc: MessageDescriptor, buf: B) -> Result<Self, DecodeError> where B: Buf
+    {
+        let mut message = DynamicMessage::new(desc);
+        message.merge(buf)?;
+        Ok(message)
     }
 
     /// Returns `true` if this message has a field set with the number `number`.
