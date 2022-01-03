@@ -790,6 +790,42 @@ proptest! {
     }
 }
 
+#[test]
+fn unpacked_fields_accept_packed_bytes() {
+    let desc = TEST_FILE_DESCRIPTOR
+        .get_message_by_name("test2.UnpackedScalarArray")
+        .unwrap();
+    assert!(desc.get_field_by_name("unpacked_double").unwrap().is_list());
+    assert!(!desc
+        .get_field_by_name("unpacked_double")
+        .unwrap()
+        .is_packed());
+    let mut message = DynamicMessage::new(desc);
+    message
+        .merge(
+            [
+                0o322, 0o2, b' ', 0, 0, 0, 0, 0, 0, 0, 0, 0o232, 0o231, 0o231, 0o231, 0o231, 0o231,
+                0o271, b'?', 0o377, 0o377, 0o377, 0o377, 0o377, 0o377, 0o357, 0o177, 0, 0, 0, 0, 0,
+                0, 0o20, 0,
+            ]
+            .as_ref(),
+        )
+        .unwrap();
+
+    assert_eq!(
+        message
+            .get_field_by_name("unpacked_double")
+            .unwrap()
+            .as_list(),
+        Some([
+            Value::F64(0.0),
+            Value::F64(0.1),
+            Value::F64(179769313486231570000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000.0),
+            Value::F64(0.000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000022250738585072014),
+        ].as_ref())
+    );
+}
+
 fn to_dynamic<T>(message: &T) -> DynamicMessage
 where
     T: PartialEq + Debug + ReflectMessage + Default,

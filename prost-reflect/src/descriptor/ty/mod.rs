@@ -469,6 +469,11 @@ impl FieldDescriptor {
         self.message_field_ty().default_value.as_ref()
     }
 
+    pub(crate) fn is_packable(&self) -> bool {
+        let ty = self.message_field_ty().ty;
+        self.message.file_set.inner.type_map.get(ty).is_packable()
+    }
+
     fn message_field_ty(&self) -> &FieldDescriptorInner {
         &self.message.message_ty().fields[&self.field]
     }

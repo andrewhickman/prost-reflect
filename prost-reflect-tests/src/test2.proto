@@ -22,6 +22,10 @@ message DefaultValues {
   optional Proto2Enum enum = 17;
 }
 
+message UnpackedScalarArray {
+  repeated double unpacked_double = 42;
+}
+
 enum Proto2Enum {
   DEFAULT = 2;
   OTHER = 3;

@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed unpacked fields not accepting packed bytes
+
 ## [0.3.5] - 2022-01-02
 
 ### Fixed

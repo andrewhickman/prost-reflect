@@ -318,7 +318,7 @@ impl Value {
                 }
             }
             (Value::List(values), field_kind) if field_desc.is_list() => {
-                if field_desc.is_packed() && wire_type == WireType::LengthDelimited {
+                if wire_type == WireType::LengthDelimited && field_desc.is_packable() {
                     let packed_wire_type = match field_desc.kind() {
                         Kind::Double | Kind::Fixed64 | Kind::Sfixed64 => WireType::SixtyFourBit,
                         Kind::Float | Kind::Fixed32 | Kind::Sfixed32 => WireType::ThirtyTwoBit,
