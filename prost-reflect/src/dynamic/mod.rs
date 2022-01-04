@@ -1,3 +1,4 @@
+mod extension;
 mod field;
 mod message;
 #[cfg(feature = "serde")]
@@ -17,7 +18,7 @@ use prost::{
     DecodeError, Message,
 };
 
-use self::{field::DynamicMessageField, unknown::UnknownFieldSet};
+use self::{field::DynamicMessageField, unknown::UnknownFieldSet, extension::ExtensionFieldSet};
 use crate::{
     descriptor::Kind, ExtensionDescriptor, FieldDescriptor, MessageDescriptor, OneofDescriptor,
     ReflectMessage,
@@ -38,6 +39,7 @@ pub struct DynamicMessage {
 #[derive(Default, Debug, Clone)]
 struct DynamicMessageColdFields {
     unknown: UnknownFieldSet,
+    extensions: ExtensionFieldSet,
 }
 
 /// A dynamically-typed protobuf value.
@@ -126,7 +128,7 @@ impl DynamicMessage {
     pub fn has_field(&self, number: u32) -> bool {
         self.fields
             .get(&number)
-            .map_or(false, |field| field.is_populated())
+            .map_or(false, |field| field.has())
     }
 
     /// Gets the value of the field with number `number`, or the default value if it is unset.
@@ -210,6 +212,39 @@ impl DynamicMessage {
         }
     }
 
+    /// Returns `true` if this message has the given extension field set.
+    ///
+    /// See [`has_field`][Self::has_field] for more details.
+    pub fn has_extension(&self, extension_desc: &ExtensionDescriptor) -> bool {
+        self.extension_fields().map(|extensions| extensions.has(extension_desc)).unwrap_or(false)
+    }
+
+    /// Gets the value of the give extension field, or the default value if it is unset.
+    ///
+    /// See [`get_field`][Self::get_field] for more details.
+    pub fn get_extension(&self, extension_desc: &ExtensionDescriptor) -> Option<Cow<'_, Value>> {
+        match self.extension_fields() {
+            Some(extensions) => Some(extensions.get(extension_desc)),
+            None => Some(Cow::Owned(Value::default_value_for_extension(extension_desc)))
+        }
+    }
+
+    /// Sets the value of the given extension field, or the default value if it is unset.
+    ///
+    /// See [`clear_field`][Self::clear_field] for more details.
+    pub fn set_extension(&mut self, extension_desc: &ExtensionDescriptor, value: Value) {
+        self.extension_fields_mut().set(extension_desc, value)
+    }
+
+    /// Clears the given extension field.
+    ///
+    /// See [`clear_field`][Self::clear_field] for more details.
+    pub fn clear_extension(&mut self, extension_desc: &ExtensionDescriptor) {
+        if let Some(cold) = &mut self.cold {
+            cold.extensions.clear(extension_desc)
+        }
+    }
+
     /// Merge a strongly-typed message into this one.
     ///
     /// The message should be compatible with the type specified by
@@ -240,8 +275,16 @@ impl DynamicMessage {
         self.cold.as_ref().map(|c| &c.unknown)
     }
 
+    fn extension_fields(&self) -> Option<&ExtensionFieldSet> {
+        self.cold.as_ref().map(|c| &c.extensions)
+    }
+
     fn unknown_fields_mut(&mut self) -> &mut UnknownFieldSet {
         &mut self.cold.get_or_insert_with(Default::default).unknown
+    }
+
+    fn extension_fields_mut(&mut self) -> &mut ExtensionFieldSet {
+        &mut self.cold.get_or_insert_with(Default::default).extensions
     }
 }
 
@@ -251,8 +294,8 @@ impl PartialEq for DynamicMessage {
             && self.fields == other.fields
             && match (&self.cold, &other.cold) {
                 (None, None) => true,
-                (None, Some(cold)) | (Some(cold), None) => cold.unknown.is_empty(),
-                (Some(lhs), Some(rhs)) => lhs.unknown == rhs.unknown,
+                (None, Some(cold)) | (Some(cold), None) => cold.unknown.is_empty() && cold.extensions.is_empty(),
+                (Some(lhs), Some(rhs)) => lhs.unknown == rhs.unknown && lhs.extensions == rhs.extensions,
             }
     }
 }
@@ -286,15 +329,15 @@ impl Value {
     /// Returns the default value for the given protobuf extension field.
     ///
     /// See [default_value_for_field][Value::default_value_for_field] for more details.
-    pub fn default_value_for_extension(field_desc: &ExtensionDescriptor) -> Self {
-        if field_desc.is_list() {
+    pub fn default_value_for_extension(extension_desc: &ExtensionDescriptor) -> Self {
+        if extension_desc.is_list() {
             Value::List(Vec::default())
-        } else if field_desc.is_map() {
+        } else if extension_desc.is_map() {
             Value::Map(HashMap::default())
-        } else if let Some(default_value) = field_desc.default_value() {
+        } else if let Some(default_value) = extension_desc.default_value() {
             default_value.clone()
         } else {
-            Self::default_value(&field_desc.kind())
+            Self::default_value(&extension_desc.kind())
         }
     }
 
@@ -321,8 +364,8 @@ impl Value {
     }
 
     /// Returns `true` if this is the default value for the given protobuf extension field.
-    pub fn is_default_for_extension(&self, field_desc: &ExtensionDescriptor) -> bool {
-        *self == Value::default_value_for_extension(field_desc)
+    pub fn is_default_for_extension(&self, extension_desc: &ExtensionDescriptor) -> bool {
+        *self == Value::default_value_for_extension(extension_desc)
     }
 
     /// Returns `true` if this is the default value for the given protobuf type `kind`.
@@ -353,12 +396,12 @@ impl Value {
     /// Returns `true` if this value can be set for a given extension field.
     ///
     /// See [is_valid_for_field][Value::is_valid_for_field] for more details.
-    pub fn is_valid_for_extension(&self, field_desc: &ExtensionDescriptor) -> bool {
-        match (self, field_desc.kind()) {
-            (Value::List(list), kind) if field_desc.is_list() => {
+    pub fn is_valid_for_extension(&self, extension_desc: &ExtensionDescriptor) -> bool {
+        match (self, extension_desc.kind()) {
+            (Value::List(list), kind) if extension_desc.is_list() => {
                 list.iter().all(|value| value.is_valid(&kind))
             }
-            (Value::Map(map), Kind::Message(message_desc)) if field_desc.is_map() => {
+            (Value::Map(map), Kind::Message(message_desc)) if extension_desc.is_map() => {
                 let key_desc = message_desc.map_entry_key_field().kind();
                 let value_desc = message_desc.map_entry_value_field();
                 map.iter().all(|(key, value)| {

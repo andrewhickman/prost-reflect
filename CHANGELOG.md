@@ -10,9 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Added a new helper method `DynamicMessage::decode`.
-- Added new APIs to get reserved names and fields for messages and enums
-- Added new APIs to inspect extension fields
+- New helper method `DynamicMessage::decode`.
+- New APIs to get reserved names and fields for messages and enums
+- New descriptor APIs to inspect extension fields
+- New dynamic message APIs to get and set extension fields
 
 ### Changed
 

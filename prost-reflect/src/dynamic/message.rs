@@ -22,6 +22,9 @@ impl Message for DynamicMessage {
                 value.encode_field(&field.desc, buf);
             }
         }
+        if let Some(extension_fields) = self.extension_fields() {
+            extension_fields.encode_raw(buf);
+        }
         if let Some(unknown_fields) = self.unknown_fields() {
             unknown_fields.encode_raw(buf);
         }
@@ -61,6 +64,9 @@ impl Message for DynamicMessage {
                 len += value.encoded_len(&field.desc);
             }
         }
+        if let Some(extension_fields) = self.extension_fields() {
+            len += extension_fields.encoded_len();
+        }
         if let Some(unknown_fields) = self.unknown_fields() {
             len += unknown_fields.encoded_len();
         }
@@ -76,7 +82,7 @@ impl Message for DynamicMessage {
 }
 
 impl Value {
-    fn encode_field<B>(&self, field_desc: &impl FieldDescriptorLike, buf: &mut B)
+    pub(super) fn encode_field<B>(&self, field_desc: &impl FieldDescriptorLike, buf: &mut B)
     where
         B: BufMut,
     {
@@ -265,7 +271,7 @@ impl Value {
         }
     }
 
-    fn merge_field<B>(
+    pub(super) fn merge_field<B>(
         &mut self,
         field_desc: &impl FieldDescriptorLike,
         wire_type: WireType,
@@ -391,7 +397,7 @@ impl Value {
         }
     }
 
-    fn encoded_len(&self, field_desc: &impl FieldDescriptorLike) -> usize {
+    pub(super) fn encoded_len(&self, field_desc: &impl FieldDescriptorLike) -> usize {
         if !field_desc.supports_presence() && field_desc.is_default_value(self) {
             return 0;
         }

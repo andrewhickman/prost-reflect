@@ -45,7 +45,7 @@ where
         }
     }
 
-    pub fn is_populated(&self) -> bool {
+    pub fn has(&self) -> bool {
         if self.desc.supports_presence() {
             self.value.is_some()
         } else {
