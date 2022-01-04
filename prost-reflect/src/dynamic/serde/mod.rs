@@ -173,6 +173,12 @@ impl Default for SerializeOptions {
     }
 }
 
+const MAX_DURATION_SECONDS: u64 = 315_576_000_000;
+const MAX_DURATION_NANOS: u32 = 999_999_999;
+
+const MIN_TIMESTAMP_SECONDS: i64 = -62135596800;
+const MAX_TIMESTAMP_SECONDS: i64 = 253402300799;
+
 fn is_well_known_type(full_name: &str) -> bool {
     matches!(
         full_name,

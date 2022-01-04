@@ -1201,6 +1201,25 @@ fn duration_fractional_digits() {
     );
 }
 
+#[test]
+#[should_panic(expected = "timestamp out of range")]
+fn serialize_timestamp_seconds_out_of_range() {
+    to_json(&WellKnownTypes {
+        timestamp: Some(prost_types::Timestamp {
+            seconds: 253402300800,
+            nanos: 1,
+        }),
+        ..Default::default()
+    });
+}
+
+#[test]
+#[should_panic(expected = "timestamp out of range")]
+fn deserialize_timestamp_seconds_out_of_range() {
+    let _: prost_types::Timestamp =
+        from_json(json!("0000-01-01T00:00:00Z"), "google.protobuf.Timestamp");
+}
+
 proptest! {
     #![proptest_config(ProptestConfig {
         cases: 32,

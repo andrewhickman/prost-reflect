@@ -14,7 +14,10 @@ use serde::de::{
 
 use crate::{
     dynamic::{
-        serde::{case::camel_case_to_snake_case, is_well_known_type, DeserializeOptions},
+        serde::{
+            case::camel_case_to_snake_case, is_well_known_type, DeserializeOptions,
+            MAX_DURATION_NANOS, MAX_DURATION_SECONDS, MAX_TIMESTAMP_SECONDS, MIN_TIMESTAMP_SECONDS,
+        },
         DynamicMessage,
     },
     FileDescriptor,
@@ -172,6 +175,11 @@ impl<'de> Visitor<'de> for GoogleProtobufTimestampVisitor {
             seconds: utc.timestamp(),
             nanos: utc.timestamp_subsec_nanos() as i32,
         };
+
+        if timestamp.seconds < MIN_TIMESTAMP_SECONDS || timestamp.seconds > MAX_TIMESTAMP_SECONDS {
+            return Err(Error::custom("timestamp out of range"));
+        }
+
         timestamp.normalize();
         Ok(timestamp)
     }
@@ -218,10 +226,10 @@ impl<'de> Visitor<'de> for GoogleProtobufDurationVisitor {
             (seconds, 0)
         };
 
-        if seconds > 315_576_000_000 {
+        if seconds > MAX_DURATION_SECONDS {
             return Err(Error::custom("duration out of range"));
         }
-        debug_assert!(nanos < 1_000_000_000);
+        debug_assert!(nanos <= MAX_DURATION_NANOS);
 
         if negative {
             Ok(prost_types::Duration {

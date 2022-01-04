@@ -7,7 +7,10 @@ use serde::ser::{Error, Serialize, SerializeMap, SerializeSeq, Serializer};
 
 use crate::{
     dynamic::{
-        serde::{case::snake_case_to_camel_case, is_well_known_type, SerializeOptions},
+        serde::{
+            case::snake_case_to_camel_case, is_well_known_type, SerializeOptions,
+            MAX_TIMESTAMP_SECONDS, MIN_TIMESTAMP_SECONDS,
+        },
         DynamicMessage,
     },
     ReflectMessage,
@@ -106,6 +109,10 @@ where
     S: Serializer,
 {
     let raw: prost_types::Timestamp = msg.transcode_to().map_err(decode_to_ser_err)?;
+
+    if raw.seconds < MIN_TIMESTAMP_SECONDS || MAX_TIMESTAMP_SECONDS < raw.seconds {
+        return Err(Error::custom("timestamp out of range"));
+    }
 
     let datetime = Utc
         .timestamp_opt(
