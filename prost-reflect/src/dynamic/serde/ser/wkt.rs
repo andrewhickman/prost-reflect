@@ -16,7 +16,7 @@ use crate::{
     ReflectMessage,
 };
 
-use super::{count_dynamic_message_fields, serialize_dynamic_message_fields, SerializeWrapper};
+use super::{serialize_dynamic_message_fields, SerializeWrapper};
 
 #[allow(type_alias_bounds)]
 type WellKnownTypeSerializer<S: Serializer> =
@@ -85,9 +85,7 @@ where
             )?;
             map.end()
         } else {
-            let mut map = serializer.serialize_map(Some(
-                1 + count_dynamic_message_fields(&payload_message, options),
-            ))?;
+            let mut map = serializer.serialize_map(None)?;
             map.serialize_entry("@type", &raw.type_url)?;
             serialize_dynamic_message_fields(&mut map, &payload_message, options)?;
             map.end()

@@ -1,5 +1,7 @@
 mod wkt;
 
+use std::borrow::Cow;
+
 use base64::display::Base64Display;
 
 use serde::ser::{Serialize, SerializeMap, SerializeSeq, Serializer};
@@ -7,8 +9,9 @@ use serde::ser::{Serialize, SerializeMap, SerializeSeq, Serializer};
 use crate::{
     descriptor::Kind,
     dynamic::{
-        field::FieldDescriptorLike, serde::SerializeOptions, DynamicMessage, DynamicMessageField,
-        MapKey, Value,
+        field::{DynamicMessageField, FieldDescriptorLike},
+        serde::SerializeOptions,
+        DynamicMessage, MapKey, Value,
     },
     ReflectMessage,
 };
@@ -42,19 +45,10 @@ impl<'a> Serialize for SerializeWrapper<'a, DynamicMessage> {
         if let Some(serialize) = wkt::get_well_known_type_serializer(message_desc.full_name()) {
             serialize(self.value, serializer, self.options)
         } else {
-            let mut map = serializer
-                .serialize_map(Some(count_dynamic_message_fields(self.value, self.options)))?;
+            let mut map = serializer.serialize_map(None)?;
             serialize_dynamic_message_fields(&mut map, self.value, self.options)?;
             map.end()
         }
-    }
-}
-
-fn count_dynamic_message_fields(value: &DynamicMessage, options: &SerializeOptions) -> usize {
-    if options.skip_default_fields {
-        value.fields.values().filter(|v| v.has()).count()
-    } else {
-        value.fields.values().filter(|v| v.value.is_some()).count()
     }
 }
 
@@ -66,21 +60,48 @@ fn serialize_dynamic_message_fields<S>(
 where
     S: SerializeMap,
 {
-    for field in value.fields.values() {
-        if (!options.skip_default_fields && field.value.is_some()) || field.has() {
-            let name = if options.use_proto_field_name {
-                field.desc.name()
-            } else {
-                field.desc.json_name()
-            };
+    if options.skip_default_fields {
+        for field in value.fields.fields.values() {
+            if field.has() {
+                let name = if options.use_proto_field_name {
+                    field.desc.name()
+                } else {
+                    field.desc.json_name()
+                };
 
-            map.serialize_entry(
-                name,
-                &SerializeWrapper {
-                    value: field,
-                    options,
-                },
-            )?;
+                map.serialize_entry(
+                    name,
+                    &SerializeWrapper {
+                        value: field,
+                        options,
+                    },
+                )?;
+            }
+        }
+    } else {
+        for field_desc in value.desc.fields() {
+            let field = value
+                .fields
+                .fields
+                .get(&field_desc.number())
+                .map(Cow::Borrowed)
+                .unwrap_or_else(|| Cow::Owned(DynamicMessageField::new(field_desc.clone())));
+
+            if field.value.is_some() {
+                let name = if options.use_proto_field_name {
+                    field_desc.name()
+                } else {
+                    field_desc.json_name()
+                };
+
+                map.serialize_entry(
+                    name,
+                    &SerializeWrapper {
+                        value: field.as_ref(),
+                        options,
+                    },
+                )?;
+            }
         }
     }
     Ok(())

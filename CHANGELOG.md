@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Renamed `SerializeOptions::emit_unpopulated_fields` to `SerializeOptions::skip_default_fields` (note the meaning is inverted as well!).
+- `DynamicMessage::{has_field,get_field,set_field,clear_field}` now take a field descriptor instead of a number. Use the  new `_by_number` variants for the old behavior.
 
 ### Fixed
 

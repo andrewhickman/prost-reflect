@@ -549,7 +549,7 @@ impl<'a, 'de> Visitor<'de> for MessageVisitorInner<'a> {
                 {
                     if let Some(oneof_desc) = field.containing_oneof() {
                         for field in oneof_desc.fields() {
-                            if self.0.has_field(field.number()) {
+                            if self.0.has_field(&field) {
                                 return Err(Error::custom(format!(
                                     "multiple fields provided for oneof '{}'",
                                     oneof_desc.name()
@@ -558,7 +558,7 @@ impl<'a, 'de> Visitor<'de> for MessageVisitorInner<'a> {
                         }
                     }
 
-                    self.0.set_field(field.number(), value);
+                    self.0.set_field(&field, value);
                 }
             } else if self.1.deny_unknown_fields {
                 return Err(Error::custom(format!("unrecognized field name '{}'", key)));

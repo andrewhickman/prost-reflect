@@ -17,13 +17,17 @@ impl Message for DynamicMessage {
         B: BufMut,
         Self: Sized,
     {
-        for field in self.fields.values() {
+        for field in self.fields.fields.values() {
             if let Some(value) = &field.value {
                 value.encode_field(&field.desc, buf);
             }
         }
         if let Some(extension_fields) = self.extension_fields() {
-            extension_fields.encode_raw(buf);
+            for field in extension_fields.fields.values() {
+                if let Some(value) = &field.value {
+                    value.encode_field(&field.desc, buf);
+                }
+            }
         }
         if let Some(unknown_fields) = self.unknown_fields() {
             unknown_fields.encode_raw(buf);
@@ -41,12 +45,12 @@ impl Message for DynamicMessage {
         B: Buf,
         Self: Sized,
     {
-        if let Some(field) = self.fields.get_mut(&number) {
-            let field_value = &mut field.value;
-            let field_desc = &field.desc;
-            field_value
-                .get_or_insert_with(|| Value::default_value_for_field(field_desc))
-                .merge_field(field_desc, wire_type, buf, ctx)?;
+        if let Some(field_desc) = self.desc.get_field(number) {
+            self.fields
+                .get_mut(&field_desc)
+                .value
+                .get_or_insert_with(|| Value::default_value_for_field(&field_desc))
+                .merge_field(&field_desc, wire_type, buf, ctx)?;
             if let Some(oneof_desc) = field_desc.containing_oneof() {
                 self.clear_oneof_fields(oneof_desc, number);
             }
@@ -59,13 +63,17 @@ impl Message for DynamicMessage {
 
     fn encoded_len(&self) -> usize {
         let mut len = 0;
-        for field in self.fields.values() {
+        for field in self.fields.fields.values() {
             if let Some(value) = &field.value {
                 len += value.encoded_len(&field.desc);
             }
         }
         if let Some(extension_fields) = self.extension_fields() {
-            len += extension_fields.encoded_len();
+            for field in extension_fields.fields.values() {
+                if let Some(value) = &field.value {
+                    len += value.encoded_len(&field.desc);
+                }
+            }
         }
         if let Some(unknown_fields) = self.unknown_fields() {
             len += unknown_fields.encoded_len();
@@ -74,9 +82,7 @@ impl Message for DynamicMessage {
     }
 
     fn clear(&mut self) {
-        for value in self.fields.values_mut() {
-            value.clear();
-        }
+        self.fields.fields.clear();
         self.cold = None;
     }
 }

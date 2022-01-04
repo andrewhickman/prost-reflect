@@ -1,8 +1,8 @@
-use std::{borrow::Cow, fmt};
+use std::{borrow::Cow, collections::BTreeMap, fmt};
 
 use crate::{ExtensionDescriptor, FieldDescriptor, Kind, OneofDescriptor, Value};
 
-pub(super) trait FieldDescriptorLike: fmt::Debug {
+pub(super) trait FieldDescriptorLike: fmt::Debug + Clone {
     fn number(&self) -> u32;
     fn default_value(&self) -> Value;
     fn is_default_value(&self, value: &Value) -> bool;
@@ -62,13 +62,56 @@ where
         );
         self.value = Some(value);
     }
+}
 
-    pub fn clear(&mut self) {
-        self.value = if self.desc.supports_presence() {
-            None
-        } else {
-            Some(self.desc.default_value())
-        };
+/// A set of extension fields in a protobuf message.
+#[derive(Debug, Clone, PartialEq)]
+pub(super) struct DynamicMessageFieldSet<T> {
+    pub(super) fields: BTreeMap<u32, DynamicMessageField<T>>,
+}
+
+impl<T> Default for DynamicMessageFieldSet<T> {
+    fn default() -> Self {
+        DynamicMessageFieldSet {
+            fields: Default::default(),
+        }
+    }
+}
+
+impl<T> DynamicMessageFieldSet<T>
+where
+    T: FieldDescriptorLike,
+{
+    pub(super) fn is_empty(&self) -> bool {
+        self.fields.is_empty()
+    }
+
+    pub(super) fn has(&self, desc: &T) -> bool {
+        self.fields
+            .get(&desc.number())
+            .map(|field| field.has())
+            .unwrap_or(false)
+    }
+
+    pub(super) fn get(&self, desc: &T) -> Cow<'_, Value> {
+        match self.fields.get(&desc.number()) {
+            Some(field) => field.get(),
+            None => Cow::Owned(desc.default_value()),
+        }
+    }
+
+    pub(super) fn get_mut(&mut self, desc: &T) -> &mut DynamicMessageField<T> {
+        self.fields
+            .entry(desc.number())
+            .or_insert_with(|| DynamicMessageField::new(desc.clone()))
+    }
+
+    pub(super) fn set(&mut self, desc: &T, value: crate::Value) {
+        self.get_mut(desc).set(value);
+    }
+
+    pub(super) fn clear(&mut self, desc: &T) {
+        self.fields.remove(&desc.number());
     }
 }
 

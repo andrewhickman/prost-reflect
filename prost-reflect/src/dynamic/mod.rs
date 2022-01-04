@@ -1,14 +1,10 @@
-mod extension;
 mod field;
 mod message;
 #[cfg(feature = "serde")]
 mod serde;
 mod unknown;
 
-use std::{
-    borrow::Cow,
-    collections::{BTreeMap, HashMap},
-};
+use std::{borrow::Cow, collections::HashMap};
 
 #[cfg(feature = "serde")]
 pub use self::serde::{DeserializeOptions, SerializeOptions};
@@ -18,7 +14,7 @@ use prost::{
     DecodeError, Message,
 };
 
-use self::{field::DynamicMessageField, unknown::UnknownFieldSet, extension::ExtensionFieldSet};
+use self::{field::DynamicMessageFieldSet, unknown::UnknownFieldSet};
 use crate::{
     descriptor::Kind, ExtensionDescriptor, FieldDescriptor, MessageDescriptor, OneofDescriptor,
     ReflectMessage,
@@ -31,7 +27,7 @@ use crate::{
 #[derive(Debug, Clone)]
 pub struct DynamicMessage {
     desc: MessageDescriptor,
-    fields: BTreeMap<u32, DynamicMessageField<FieldDescriptor>>,
+    fields: DynamicMessageFieldSet<FieldDescriptor>,
     // Rarely used fields are put behind a box so they can be represented by just a null pointer in the common case.
     cold: Option<Box<DynamicMessageColdFields>>,
 }
@@ -39,7 +35,7 @@ pub struct DynamicMessage {
 #[derive(Default, Debug, Clone)]
 struct DynamicMessageColdFields {
     unknown: UnknownFieldSet,
-    extensions: ExtensionFieldSet,
+    extensions: DynamicMessageFieldSet<ExtensionDescriptor>,
 }
 
 /// A dynamically-typed protobuf value.
@@ -97,10 +93,7 @@ impl DynamicMessage {
     /// Creates a new, empty instance of [`DynamicMessage`] for the message type specified by the [`MessageDescriptor`].
     pub fn new(desc: MessageDescriptor) -> Self {
         DynamicMessage {
-            fields: desc
-                .fields()
-                .map(|field_desc| (field_desc.number(), DynamicMessageField::new(field_desc)))
-                .collect(),
+            fields: DynamicMessageFieldSet::default(),
             cold: None,
             desc,
         }
@@ -117,7 +110,7 @@ impl DynamicMessage {
         Ok(message)
     }
 
-    /// Returns `true` if this message has a field set with the number `number`.
+    /// Returns `true` if this message has the given field set.
     ///
     /// If the field type supports distinguishing whether a value has been set, such as
     /// for messages, then this method returns `true` only if a value has been set. For other
@@ -125,90 +118,125 @@ impl DynamicMessage {
     ///
     /// If this method returns `false`, then the field will not be included in the encoded bytes
     /// of this message.
-    pub fn has_field(&self, number: u32) -> bool {
-        self.fields
-            .get(&number)
-            .map_or(false, |field| field.has())
+    pub fn has_field(&self, field_desc: &FieldDescriptor) -> bool {
+        self.fields.has(field_desc)
     }
 
-    /// Gets the value of the field with number `number`, or the default value if it is unset.
-    ///
-    /// If this message has no field with number `number`, `None` is returned. Otherwise this method
-    /// will always return `Some`.
-    pub fn get_field(&self, number: u32) -> Option<Cow<'_, Value>> {
-        self.fields.get(&number).map(|field| field.get())
+    /// Gets the value of the given field, or the default value if it is unset.
+    pub fn get_field(&self, field_desc: &FieldDescriptor) -> Cow<'_, Value> {
+        self.fields.get(field_desc)
     }
 
-    /// Sets the value of the field with number `number`, or the default value if it is unset.
-    ///
-    /// If no field has number `number` this method does nothing.
+    /// Sets the value of the given field.
     ///
     /// # Panics
     ///
     /// This method may panic if the value type is not compatible with the field type, as defined
     /// by [`Value::is_valid_for_field`].
-    pub fn set_field(&mut self, number: u32, value: Value) {
-        if let Some(field) = self.fields.get_mut(&number) {
-            field.set(value);
-            if let Some(oneof_desc) = field.desc.containing_oneof() {
-                self.clear_oneof_fields(oneof_desc, number);
-            }
+    pub fn set_field(&mut self, field_desc: &FieldDescriptor, value: Value) {
+        self.fields.set(field_desc, value);
+        if let Some(oneof_desc) = field_desc.containing_oneof() {
+            self.clear_oneof_fields(oneof_desc, field_desc.number());
         }
     }
 
     fn clear_oneof_fields(&mut self, oneof_desc: OneofDescriptor, set_field: u32) {
         for oneof_field in oneof_desc.fields() {
             if oneof_field.number() != set_field {
-                self.clear_field(oneof_field.number());
+                self.clear_field(&oneof_field);
             }
         }
     }
 
-    /// Clears the field with number `number`.
+    /// Clears the given field.
     ///
     /// After calling this method, `has_field` will return false for the field,
     /// and it will not be included in the encoded bytes of this message.
+    pub fn clear_field(&mut self, field_desc: &FieldDescriptor) {
+        self.fields.clear(field_desc);
+    }
+
+    /// Returns `true` if this message has a field set with the given number.
     ///
-    /// If no field has number `number` this method does nothing.
-    pub fn clear_field(&mut self, number: u32) {
-        if let Some(field) = self.fields.get_mut(&number) {
-            field.clear();
+    /// See [`has_field`][Self::has_field] for more details.
+    pub fn has_field_by_number(&self, number: u32) -> bool {
+        self.desc
+            .get_field(number)
+            .map_or(false, |field_desc| self.has_field(&field_desc))
+    }
+
+    /// Gets the value of the field with the given number, or the default value if it is unset.
+    ///
+    /// If the message has no field with the given number, `None` is returned.
+    ///
+    /// See [`get_field`][Self::get_field] for more details.
+    pub fn get_field_by_number(&self, number: u32) -> Option<Cow<'_, Value>> {
+        self.desc
+            .get_field(number)
+            .map(|field_desc| self.get_field(&field_desc))
+    }
+
+    /// Sets the value of the field with number `number`, or the default value if it is unset.
+    ///
+    /// If no field with the given number exists, this method does nothing.
+    ///
+    /// See [`set_field`][Self::set_field] for more details.
+    pub fn set_field_by_number(&mut self, number: u32, value: Value) {
+        if let Some(field_desc) = self.desc.get_field(number) {
+            self.set_field(&field_desc, value)
         }
     }
 
-    /// Returns `true` if this message has a field set with the number `number`.
+    /// Clears the field with the given number.
+    ///
+    /// If no field with the given number exists, this method does nothing.
+    ///
+    /// See [`clear_field`][Self::clear_field] for more details.
+    pub fn clear_field_by_number(&mut self, number: u32) {
+        if let Some(field_desc) = self.desc.get_field(number) {
+            self.clear_field(&field_desc);
+        }
+    }
+
+    /// Returns `true` if this message has a field set with the given name.
     ///
     /// See [`has_field`][Self::has_field] for more details.
     pub fn has_field_by_name(&self, name: &str) -> bool {
         self.desc
             .get_field_by_name(name)
-            .map_or(false, |field_desc| self.has_field(field_desc.number()))
+            .map_or(false, |field_desc| self.has_field(&field_desc))
     }
 
-    /// Gets the value of the field with name `name`, or the default value if it is unset.
+    /// Gets the value of the field with the given name, or the default value if it is unset.
+    ///
+    /// If the message has no field with the given name, `None` is returned.
     ///
     /// See [`get_field`][Self::get_field] for more details.
     pub fn get_field_by_name(&self, name: &str) -> Option<Cow<'_, Value>> {
         self.desc
             .get_field_by_name(name)
-            .and_then(|field_desc| self.get_field(field_desc.number()))
+            .map(|field_desc| self.get_field(&field_desc))
     }
 
     /// Sets the value of the field with name `name`, or the default value if it is unset.
     ///
+    /// If no field with the given name exists, this method does nothing.
+    ///
     /// See [`set_field`][Self::set_field] for more details.
     pub fn set_field_by_name(&mut self, name: &str, value: Value) {
         if let Some(field_desc) = self.desc.get_field_by_name(name) {
-            self.set_field(field_desc.number(), value)
+            self.set_field(&field_desc, value)
         }
     }
 
-    /// Clears the field with name `name`.
+    /// Clears the field with the given name.
+    ///
+    /// If no field with the given name exists, this method does nothing.
     ///
     /// See [`clear_field`][Self::clear_field] for more details.
     pub fn clear_field_by_name(&mut self, name: &str) {
         if let Some(field_desc) = self.desc.get_field_by_name(name) {
-            self.clear_field(field_desc.number());
+            self.clear_field(&field_desc);
         }
     }
 
@@ -216,7 +244,9 @@ impl DynamicMessage {
     ///
     /// See [`has_field`][Self::has_field] for more details.
     pub fn has_extension(&self, extension_desc: &ExtensionDescriptor) -> bool {
-        self.extension_fields().map(|extensions| extensions.has(extension_desc)).unwrap_or(false)
+        self.extension_fields()
+            .map(|extensions| extensions.has(extension_desc))
+            .unwrap_or(false)
     }
 
     /// Gets the value of the give extension field, or the default value if it is unset.
@@ -225,7 +255,9 @@ impl DynamicMessage {
     pub fn get_extension(&self, extension_desc: &ExtensionDescriptor) -> Option<Cow<'_, Value>> {
         match self.extension_fields() {
             Some(extensions) => Some(extensions.get(extension_desc)),
-            None => Some(Cow::Owned(Value::default_value_for_extension(extension_desc)))
+            None => Some(Cow::Owned(Value::default_value_for_extension(
+                extension_desc,
+            ))),
         }
     }
 
@@ -275,7 +307,7 @@ impl DynamicMessage {
         self.cold.as_ref().map(|c| &c.unknown)
     }
 
-    fn extension_fields(&self) -> Option<&ExtensionFieldSet> {
+    fn extension_fields(&self) -> Option<&DynamicMessageFieldSet<ExtensionDescriptor>> {
         self.cold.as_ref().map(|c| &c.extensions)
     }
 
@@ -283,7 +315,7 @@ impl DynamicMessage {
         &mut self.cold.get_or_insert_with(Default::default).unknown
     }
 
-    fn extension_fields_mut(&mut self) -> &mut ExtensionFieldSet {
+    fn extension_fields_mut(&mut self) -> &mut DynamicMessageFieldSet<ExtensionDescriptor> {
         &mut self.cold.get_or_insert_with(Default::default).extensions
     }
 }
@@ -294,8 +326,12 @@ impl PartialEq for DynamicMessage {
             && self.fields == other.fields
             && match (&self.cold, &other.cold) {
                 (None, None) => true,
-                (None, Some(cold)) | (Some(cold), None) => cold.unknown.is_empty() && cold.extensions.is_empty(),
-                (Some(lhs), Some(rhs)) => lhs.unknown == rhs.unknown && lhs.extensions == rhs.extensions,
+                (None, Some(cold)) | (Some(cold), None) => {
+                    cold.unknown.is_empty() && cold.extensions.is_empty()
+                }
+                (Some(lhs), Some(rhs)) => {
+                    lhs.unknown == rhs.unknown && lhs.extensions == rhs.extensions
+                }
             }
     }
 }
