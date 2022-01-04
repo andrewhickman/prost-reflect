@@ -7,7 +7,6 @@ use std::{
 use proptest::{prelude::*, test_runner::TestCaseError};
 use prost::Message;
 use prost_reflect::{DeserializeOptions, DynamicMessage, ReflectMessage, SerializeOptions};
-use serde::de::IntoDeserializer;
 use serde_json::json;
 
 use crate::{
@@ -366,7 +365,7 @@ fn serialize_use_enum_numbers() {
 }
 
 #[test]
-fn serialize_emit_unpopulated_fields() {
+fn serialize_skip_default_fields() {
     let value = to_json_with_options(
         &ComplexType {
             string_map: HashMap::from_iter([(
@@ -380,7 +379,7 @@ fn serialize_emit_unpopulated_fields() {
             my_enum: vec![],
             optional_enum: 0,
         },
-        &SerializeOptions::new().emit_unpopulated_fields(true),
+        &SerializeOptions::new().skip_default_fields(false),
     );
 
     assert_eq!(
@@ -406,7 +405,6 @@ fn serialize_emit_unpopulated_fields() {
                 },
             },
             "intMap": {},
-            "nested": null,
             "myEnum": [],
             "optionalEnum": "DEFAULT"
         })
@@ -414,17 +412,14 @@ fn serialize_emit_unpopulated_fields() {
 }
 
 #[test]
-fn serialize_string_emit_unpopulated_fields() {
+fn serialize_string_skip_default_fields() {
     let value = Point::default();
     let mut dynamic = DynamicMessage::new(value.descriptor());
     dynamic.transcode_from(&value).unwrap();
     let mut s = serde_json::Serializer::new(vec![]);
 
     dynamic
-        .serialize_with_options(
-            &mut s,
-            &SerializeOptions::new().emit_unpopulated_fields(true),
-        )
+        .serialize_with_options(&mut s, &SerializeOptions::new().skip_default_fields(false))
         .unwrap();
 
     assert_eq!(
@@ -1016,33 +1011,6 @@ fn deserialize_negative_duration() {
 }
 
 #[test]
-fn oneof_set_multiple_values() {
-    let json = json!({
-        "oneofField1": "hello",
-        "oneofField2": 5,
-    });
-
-    let dynamic_message = DynamicMessage::deserialize(
-        test_file_descriptor()
-            .get_message_by_name("test.MessageWithOneof")
-            .unwrap(),
-        json.into_deserializer(),
-    )
-    .unwrap();
-
-    assert!(!dynamic_message.has_field_by_name("oneof_field_1"));
-    assert!(dynamic_message.has_field_by_name("oneof_field_2"));
-
-    assert_eq!(dynamic_message.encode_to_vec().as_slice(), b"\x10\x05");
-    assert_eq!(
-        serde_json::to_value(&dynamic_message).unwrap(),
-        json!({
-        "oneofField2": 5,
-        })
-    );
-}
-
-#[test]
 fn ints_allow_trailing_zeros() {
     let json = r#"{
         "int32": -1.000,
@@ -1100,6 +1068,27 @@ fn null_in_oneof() {
         value.test_oneof,
         Some(message_with_oneof::TestOneof::OneofNull(0))
     );
+}
+
+#[test]
+#[should_panic(expected = "multiple fields provided for oneof 'test_oneof'")]
+fn duplicate_oneof_field() {
+    let json = json!({
+        "oneofField1": "hello",
+        "oneofNull": null,
+    });
+
+    let _: MessageWithOneof = from_json(json, "test.MessageWithOneof");
+}
+
+#[test]
+fn roundtrip_oneof_field_with_options() {
+    roundtrip_json_with_options(
+        &MessageWithOneof::default(),
+        &SerializeOptions::new().skip_default_fields(false),
+        &DeserializeOptions::new(),
+    )
+    .unwrap();
 }
 
 #[test]
@@ -1239,7 +1228,7 @@ proptest! {
                 .stringify_64_bit_integers(false)
                 .use_enum_numbers(true)
                 .use_proto_field_name(true)
-                .emit_unpopulated_fields(true),
+                .skip_default_fields(false),
             &DeserializeOptions::new()
                 .deny_unknown_fields(true)
         )?;
@@ -1258,7 +1247,7 @@ proptest! {
                 .stringify_64_bit_integers(false)
                 .use_enum_numbers(true)
                 .use_proto_field_name(true)
-                .emit_unpopulated_fields(true),
+                .skip_default_fields(false),
             &DeserializeOptions::new()
                 .deny_unknown_fields(true)
         )?;
@@ -1277,7 +1266,7 @@ proptest! {
                 .stringify_64_bit_integers(false)
                 .use_enum_numbers(true)
                 .use_proto_field_name(true)
-                .emit_unpopulated_fields(true),
+                .skip_default_fields(false),
             &DeserializeOptions::new()
                 .deny_unknown_fields(true)
         )?;
@@ -1296,7 +1285,7 @@ proptest! {
                 .stringify_64_bit_integers(false)
                 .use_enum_numbers(true)
                 .use_proto_field_name(true)
-                .emit_unpopulated_fields(true),
+                .skip_default_fields(false),
             &DeserializeOptions::new()
                 .deny_unknown_fields(true)
         )?;

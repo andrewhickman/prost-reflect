@@ -188,7 +188,7 @@ impl DynamicMessage {
     pub fn get_field_by_name(&self, name: &str) -> Option<&'_ Value> {
         self.desc
             .get_field_by_name(name)
-            .map(|field_desc| self.get_field(field_desc.number()).expect("field not set"))
+            .and_then(|field_desc| self.get_field(field_desc.number()))
     }
 
     /// Sets the value of the field with name `name`, or the default value if it is unset.

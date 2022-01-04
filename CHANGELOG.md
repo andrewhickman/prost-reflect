@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `DynamicMessage::get_field` now returns `None` for unpopulated fields. Note this mostly affects message types, where previously a new empty
 instance of the message would be returned.
+- Renamed `SerializeOptions::emit_unpopulated_fields` to `SerializeOptions::skip_default_fields` (note the meaning is inverted as well!).
 
 ### Fixed
 
@@ -31,6 +32,7 @@ instance of the message would be returned.
 - Serialization of `google.protobuf.FieldMask` fails if the path cannot be roundtripped through camelCase.
 - `google.protobuf.Duration` uses a different number of trailing zeroes depending on the precision of the input.
 - JSON serialization of `google.protobuf.Timestamp` fails if it is outside the allowed range.
+- Duplicate oneof fields is now an error during JSON deserialization
 
 ## [0.3.5] - 2022-01-02
 

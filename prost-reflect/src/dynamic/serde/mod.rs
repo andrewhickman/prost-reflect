@@ -16,7 +16,7 @@ pub struct SerializeOptions {
     stringify_64_bit_integers: bool,
     use_enum_numbers: bool,
     use_proto_field_name: bool,
-    emit_unpopulated_fields: bool,
+    skip_default_fields: bool,
 }
 
 /// Options to control deserialization of messages.
@@ -120,7 +120,7 @@ impl SerializeOptions {
             stringify_64_bit_integers: true,
             use_enum_numbers: false,
             use_proto_field_name: false,
-            emit_unpopulated_fields: false,
+            skip_default_fields: true,
         }
     }
 
@@ -155,14 +155,14 @@ impl SerializeOptions {
         self
     }
 
-    /// Whether to emit unpopulated fields.
+    /// Whether to skip fields which have their default value.
     ///
-    /// If `false`, any fields for which [`has_field`][DynamicMessage::has_field] returns `false` will
-    /// not be serialized. If `true`, they will be serialized with their default value.
+    /// If `true`, any fields for which [`has_field`][DynamicMessage::has_field] returns `false` will
+    /// not be serialized. If `false`, they will be serialized with their default value.
     ///
-    /// The default value is `false`.
-    pub const fn emit_unpopulated_fields(mut self, yes: bool) -> Self {
-        self.emit_unpopulated_fields = yes;
+    /// The default value is `true`.
+    pub const fn skip_default_fields(mut self, yes: bool) -> Self {
+        self.skip_default_fields = yes;
         self
     }
 }

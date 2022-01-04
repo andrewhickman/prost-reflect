@@ -48,10 +48,10 @@ impl<'a> Serialize for SerializeWrapper<'a, DynamicMessage> {
 }
 
 fn count_dynamic_message_fields(value: &DynamicMessage, options: &SerializeOptions) -> usize {
-    if options.emit_unpopulated_fields {
-        value.fields.len()
-    } else {
+    if options.skip_default_fields {
         value.fields.values().filter(|v| v.is_populated()).count()
+    } else {
+        value.fields.values().filter(|v| v.get().is_some()).count()
     }
 }
 
@@ -64,7 +64,7 @@ where
     S: SerializeMap,
 {
     for field in value.fields.values() {
-        if field.is_populated() || options.emit_unpopulated_fields {
+        if (!options.skip_default_fields && field.get().is_some()) || field.is_populated() {
             let name = if options.use_proto_field_name {
                 field.desc.name()
             } else {
@@ -88,10 +88,11 @@ impl<'a> Serialize for SerializeWrapper<'a, DynamicMessageField> {
     where
         S: Serializer,
     {
-        let value = match &self.value.value {
-            None => return serializer.serialize_none(),
-            Some(value) => value,
-        };
+        let value = self
+            .value
+            .value
+            .as_ref()
+            .expect("cannot serialize unpopulated field");
 
         SerializeWrapper {
             value: &ValueAndKind {
