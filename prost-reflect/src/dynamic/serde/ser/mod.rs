@@ -104,6 +104,22 @@ where
             }
         }
     }
+
+    if let Some(extensions) = value.extension_fields() {
+        for field in extensions.fields.values() {
+            if field.value.is_some() {
+                let name = field.desc.json_name();
+
+                map.serialize_entry(
+                    name,
+                    &SerializeWrapper {
+                        value: field,
+                        options,
+                    },
+                )?;
+            }
+        }
+    }
     Ok(())
 }
 

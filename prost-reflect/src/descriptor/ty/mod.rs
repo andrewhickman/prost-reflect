@@ -80,6 +80,7 @@ pub struct ExtensionDescriptorInner {
     number: u32,
     parent: Option<TypeId>,
     extendee: TypeId,
+    json_name: Box<str>,
 }
 
 /// A protobuf enum type.
@@ -530,6 +531,20 @@ impl ExtensionDescriptor {
             })
     }
 
+    pub(in crate::descriptor) fn try_get_by_json_name(
+        file_set: &FileDescriptor,
+        name: &str,
+    ) -> Option<Self> {
+        file_set
+            .inner
+            .type_map
+            .try_get_extension_by_name(name)
+            .map(|index| ExtensionDescriptor {
+                file_set: file_set.clone(),
+                index,
+            })
+    }
+
     /// Gets a reference to the [`FileDescriptor`] this extension field is defined in.
     pub fn parent_file(&self) -> &FileDescriptor {
         &self.file_set
@@ -578,7 +593,7 @@ impl ExtensionDescriptor {
     /// This is usually the camel-cased form of the field name, unless
     /// another value is set in the proto file.
     pub fn json_name(&self) -> &str {
-        &self.message_field_ty().json_name
+        &self.extension_ty().json_name
     }
 
     /// Whether this field is encoded using the proto2 group encoding.

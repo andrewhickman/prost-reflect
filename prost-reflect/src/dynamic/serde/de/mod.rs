@@ -7,8 +7,8 @@ use prost::Message;
 use serde::de::{DeserializeSeed, Deserializer, Error, Visitor};
 
 use crate::{
-    dynamic::{serde::DeserializeOptions, DynamicMessage, Value},
-    EnumDescriptor, FieldDescriptor, Kind, MessageDescriptor,
+    dynamic::{field::FieldDescriptorLike, serde::DeserializeOptions, DynamicMessage, Value},
+    EnumDescriptor, Kind, MessageDescriptor,
 };
 
 pub(super) fn deserialize_message<'de, D>(
@@ -98,9 +98,12 @@ impl<'a, 'de> DeserializeSeed<'de> for MessageSeed<'a> {
     }
 }
 
-struct FieldDescriptorSeed<'a>(&'a FieldDescriptor, &'a DeserializeOptions);
+struct FieldDescriptorSeed<'a, T>(&'a T, &'a DeserializeOptions);
 
-impl<'a, 'de> DeserializeSeed<'de> for FieldDescriptorSeed<'a> {
+impl<'a, 'de, T> DeserializeSeed<'de> for FieldDescriptorSeed<'a, T>
+where
+    T: FieldDescriptorLike,
+{
     type Value = Value;
 
     fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
@@ -121,9 +124,12 @@ impl<'a, 'de> DeserializeSeed<'de> for FieldDescriptorSeed<'a> {
     }
 }
 
-struct OptionalFieldDescriptorSeed<'a>(&'a FieldDescriptor, &'a DeserializeOptions);
+struct OptionalFieldDescriptorSeed<'a, T>(&'a T, &'a DeserializeOptions);
 
-impl<'a, 'de> DeserializeSeed<'de> for OptionalFieldDescriptorSeed<'a> {
+impl<'a, 'de, T> DeserializeSeed<'de> for OptionalFieldDescriptorSeed<'a, T>
+where
+    T: FieldDescriptorLike,
+{
     type Value = Option<Value>;
 
     fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
@@ -134,7 +140,10 @@ impl<'a, 'de> DeserializeSeed<'de> for OptionalFieldDescriptorSeed<'a> {
     }
 }
 
-impl<'a, 'de> Visitor<'de> for OptionalFieldDescriptorSeed<'a> {
+impl<'a, 'de, T> Visitor<'de> for OptionalFieldDescriptorSeed<'a, T>
+where
+    T: FieldDescriptorLike,
+{
     type Value = Option<Value>;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -166,7 +175,7 @@ impl<'a, 'de> Visitor<'de> for OptionalFieldDescriptorSeed<'a> {
                 _ => Ok(None),
             }
         } else {
-            Ok(Some(Value::default_value_for_field(self.0)))
+            Ok(Some(self.0.default_value()))
         }
     }
 

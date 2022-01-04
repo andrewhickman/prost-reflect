@@ -19,10 +19,11 @@ enum TypeKind {
 }
 
 pub(in crate::descriptor) struct TypeMap {
-    named_types: HashMap<String, TypeId>,
+    named_types: HashMap<Box<str>, TypeId>,
     messages: Vec<MessageDescriptorInner>,
     enums: Vec<EnumDescriptorInner>,
     extensions: Vec<ExtensionDescriptorInner>,
+    extension_names: HashMap<Box<str>, usize>,
 }
 
 impl TypeMap {
@@ -50,6 +51,7 @@ impl TypeMap {
             messages: Vec::new(),
             enums: Vec::new(),
             extensions: Vec::new(),
+            extension_names: HashMap::new(),
         }
     }
 
@@ -70,6 +72,7 @@ impl TypeMap {
         self.messages.shrink_to_fit();
         self.enums.shrink_to_fit();
         self.extensions.shrink_to_fit();
+        self.extension_names.shrink_to_fit();
     }
 
     pub(super) fn add_message(&mut self, message: MessageDescriptorInner) -> TypeId {
@@ -89,11 +92,13 @@ impl TypeMap {
             name = &name[1..];
         }
 
-        self.named_types.insert(name.to_owned(), ty);
+        self.named_types.insert(name.into(), ty);
     }
 
     pub(super) fn add_extension(&mut self, field: ExtensionDescriptorInner) {
-        self.extensions.push(field)
+        let index = self.extensions.len();
+        self.extension_names.insert(field.json_name.clone(), index);
+        self.extensions.push(field);
     }
 
     pub(super) fn get(&self, id: TypeId) -> Type {
@@ -126,5 +131,9 @@ impl TypeMap {
 
     pub(super) fn get_extension(&self, idx: usize) -> &ExtensionDescriptorInner {
         self.extensions.get(idx).unwrap()
+    }
+
+    pub(super) fn try_get_extension_by_name(&self, name: &str) -> Option<usize> {
+        self.extension_names.get(name).copied()
     }
 }

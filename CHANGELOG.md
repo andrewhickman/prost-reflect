@@ -35,6 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `google.protobuf.Duration` uses a different number of trailing zeroes depending on the precision of the input.
 - JSON serialization of `google.protobuf.Timestamp` and `google.protobuf.Duration` fails if it is outside the allowed range.
 - Duplicate oneof fields is now an error during JSON deserialization
+- Extensions are roundtripped though JSON format
 
 ## [0.3.5] - 2022-01-02
 

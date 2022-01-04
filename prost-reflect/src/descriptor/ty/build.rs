@@ -405,11 +405,17 @@ impl TypeMap {
             self.resolve_type_name(&ext.namespace, protos, ext.field_proto.extendee())?;
         let extendee = self.build_named_type(protos, &extendee_name)?;
 
+        let mut json_name = String::with_capacity(2 + field.full_name.len());
+        json_name.push('[');
+        json_name.push_str(&field.full_name);
+        json_name.push(']');
+
         self.add_extension(ExtensionDescriptorInner {
             field,
             number,
             parent,
             extendee,
+            json_name: json_name.into_boxed_str(),
         });
 
         Ok(())
