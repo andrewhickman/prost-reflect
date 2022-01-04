@@ -1,7 +1,7 @@
 use std::{collections::HashMap, convert::TryInto};
 
 use crate::{
-    descriptor::ty::{EnumDescriptorInner, MessageDescriptorInner},
+    descriptor::ty::{EnumDescriptorInner, ExtensionDescriptorInner, MessageDescriptorInner},
     DescriptorError,
 };
 
@@ -22,6 +22,7 @@ pub(in crate::descriptor) struct TypeMap {
     named_types: HashMap<String, TypeId>,
     messages: Vec<MessageDescriptorInner>,
     enums: Vec<EnumDescriptorInner>,
+    extensions: Vec<ExtensionDescriptorInner>,
 }
 
 impl TypeMap {
@@ -48,6 +49,7 @@ impl TypeMap {
             named_types: HashMap::new(),
             messages: Vec::new(),
             enums: Vec::new(),
+            extensions: Vec::new(),
         }
     }
 
@@ -59,10 +61,15 @@ impl TypeMap {
         (0..self.enums.len()).map(|id| TypeId(TypeKind::Message, id as u32))
     }
 
+    pub fn extensions(&self) -> impl ExactSizeIterator<Item = usize> + '_ {
+        0..self.extensions.len()
+    }
+
     pub fn shrink_to_fit(&mut self) {
         self.named_types.shrink_to_fit();
         self.messages.shrink_to_fit();
         self.enums.shrink_to_fit();
+        self.extensions.shrink_to_fit();
     }
 
     pub(super) fn add_message(&mut self, message: MessageDescriptorInner) -> TypeId {
@@ -83,6 +90,10 @@ impl TypeMap {
         }
 
         self.named_types.insert(name.to_owned(), ty);
+    }
+
+    pub(super) fn add_extension(&mut self, field: ExtensionDescriptorInner) {
+        self.extensions.push(field)
     }
 
     pub(super) fn get(&self, id: TypeId) -> Type {
@@ -111,5 +122,9 @@ impl TypeMap {
 
     pub(super) fn get_scalar(&self, scalar: Scalar) -> TypeId {
         TypeId(TypeKind::Scalar, scalar as u32)
+    }
+
+    pub(super) fn get_extension(&self, idx: usize) -> &ExtensionDescriptorInner {
+        self.extensions.get(idx).unwrap()
     }
 }

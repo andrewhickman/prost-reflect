@@ -68,6 +68,20 @@ struct FieldDescriptorInner {
     ty: TypeId,
 }
 
+/// A protobuf extension field definition.
+#[derive(Clone, PartialEq, Eq)]
+pub struct ExtensionDescriptor {
+    file_set: FileDescriptor,
+    index: usize,
+}
+
+pub struct ExtensionDescriptorInner {
+    field: FieldDescriptorInner,
+    number: u32,
+    parent: Option<TypeId>,
+    extendee: TypeId,
+}
+
 /// A protobuf enum type.
 #[derive(Clone, PartialEq, Eq)]
 pub struct EnumDescriptor {
@@ -447,34 +461,7 @@ impl FieldDescriptor {
 
     /// Gets the [`Kind`] of this field.
     pub fn kind(&self) -> Kind {
-        let ty = self.message_field_ty().ty;
-        match self.message.file_set.inner.type_map.get(ty) {
-            Type::Message(_) => Kind::Message(MessageDescriptor {
-                file_set: self.message.file_set.clone(),
-                ty,
-            }),
-            Type::Enum(_) => Kind::Enum(EnumDescriptor {
-                file_set: self.message.file_set.clone(),
-                ty,
-            }),
-            Type::Scalar(scalar) => match scalar {
-                Scalar::Double => Kind::Double,
-                Scalar::Float => Kind::Float,
-                Scalar::Int32 => Kind::Int32,
-                Scalar::Int64 => Kind::Int64,
-                Scalar::Uint32 => Kind::Uint32,
-                Scalar::Uint64 => Kind::Uint64,
-                Scalar::Sint32 => Kind::Sint32,
-                Scalar::Sint64 => Kind::Sint64,
-                Scalar::Fixed32 => Kind::Fixed32,
-                Scalar::Fixed64 => Kind::Fixed64,
-                Scalar::Sfixed32 => Kind::Sfixed32,
-                Scalar::Sfixed64 => Kind::Sfixed64,
-                Scalar::Bool => Kind::Bool,
-                Scalar::String => Kind::String,
-                Scalar::Bytes => Kind::Bytes,
-            },
-        }
+        Type::to_kind(self.message_field_ty().ty, &self.message.file_set)
     }
 
     /// Gets a [`OneofDescriptor`] representing the oneof containing this field,
@@ -493,12 +480,16 @@ impl FieldDescriptor {
     }
 
     pub(crate) fn is_packable(&self) -> bool {
-        let ty = self.message_field_ty().ty;
-        self.message.file_set.inner.type_map.get(ty).is_packable()
+        self.message_field_inner_ty().is_packable()
     }
 
     fn message_field_ty(&self) -> &FieldDescriptorInner {
         &self.message.message_ty().fields[&self.field]
+    }
+
+    fn message_field_inner_ty(&self) -> Type {
+        let ty = self.message_field_ty().ty;
+        self.message.file_set.inner.type_map.get(ty)
     }
 }
 
@@ -514,6 +505,180 @@ impl fmt::Debug for FieldDescriptor {
             .field(
                 "containing_oneof",
                 &self.containing_oneof().map(|o| o.name().to_owned()),
+            )
+            .field("default_value", &self.default_value())
+            .field("is_group", &self.is_group())
+            .field("is_list", &self.is_list())
+            .field("is_map", &self.is_map())
+            .field("is_packed", &self.is_packed())
+            .field("supports_presence", &self.supports_presence())
+            .finish()
+    }
+}
+
+impl ExtensionDescriptor {
+    pub(in crate::descriptor) fn iter(
+        file_set: &FileDescriptor,
+    ) -> impl ExactSizeIterator<Item = Self> + '_ {
+        file_set
+            .inner
+            .type_map
+            .extensions()
+            .map(move |index| ExtensionDescriptor {
+                file_set: file_set.clone(),
+                index,
+            })
+    }
+
+    /// Gets a reference to the [`FileDescriptor`] this extension field is defined in.
+    pub fn parent_file(&self) -> &FileDescriptor {
+        &self.file_set
+    }
+
+    /// Gets the parent message type if this extension is defined within another message, or `None` otherwise.
+    ///
+    /// Note this just corresponds to where the extension was defined in the proto file. See [`containing_message`][ExtensionDescriptor::containing_message]
+    /// for the message this field is part of.
+    pub fn parent_message(&self) -> Option<MessageDescriptor> {
+        self.extension_ty().parent.map(|ty| MessageDescriptor {
+            file_set: self.file_set.clone(),
+            ty,
+        })
+    }
+
+    /// Gets the short name of the extension field type, e.g. `my_extension`.
+    pub fn name(&self) -> &str {
+        &self.message_field_ty().name
+    }
+
+    /// Gets the full name of the extension field, e.g. `my.package.ParentMessage.my_field`.
+    ///
+    /// Note this includes the name of the parent message if any, not the message this field extends.
+    pub fn full_name(&self) -> &str {
+        &self.message_field_ty().full_name
+    }
+
+    /// Gets the name of the package this extension field is defined in, e.g. `my.package`.
+    ///
+    /// If no package name is set, an empty string is returned.
+    pub fn package_name(&self) -> &str {
+        match self.root_message_ty() {
+            Some(message) => parse_namespace(&message.full_name),
+            None => parse_namespace(self.full_name()),
+        }
+    }
+
+    /// Gets the number for this extension field.
+    pub fn number(&self) -> u32 {
+        self.extension_ty().number
+    }
+
+    /// Gets the name used for JSON serialization.
+    ///
+    /// This is usually the camel-cased form of the field name, unless
+    /// another value is set in the proto file.
+    pub fn json_name(&self) -> &str {
+        &self.message_field_ty().json_name
+    }
+
+    /// Whether this field is encoded using the proto2 group encoding.
+    pub fn is_group(&self) -> bool {
+        self.message_field_ty().is_group
+    }
+
+    /// Whether this field is a list type.
+    ///
+    /// Equivalent to checking that the cardinality is `Repeated` and that
+    /// [`is_map`][Self::is_map] returns `false`.
+    pub fn is_list(&self) -> bool {
+        self.cardinality() == Cardinality::Repeated && !self.is_map()
+    }
+
+    /// Whether this field is a map type.
+    ///
+    /// Equivalent to checking that the cardinality is `Repeated` and that
+    /// the field type is a message where [`is_map_entry`][MessageDescriptor::is_map_entry]
+    /// returns `true`.
+    pub fn is_map(&self) -> bool {
+        self.cardinality() == Cardinality::Repeated
+            && match self.kind() {
+                Kind::Message(message) => message.is_map_entry(),
+                _ => false,
+            }
+    }
+
+    /// Whether this field is a list encoded using [packed encoding](https://developers.google.com/protocol-buffers/docs/encoding#packed).
+    pub fn is_packed(&self) -> bool {
+        self.message_field_ty().is_packed
+    }
+
+    /// The cardinality of this field.
+    pub fn cardinality(&self) -> Cardinality {
+        self.message_field_ty().cardinality
+    }
+
+    /// Whether this field supports distinguishing between an unpopulated field and
+    /// the default value.
+    ///
+    /// For proto2 messages this returns `true` for all non-repeated fields.
+    /// For proto3 this returns `true` for message fields, and fields contained
+    /// in a `oneof`.
+    pub fn supports_presence(&self) -> bool {
+        self.message_field_ty().supports_presence
+    }
+
+    /// Gets the [`Kind`] of this field.
+    pub fn kind(&self) -> Kind {
+        Type::to_kind(self.message_field_ty().ty, &self.file_set)
+    }
+
+    /// Gets the containing message that this message belongs to.
+    pub fn containing_message(&self) -> MessageDescriptor {
+        MessageDescriptor {
+            file_set: self.file_set.clone(),
+            ty: self.extension_ty().extendee,
+        }
+    }
+
+    pub(crate) fn default_value(&self) -> Option<&crate::Value> {
+        self.message_field_ty().default_value.as_ref()
+    }
+
+    fn message_field_ty(&self) -> &FieldDescriptorInner {
+        &self.extension_ty().field
+    }
+
+    fn extension_ty(&self) -> &ExtensionDescriptorInner {
+        self.file_set.inner.type_map.get_extension(self.index)
+    }
+
+    fn root_message_ty(&self) -> Option<&MessageDescriptorInner> {
+        match self.extension_ty().parent {
+            Some(mut curr) => loop {
+                let message = self.file_set.inner.type_map.get(curr).unwrap_message();
+                if let Some(parent) = message.parent {
+                    curr = parent;
+                } else {
+                    return Some(message);
+                }
+            },
+            None => None,
+        }
+    }
+}
+
+impl fmt::Debug for ExtensionDescriptor {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ExtensionDescriptor")
+            .field("name", &self.name())
+            .field("full_name", &self.full_name())
+            .field("json_name", &self.json_name())
+            .field("number", &self.number())
+            .field("kind", &self.kind())
+            .field("cardinality", &self.cardinality())
+            .field(
+                "containing_message",
+                &self.containing_message().name().to_owned(),
             )
             .field("default_value", &self.default_value())
             .field("is_group", &self.is_group())
@@ -827,6 +992,36 @@ impl<'a> Type<'a> {
             Type::Scalar(scalar) => scalar.is_packable(),
             Type::Enum(_) => true,
             _ => false,
+        }
+    }
+
+    fn to_kind(ty: TypeId, file_set: &FileDescriptor) -> Kind {
+        match file_set.inner.type_map.get(ty) {
+            Type::Message(_) => Kind::Message(MessageDescriptor {
+                file_set: file_set.clone(),
+                ty,
+            }),
+            Type::Enum(_) => Kind::Enum(EnumDescriptor {
+                file_set: file_set.clone(),
+                ty,
+            }),
+            Type::Scalar(scalar) => match scalar {
+                Scalar::Double => Kind::Double,
+                Scalar::Float => Kind::Float,
+                Scalar::Int32 => Kind::Int32,
+                Scalar::Int64 => Kind::Int64,
+                Scalar::Uint32 => Kind::Uint32,
+                Scalar::Uint64 => Kind::Uint64,
+                Scalar::Sint32 => Kind::Sint32,
+                Scalar::Sint64 => Kind::Sint64,
+                Scalar::Fixed32 => Kind::Fixed32,
+                Scalar::Fixed64 => Kind::Fixed64,
+                Scalar::Sfixed32 => Kind::Sfixed32,
+                Scalar::Sfixed64 => Kind::Sfixed64,
+                Scalar::Bool => Kind::Bool,
+                Scalar::String => Kind::String,
+                Scalar::Bytes => Kind::Bytes,
+            },
         }
     }
 }

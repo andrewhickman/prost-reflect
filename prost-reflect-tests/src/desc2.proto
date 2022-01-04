@@ -8,6 +8,16 @@ message MyMessage {
   extensions 100, 110 to 115;
 
   extend MyMessage {
-    optional int32 bar = 111;
+    optional int32 in_extendee = 111;
+  }
+}
+
+extend MyMessage {
+  optional float in_file = 112;
+}
+
+message OtherMessage {
+  extend MyMessage {
+    optional double in_other = 113;
   }
 }

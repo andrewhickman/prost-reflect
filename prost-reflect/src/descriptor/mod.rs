@@ -6,8 +6,8 @@ pub use self::{
     error::DescriptorError,
     service::{MethodDescriptor, ServiceDescriptor},
     ty::{
-        EnumDescriptor, EnumValueDescriptor, FieldDescriptor, Kind, MessageDescriptor,
-        OneofDescriptor,
+        EnumDescriptor, EnumValueDescriptor, ExtensionDescriptor, FieldDescriptor, Kind,
+        MessageDescriptor, OneofDescriptor,
     },
 };
 
@@ -115,6 +115,13 @@ impl FileDescriptor {
         EnumDescriptor::iter(self)
     }
 
+    /// Gets an iterator over all extension fields defined in these protobuf files.
+    ///
+    /// The iterator includes nested extensions fields defined in another message.
+    pub fn all_extensions(&self) -> impl ExactSizeIterator<Item = ExtensionDescriptor> + '_ {
+        ExtensionDescriptor::iter(self)
+    }
+
     /// Gets a [`MessageDescriptor`] by its fully qualified name, for example `my.package.MessageName`.
     pub fn get_message_by_name(&self, name: &str) -> Option<MessageDescriptor> {
         MessageDescriptor::try_get_by_name(self, name)
@@ -188,4 +195,11 @@ where
     }
 
     Wrapper(i.collect())
+}
+
+#[test]
+fn assert_descriptor_send_sync() {
+    fn foo<T: Send + Sync>() {}
+
+    foo::<FileDescriptor>();
 }

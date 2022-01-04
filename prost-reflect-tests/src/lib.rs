@@ -176,6 +176,43 @@ fn test_descriptor_methods_proto2() {
             .collect::<Vec<_>>(),
         vec![100, 110, 111, 112, 113, 114, 115],
     );
+
+    let mut extensions: Vec<_> = test_file_descriptor().all_extensions().collect();
+    extensions.sort_by_key(|e| e.full_name().to_owned());
+    assert_eq!(extensions.len(), 3);
+
+    assert_eq!(
+        extensions[0].full_name(),
+        "my.package2.MyMessage.in_extendee"
+    );
+    assert_eq!(
+        extensions[0].parent_message().unwrap().full_name(),
+        "my.package2.MyMessage"
+    );
+    assert_eq!(
+        extensions[0].containing_message().full_name(),
+        "my.package2.MyMessage"
+    );
+
+    assert_eq!(
+        extensions[1].full_name(),
+        "my.package2.OtherMessage.in_other"
+    );
+    assert_eq!(
+        extensions[1].parent_message().unwrap().full_name(),
+        "my.package2.OtherMessage"
+    );
+    assert_eq!(
+        extensions[1].containing_message().full_name(),
+        "my.package2.MyMessage"
+    );
+
+    assert_eq!(extensions[2].full_name(), "my.package2.in_file");
+    assert!(extensions[2].parent_message().is_none());
+    assert_eq!(
+        extensions[2].containing_message().full_name(),
+        "my.package2.MyMessage"
+    );
 }
 
 #[test]
