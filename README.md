@@ -1,6 +1,6 @@
 [![crates.io](https://img.shields.io/crates/v/prost-reflect.svg)](https://crates.io/crates/prost-reflect/)
 [![docs.rs](https://docs.rs/prost-reflect/badge.svg)](https://docs.rs/prost-reflect/)
-[![deps.rs](https://deps.rs/crate/prost-reflect/0.3.5/status.svg)](https://deps.rs/crate/prost-reflect)
+[![deps.rs](https://deps.rs/crate/prost-reflect/0.4.0/status.svg)](https://deps.rs/crate/prost-reflect)
 ![MSRV](https://img.shields.io/badge/rustc-1.53+-blue.svg)
 [![Continuous integration](https://github.com/andrewhickman/prost-reflect/actions/workflows/ci.yml/badge.svg)](https://github.com/andrewhickman/prost-reflect/actions/workflows/ci.yml)
 [![codecov.io](https://codecov.io/gh/andrewhickman/prost-reflect/branch/main/graph/badge.svg?token=E2OITYXO7M)](https://codecov.io/gh/andrewhickman/prost-reflect)
