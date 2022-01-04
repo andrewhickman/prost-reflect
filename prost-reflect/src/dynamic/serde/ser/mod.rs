@@ -51,7 +51,7 @@ fn count_dynamic_message_fields(value: &DynamicMessage, options: &SerializeOptio
     if options.skip_default_fields {
         value.fields.values().filter(|v| v.is_populated()).count()
     } else {
-        value.fields.values().filter(|v| v.get().is_some()).count()
+        value.fields.values().filter(|v| v.value.is_some()).count()
     }
 }
 
@@ -64,7 +64,7 @@ where
     S: SerializeMap,
 {
     for field in value.fields.values() {
-        if (!options.skip_default_fields && field.get().is_some()) || field.is_populated() {
+        if (!options.skip_default_fields && field.value.is_some()) || field.is_populated() {
             let name = if options.use_proto_field_name {
                 field.desc.name()
             } else {
