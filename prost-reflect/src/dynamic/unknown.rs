@@ -28,9 +28,8 @@ pub(crate) enum UnknownField {
 }
 
 impl UnknownFieldSet {
-    /// Creates an empty [UnknownFieldSet].
-    pub fn new() -> Self {
-        Default::default()
+    pub fn is_empty(&self) -> bool {
+        self.fields.is_empty()
     }
 }
 

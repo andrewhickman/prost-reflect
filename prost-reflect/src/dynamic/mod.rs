@@ -25,11 +25,17 @@ use crate::{
 ///
 /// It wraps a [`MessageDescriptor`] and the [`Value`] for each field of the message, and implements
 /// [`Message`][`prost::Message`].
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct DynamicMessage {
     desc: MessageDescriptor,
     fields: BTreeMap<u32, DynamicMessageField>,
-    unknown_fields: UnknownFieldSet,
+    // Rarely used fields are put behind a box so they can be represented by just a null pointer in the common case.
+    cold: Option<Box<DynamicMessageColdFields>>,
+}
+
+#[derive(Default, Debug, Clone)]
+struct DynamicMessageColdFields {
+    unknown: UnknownFieldSet,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -97,7 +103,7 @@ impl DynamicMessage {
                 .fields()
                 .map(|field_desc| (field_desc.number(), DynamicMessageField::new(field_desc)))
                 .collect(),
-            unknown_fields: UnknownFieldSet::new(),
+            cold: None,
             desc,
         }
     }
@@ -232,6 +238,26 @@ impl DynamicMessage {
     {
         let buf = self.encode_to_vec();
         T::decode(buf.as_slice())
+    }
+
+    fn unknown_fields(&self) -> Option<&UnknownFieldSet> {
+        self.cold.as_ref().map(|c| &c.unknown)
+    }
+
+    fn unknown_fields_mut(&mut self) -> &mut UnknownFieldSet {
+        &mut self.cold.get_or_insert_with(Default::default).unknown
+    }
+}
+
+impl PartialEq for DynamicMessage {
+    fn eq(&self, other: &Self) -> bool {
+        self.desc == other.desc
+            && self.fields == other.fields
+            && match (&self.cold, &other.cold) {
+                (None, None) => true,
+                (None, Some(cold)) | (Some(cold), None) => cold.unknown.is_empty(),
+                (Some(lhs), Some(rhs)) => lhs.unknown == rhs.unknown,
+            }
     }
 }
 
