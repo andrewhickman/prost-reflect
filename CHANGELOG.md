@@ -12,6 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added a new helper method `DynamicMessage::decode`.
 
+### Changed
+
+- `DynamicMessage::get_field` now returns `None` for unpopulated fields. Note this mostly affects message types, where previously a new empty
+instance of the message would be returned.
+
 ### Fixed
 
 - Fixed unpacked fields not accepting packed bytes

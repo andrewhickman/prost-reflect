@@ -3,10 +3,7 @@ mod message;
 mod serde;
 mod unknown;
 
-use std::{
-    borrow::Cow,
-    collections::{BTreeMap, HashMap},
-};
+use std::collections::{BTreeMap, HashMap};
 
 #[cfg(feature = "serde")]
 pub use self::serde::{DeserializeOptions, SerializeOptions};
@@ -127,12 +124,16 @@ impl DynamicMessage {
             .map_or(false, |field| field.is_populated())
     }
 
-    /// Gets the value of the field with number `number`, or the default value if it is unset.
+    /// Gets the value of the field with number `number`.
     ///
-    /// If this message has no field with number `number`, `None` is returned. Otherwise this method
-    /// will always return `Some`.
-    pub fn get_field(&self, number: u32) -> Option<Cow<'_, Value>> {
-        self.fields.get(&number).map(|field| field.get())
+    /// This returns the following:
+    /// * If the message type has no field with the given number, `None` is returned.
+    /// * If no value is set for the field:
+    ///   - If the field supports checking for presence (see [`FieldDescriptor::supports_presence`]), `None` is returned.
+    ///   - Otherwise, the default value for the field is returned.
+    /// * If a value is set for the field, it is returned.
+    pub fn get_field(&self, number: u32) -> Option<&'_ Value> {
+        self.fields.get(&number).and_then(|field| field.get())
     }
 
     /// Sets the value of the field with number `number`, or the default value if it is unset.
@@ -184,7 +185,7 @@ impl DynamicMessage {
     /// Gets the value of the field with name `name`, or the default value if it is unset.
     ///
     /// See [`get_field`][Self::get_field] for more details.
-    pub fn get_field_by_name(&self, name: &str) -> Option<Cow<'_, Value>> {
+    pub fn get_field_by_name(&self, name: &str) -> Option<&'_ Value> {
         self.desc
             .get_field_by_name(name)
             .map(|field_desc| self.get_field(field_desc.number()).expect("field not set"))
@@ -253,11 +254,8 @@ impl DynamicMessageField {
         }
     }
 
-    pub fn get(&self) -> Cow<'_, Value> {
-        match &self.value {
-            Some(value) => Cow::Borrowed(value),
-            None => Cow::Owned(Value::default_value_for_field(&self.desc)),
-        }
+    pub fn get(&self) -> Option<&'_ Value> {
+        self.value.as_ref()
     }
 
     pub fn is_populated(&self) -> bool {

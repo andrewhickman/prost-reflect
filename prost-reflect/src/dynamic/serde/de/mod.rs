@@ -166,7 +166,7 @@ impl<'a, 'de> Visitor<'de> for OptionalFieldDescriptorSeed<'a> {
                 _ => Ok(None),
             }
         } else {
-            return Ok(Some(Value::default_value_for_field(&self.0)));
+            Ok(Some(Value::default_value_for_field(self.0)))
         }
     }
 
