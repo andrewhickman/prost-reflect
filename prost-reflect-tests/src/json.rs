@@ -1171,22 +1171,34 @@ fn duration_fractional_digits() {
         .to_owned()
     }
 
-    assert_eq!(&duration_to_string(prost_types::Duration {
-        seconds: 1,
-        nanos: 0,
-    }), "1s");
-    assert_eq!(&duration_to_string(prost_types::Duration {
-        seconds: 1,
-        nanos: 123000000,
-    }), "1.123s");
-    assert_eq!(&duration_to_string(prost_types::Duration {
-        seconds: 1,
-        nanos: 123456000,
-    }), "1.123456s");
-    assert_eq!(&duration_to_string(prost_types::Duration {
-        seconds: 1,
-        nanos: 123456789,
-    }), "1.123456789s");
+    assert_eq!(
+        &duration_to_string(prost_types::Duration {
+            seconds: 1,
+            nanos: 0,
+        }),
+        "1s"
+    );
+    assert_eq!(
+        &duration_to_string(prost_types::Duration {
+            seconds: 1,
+            nanos: 123000000,
+        }),
+        "1.123s"
+    );
+    assert_eq!(
+        &duration_to_string(prost_types::Duration {
+            seconds: 1,
+            nanos: 123456000,
+        }),
+        "1.123456s"
+    );
+    assert_eq!(
+        &duration_to_string(prost_types::Duration {
+            seconds: 1,
+            nanos: 123456789,
+        }),
+        "1.123456789s"
+    );
 }
 
 proptest! {
