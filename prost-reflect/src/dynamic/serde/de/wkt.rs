@@ -167,6 +167,11 @@ impl<'de> Visitor<'de> for GoogleProtobufTimestampVisitor {
     where
         E: Error,
     {
+        // The conformance tests recommend to disallow lowercase 't' and 'z' characters.
+        if v.bytes().any(|ch| ch.is_ascii_lowercase()) {
+            return Err(Error::custom("timestamp contains lowercase character"));
+        }
+
         let fixed_offset = DateTime::parse_from_rfc3339(v).map_err(Error::custom)?;
 
         let utc: DateTime<Utc> = fixed_offset.into();
