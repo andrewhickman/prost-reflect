@@ -193,6 +193,10 @@ fn test_descriptor_methods_proto2() {
         extensions[0].containing_message().full_name(),
         "my.package2.MyMessage"
     );
+    assert_eq!(
+        extensions[0].json_name(),
+        "[my.package2.MyMessage.in_extendee]"
+    );
 
     assert_eq!(
         extensions[1].full_name(),
@@ -206,6 +210,10 @@ fn test_descriptor_methods_proto2() {
         extensions[1].containing_message().full_name(),
         "my.package2.MyMessage"
     );
+    assert_eq!(
+        extensions[1].json_name(),
+        "[my.package2.OtherMessage.in_other]"
+    );
 
     assert_eq!(extensions[2].full_name(), "my.package2.in_file");
     assert!(extensions[2].parent_message().is_none());
@@ -213,6 +221,7 @@ fn test_descriptor_methods_proto2() {
         extensions[2].containing_message().full_name(),
         "my.package2.MyMessage"
     );
+    assert_eq!(extensions[2].json_name(), "[my.package2.in_file]");
 }
 
 #[test]
