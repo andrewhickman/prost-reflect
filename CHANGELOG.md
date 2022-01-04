@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2022-01-04
+
 ### Added
 
 - New helper method `DynamicMessage::decode`.
@@ -22,20 +24,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Fixed unpacked fields not accepting packed bytes
-- Unknown fields are now preserved and roundtripped.
-- Fixed default value for enums with negative values
-- When receiving multiple fields of a oneof in the byte representation, only the last is set.
-- Trailing zeros (e.g. `10.00`) are now accepted when parsing integers from the JSON representation.
-- Fixed handling of `null` in JSON deserialization.
-- Deserialization of `google.protobuf.NullValue` now accepts the `"NULL_VALUE"` string.
-- Deserialization of floats from JSON now validates the value is in range.
-- Nonzero trailing bits are allowed when deserializing JSON bytes from base64.
-- Serialization of `google.protobuf.FieldMask` fails if the path cannot be roundtripped through camelCase.
-- `google.protobuf.Duration` uses a different number of trailing zeroes depending on the precision of the input.
-- JSON serialization of `google.protobuf.Timestamp` and `google.protobuf.Duration` fails if it is outside the allowed range.
-- Duplicate oneof fields is now an error during JSON deserialization
-- Extensions are roundtripped though JSON format
+- The library now passes the protobuf conformance tests. This uncovered a number of edge cases:
+
+  - Fixed unpacked fields not accepting packed bytes
+  - Unknown fields are now preserved and roundtripped.
+  - Fixed default value for enums with negative values
+  - When receiving multiple fields of a oneof in the byte representation, only the last is set.
+  - Trailing zeros (e.g. `10.00`) are now accepted when parsing integers from the JSON representation.
+  - Fixed handling of `null` in JSON deserialization.
+  - Deserialization of `google.protobuf.NullValue` now accepts the `"NULL_VALUE"` string.
+  - Deserialization of floats from JSON now validates the value is in range.
+  - Nonzero trailing bits are allowed when deserializing JSON bytes from base64.
+  - Serialization of `google.protobuf.FieldMask` fails if the path cannot be roundtripped through camelCase.
+  - `google.protobuf.Duration` uses a different number of trailing zeroes depending on the precision of the input.
+  - JSON serialization of `google.protobuf.Timestamp` and `google.protobuf.Duration` fails if it is outside the allowed range.
+  - Duplicate oneof fields is now an error during JSON deserialization
+  - Extensions are roundtripped though JSON format
 
 ## [0.3.5] - 2022-01-02
 
@@ -102,7 +106,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial release, including support for inspecting message types at runtime.
 
-[unreleased]: https://github.com/andrewhickman/prost-reflect/compare/0.3.5...HEAD
+[unreleased]: https://github.com/andrewhickman/prost-reflect/compare/0.4.0...HEAD
+[0.4.0]: https://github.com/andrewhickman/prost-reflect/compare/0.3.4...0.4.0
 [0.3.5]: https://github.com/andrewhickman/prost-reflect/compare/0.3.4...0.3.5
 [0.3.4]: https://github.com/andrewhickman/prost-reflect/compare/0.3.3...0.3.4
 [0.3.3]: https://github.com/andrewhickman/prost-reflect/compare/0.3.2...0.3.3
