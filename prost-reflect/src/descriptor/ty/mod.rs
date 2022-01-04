@@ -588,10 +588,7 @@ impl ExtensionDescriptor {
         self.extension_ty().number
     }
 
-    /// Gets the name used for JSON serialization.
-    ///
-    /// This is usually the camel-cased form of the field name, unless
-    /// another value is set in the proto file.
+    /// Gets the name used for JSON serialization of this extension field, e.g. `[my.package.ParentMessage.my_field]`.
     pub fn json_name(&self) -> &str {
         &self.extension_ty().json_name
     }
