@@ -9,7 +9,7 @@ use crate::{
     dynamic::{
         serde::{
             case::snake_case_to_camel_case, is_well_known_type, SerializeOptions,
-            MAX_TIMESTAMP_SECONDS, MIN_TIMESTAMP_SECONDS,
+            MAX_DURATION_NANOS, MAX_DURATION_SECONDS, MAX_TIMESTAMP_SECONDS, MIN_TIMESTAMP_SECONDS,
         },
         DynamicMessage,
     },
@@ -139,6 +139,11 @@ where
 
     let abs_seconds = raw.seconds.unsigned_abs();
     let mut abs_nanos = raw.nanos.unsigned_abs();
+
+    if abs_seconds > MAX_DURATION_SECONDS {
+        return Err(Error::custom("duration out of range"));
+    }
+    debug_assert!(abs_nanos <= MAX_DURATION_NANOS);
 
     let mut nanos_fract_digits: usize = 9;
     while nanos_fract_digits != 0 && abs_nanos % 1000 == 0 {
