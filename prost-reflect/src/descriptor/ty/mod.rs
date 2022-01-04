@@ -27,7 +27,7 @@ struct MessageDescriptorInner {
     fields: BTreeMap<u32, FieldDescriptorInner>,
     field_names: HashMap<String, u32>,
     field_json_names: HashMap<String, u32>,
-    oneof_decls: Vec<OneofDescriptorInner>,
+    oneof_decls: Box<[OneofDescriptorInner]>,
 }
 
 /// A oneof field in a protobuf message.

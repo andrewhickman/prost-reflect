@@ -34,7 +34,7 @@ pub struct FileDescriptor {
 struct FileDescriptorInner {
     raw: FileDescriptorSet,
     type_map: ty::TypeMap,
-    services: Vec<ServiceDescriptorInner>,
+    services: Box<[ServiceDescriptorInner]>,
 }
 
 impl FileDescriptor {

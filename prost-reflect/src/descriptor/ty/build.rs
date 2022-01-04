@@ -57,7 +57,7 @@ impl TypeMap {
         );
         self.add_name(name, id);
 
-        let mut oneof_decls: Vec<_> = message_proto
+        let mut oneof_decls: Box<[_]> = message_proto
             .oneof_decl
             .iter()
             .map(|oneof| OneofDescriptorInner {
@@ -74,6 +74,8 @@ impl TypeMap {
                 self.build_message_field(name, field_proto, protos, syntax, &mut oneof_decls)
             })
             .collect::<Result<BTreeMap<_, _>, _>>()?;
+
+        oneof_decls.iter_mut().for_each(|o| o.fields.shrink_to_fit());
 
         let field_names = fields
             .iter()
@@ -111,7 +113,7 @@ impl TypeMap {
         Ok(id)
     }
 
-    fn build_message_field(&mut self, message_name: &str, field_proto: &FieldDescriptorProto, protos: &HashMap<String, TyProto>, syntax: Syntax, oneof_decls: &mut Vec<OneofDescriptorInner>) -> Result<(u32, FieldDescriptorInner), DescriptorError> {
+    fn build_message_field(&mut self, message_name: &str, field_proto: &FieldDescriptorProto, protos: &HashMap<String, TyProto>, syntax: Syntax, oneof_decls: &mut [OneofDescriptorInner]) -> Result<(u32, FieldDescriptorInner), DescriptorError> {
         use prost_types::field_descriptor_proto::{Label, Type as ProtoType};
 
         let ty = self.add_message_field(field_proto, protos)?;

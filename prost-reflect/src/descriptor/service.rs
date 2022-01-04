@@ -18,7 +18,7 @@ pub struct ServiceDescriptor {
 
 pub(super) struct ServiceDescriptorInner {
     full_name: String,
-    methods: Vec<MethodDescriptorInner>,
+    methods: Box<[MethodDescriptorInner]>,
 }
 
 /// A method definition for a [`ServiceDescriptor`].
