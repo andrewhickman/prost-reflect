@@ -133,6 +133,7 @@ impl TypeMap {
         self.extensions.get(idx).unwrap()
     }
 
+    #[cfg(feature = "serde")]
     pub(super) fn try_get_extension_by_name(&self, name: &str) -> Option<usize> {
         self.extension_names.get(name).copied()
     }

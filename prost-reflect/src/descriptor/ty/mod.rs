@@ -531,6 +531,7 @@ impl ExtensionDescriptor {
             })
     }
 
+    #[cfg(feature = "serde")]
     pub(in crate::descriptor) fn try_get_by_json_name(
         file_set: &FileDescriptor,
         name: &str,
