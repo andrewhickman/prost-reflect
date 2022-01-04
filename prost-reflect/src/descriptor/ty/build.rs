@@ -32,7 +32,7 @@ impl TypeMap {
         parent: Option<&str>,
         message_proto: &DescriptorProto,
         syntax: Syntax,
-        protos: &HashMap<String, TyProto>,
+        protos: &HashMap<Box<str>, TyProto>,
     ) -> Result<TypeId, DescriptorError> {
         if let Some(id) = self.try_get_by_name(name) {
             return Ok(id);
@@ -61,7 +61,7 @@ impl TypeMap {
             .oneof_decl
             .iter()
             .map(|oneof| OneofDescriptorInner {
-                name: oneof.name().to_owned(),
+                name: oneof.name().into(),
                 full_name: make_full_name(name, oneof.name()),
                 fields: Vec::new(),
             })
@@ -104,7 +104,7 @@ impl TypeMap {
                 field_names,
                 field_json_names,
                 oneof_decls,
-                full_name: name.to_owned(),
+                full_name: name.into(),
                 parent,
                 is_map_entry,
             },
@@ -113,7 +113,7 @@ impl TypeMap {
         Ok(id)
     }
 
-    fn build_message_field(&mut self, message_name: &str, field_proto: &FieldDescriptorProto, protos: &HashMap<String, TyProto>, syntax: Syntax, oneof_decls: &mut [OneofDescriptorInner]) -> Result<(u32, FieldDescriptorInner), DescriptorError> {
+    fn build_message_field(&mut self, message_name: &str, field_proto: &FieldDescriptorProto, protos: &HashMap<Box<str>, TyProto>, syntax: Syntax, oneof_decls: &mut [OneofDescriptorInner]) -> Result<(u32, FieldDescriptorInner), DescriptorError> {
         use prost_types::field_descriptor_proto::{Label, Type as ProtoType};
 
         let ty = self.add_message_field(field_proto, protos)?;
@@ -168,7 +168,7 @@ impl TypeMap {
                 Type::Enum(enum_ty) => enum_ty
                     .values
                     .iter()
-                    .find(|(_, v)| &v.name == value)
+                    .find(|(_, v)| *v.name == *value)
                     .map(|(&n, _)| crate::Value::EnumNumber(n))
                     .ok_or(()),
                 Type::Message(_) => Err(()),
@@ -195,9 +195,9 @@ impl TypeMap {
             None => None,
         };
         let field = FieldDescriptorInner {
-            name: field_proto.name().to_owned(),
+            name: field_proto.name().into(),
             full_name: make_full_name(message_name, field_proto.name()),
-            json_name: field_proto.json_name().to_owned(),
+            json_name: field_proto.json_name().into(),
             is_group: field_proto.r#type() == ProtoType::Group,
             cardinality,
             is_packed,
@@ -212,7 +212,7 @@ impl TypeMap {
     fn add_message_field(
         &mut self,
         field_proto: &FieldDescriptorProto,
-        protos: &HashMap<String, TyProto>,
+        protos: &HashMap<Box<str>, TyProto>,
     ) -> Result<TypeId, DescriptorError> {
         use prost_types::field_descriptor_proto::Type as ProtoType;
 
@@ -244,7 +244,7 @@ impl TypeMap {
 
     fn build_named_type(
         &mut self,
-        protos: &HashMap<String, TyProto>,
+        protos: &HashMap<Box<str>, TyProto>,
         type_name: &str,
     ) -> Result<TypeId, DescriptorError> {
         Ok(match protos.get(type_name) {
@@ -270,7 +270,7 @@ impl TypeMap {
         parent: Option<&str>,
         enum_proto: &EnumDescriptorProto,
         syntax: Syntax,
-        protos: &HashMap<String, TyProto>,
+        protos: &HashMap<Box<str>, TyProto>,
     ) -> Result<TypeId, DescriptorError> {
         if let Some(id) = self.try_get_by_name(name) {
             return Ok(id);
@@ -291,7 +291,7 @@ impl TypeMap {
                 (
                     value_proto.number(),
                     EnumValueDescriptorInner {
-                        name: value_proto.name().to_owned(),
+                        name: value_proto.name().into(),
                         full_name: make_full_name(package_name, value_proto.name()),
                     },
                 )
@@ -317,7 +317,7 @@ impl TypeMap {
         };
 
         let id = self.add_enum(EnumDescriptorInner {
-            full_name: name.to_owned(),
+            full_name: name.into(),
             parent,
             value_names,
             values,
@@ -348,7 +348,7 @@ enum TyProto<'a> {
     },
 }
 
-fn iter_tys(raw: &FileDescriptorSet) -> Result<HashMap<String, TyProto<'_>>, DescriptorError> {
+fn iter_tys(raw: &FileDescriptorSet) -> Result<HashMap<Box<str>, TyProto<'_>>, DescriptorError> {
     let mut result = HashMap::with_capacity(128);
 
     for file in &raw.file {
@@ -365,7 +365,7 @@ fn iter_tys(raw: &FileDescriptorSet) -> Result<HashMap<String, TyProto<'_>>, Des
             iter_message(&full_name, &mut result, message_proto, syntax)?;
             if result
                 .insert(
-                    full_name.clone(),
+                    full_name,
                     TyProto::Message {
                         message_proto,
                         parent: None,
@@ -374,14 +374,14 @@ fn iter_tys(raw: &FileDescriptorSet) -> Result<HashMap<String, TyProto<'_>>, Des
                 )
                 .is_some()
             {
-                return Err(DescriptorError::type_already_exists(full_name));
+                return Err(DescriptorError::type_already_exists(make_full_name(namespace, message_proto.name())));
             }
         }
         for enum_proto in &file.enum_type {
             let full_name = make_full_name(namespace, enum_proto.name());
             if result
                 .insert(
-                    full_name.clone(),
+                    full_name,
                     TyProto::Enum {
                         enum_proto,
                         parent: None,
@@ -390,7 +390,7 @@ fn iter_tys(raw: &FileDescriptorSet) -> Result<HashMap<String, TyProto<'_>>, Des
                 )
                 .is_some()
             {
-                return Err(DescriptorError::type_already_exists(full_name));
+                return Err(DescriptorError::type_already_exists(make_full_name(namespace, enum_proto.name())));
             }
         }
     }
@@ -400,7 +400,7 @@ fn iter_tys(raw: &FileDescriptorSet) -> Result<HashMap<String, TyProto<'_>>, Des
 
 fn iter_message<'a>(
     namespace: &str,
-    result: &mut HashMap<String, TyProto<'a>>,
+    result: &mut HashMap<Box<str>, TyProto<'a>>,
     raw: &'a DescriptorProto,
     syntax: Syntax,
 ) -> Result<(), DescriptorError> {
@@ -409,7 +409,7 @@ fn iter_message<'a>(
         iter_message(&full_name, result, message_proto, syntax)?;
         if result
             .insert(
-                full_name.clone(),
+                full_name,
                 TyProto::Message {
                     message_proto,
                     parent: Some(namespace.to_string()),
@@ -418,7 +418,7 @@ fn iter_message<'a>(
             )
             .is_some()
         {
-            return Err(DescriptorError::type_already_exists(full_name));
+            return Err(DescriptorError::type_already_exists(make_full_name(namespace, message_proto.name())));
         }
     }
 
@@ -426,7 +426,7 @@ fn iter_message<'a>(
         let full_name = make_full_name(namespace, enum_proto.name());
         if result
             .insert(
-                full_name.clone(),
+                full_name,
                 TyProto::Enum {
                     enum_proto,
                     parent: Some(namespace.to_string()),
@@ -435,7 +435,7 @@ fn iter_message<'a>(
             )
             .is_some()
         {
-            return Err(DescriptorError::type_already_exists(full_name));
+            return Err(DescriptorError::type_already_exists(make_full_name(namespace, enum_proto.name())));
         }
     }
 

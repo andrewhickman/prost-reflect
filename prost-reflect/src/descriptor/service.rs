@@ -17,7 +17,7 @@ pub struct ServiceDescriptor {
 }
 
 pub(super) struct ServiceDescriptorInner {
-    full_name: String,
+    full_name: Box<str>,
     methods: Box<[MethodDescriptorInner]>,
 }
 
@@ -29,7 +29,7 @@ pub struct MethodDescriptor {
 }
 
 struct MethodDescriptorInner {
-    full_name: String,
+    full_name: Box<str>,
     request_ty: ty::TypeId,
     response_ty: ty::TypeId,
     server_streaming: bool,

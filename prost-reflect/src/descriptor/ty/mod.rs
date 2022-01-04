@@ -21,12 +21,12 @@ pub struct MessageDescriptor {
 }
 
 struct MessageDescriptorInner {
-    full_name: String,
+    full_name: Box<str>,
     parent: Option<TypeId>,
     is_map_entry: bool,
     fields: BTreeMap<u32, FieldDescriptorInner>,
-    field_names: HashMap<String, u32>,
-    field_json_names: HashMap<String, u32>,
+    field_names: HashMap<Box<str>, u32>,
+    field_json_names: HashMap<Box<str>, u32>,
     oneof_decls: Box<[OneofDescriptorInner]>,
 }
 
@@ -38,8 +38,8 @@ pub struct OneofDescriptor {
 }
 
 struct OneofDescriptorInner {
-    name: String,
-    full_name: String,
+    name: Box<str>,
+    full_name: Box<str>,
     fields: Vec<u32>,
 }
 
@@ -51,9 +51,9 @@ pub struct FieldDescriptor {
 }
 
 struct FieldDescriptorInner {
-    name: String,
-    full_name: String,
-    json_name: String,
+    name: Box<str>,
+    full_name: Box<str>,
+    json_name: Box<str>,
     is_group: bool,
     cardinality: Cardinality,
     is_packed: bool,
@@ -71,7 +71,7 @@ pub struct EnumDescriptor {
 }
 
 struct EnumDescriptorInner {
-    full_name: String,
+    full_name: Box<str>,
     parent: Option<TypeId>,
     value_names: HashMap<String, i32>,
     values: BTreeMap<i32, EnumValueDescriptorInner>,
@@ -86,8 +86,8 @@ pub struct EnumValueDescriptor {
 }
 
 struct EnumValueDescriptorInner {
-    name: String,
-    full_name: String,
+    name: Box<str>,
+    full_name: Box<str>,
 }
 
 /// The type of a protobuf message field.

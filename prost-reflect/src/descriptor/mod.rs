@@ -144,12 +144,12 @@ impl PartialEq for FileDescriptor {
 
 impl Eq for FileDescriptor {}
 
-fn make_full_name(namespace: &str, name: &str) -> String {
+fn make_full_name(namespace: &str, name: &str) -> Box<str> {
     let namespace = namespace.trim_start_matches('.');
     if namespace.is_empty() {
-        name.to_owned()
+        name.into()
     } else {
-        format!("{}.{}", namespace, name)
+        format!("{}.{}", namespace, name).into_boxed_str()
     }
 }
 
