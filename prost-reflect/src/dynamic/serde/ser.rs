@@ -8,7 +8,7 @@ use serde::ser::{Error, Serialize, SerializeMap, SerializeSeq, Serializer};
 use crate::{
     descriptor::Kind,
     dynamic::{
-        serde::{is_well_known_type, SerializeOptions, case::snake_case_to_camel_case},
+        serde::{case::snake_case_to_camel_case, is_well_known_type, SerializeOptions},
         DynamicMessage, DynamicMessageField, MapKey, Value,
     },
     ReflectMessage,
@@ -361,6 +361,16 @@ where
     let mut raw: prost_types::Duration = msg.transcode_to().map_err(decode_to_ser_err)?;
 
     raw.normalize();
+
+    let abs_seconds = raw.seconds.unsigned_abs();
+    let mut abs_nanos = raw.nanos.unsigned_abs();
+
+    let mut nanos_fract_digits: usize = 9;
+    while nanos_fract_digits != 0 && abs_nanos % 1000 == 0 {
+        abs_nanos /= 1000;
+        nanos_fract_digits -= 3;
+    }
+
     match (raw.seconds.cmp(&0), raw.nanos.cmp(&0)) {
         (_, Ordering::Equal) => serializer.collect_str(&format_args!("{}s", raw.seconds)),
         (Ordering::Less, Ordering::Greater) | (Ordering::Greater, Ordering::Less) => {
@@ -368,16 +378,18 @@ where
         }
         (Ordering::Equal | Ordering::Less, Ordering::Less) => {
             serializer.collect_str(&format_args!(
-                "-{}.{:0>9}s",
-                raw.seconds.unsigned_abs(),
-                raw.nanos.unsigned_abs()
+                "-{}.{:0>digits$}s",
+                abs_seconds,
+                abs_nanos,
+                digits = nanos_fract_digits,
             ))
         }
         (Ordering::Equal | Ordering::Greater, Ordering::Greater) => {
             serializer.collect_str(&format_args!(
-                "{}.{:0>9}s",
-                raw.seconds.unsigned_abs(),
-                raw.nanos.unsigned_abs()
+                "{}.{:0>digits$}s",
+                abs_seconds,
+                abs_nanos,
+                digits = nanos_fract_digits,
             ))
         }
     }

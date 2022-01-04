@@ -1144,10 +1144,49 @@ fn bytes_forgiving_decode() {
     let json = json!({ "bytes": "-_" });
 
     let scalars: Scalars = from_json(json, "test.Scalars");
-    assert_eq!(scalars, Scalars {
-        bytes: b"\xfb".to_vec(),
-        ..Default::default()
-    });
+    assert_eq!(
+        scalars,
+        Scalars {
+            bytes: b"\xfb".to_vec(),
+            ..Default::default()
+        }
+    );
+}
+
+#[test]
+fn duration_fractional_digits() {
+    fn duration_to_string(dur: prost_types::Duration) -> String {
+        serde_json::to_value(
+            &DynamicMessage::decode(
+                test_file_descriptor()
+                    .get_message_by_name("google.protobuf.Duration")
+                    .unwrap(),
+                dur.encode_to_vec().as_slice(),
+            )
+            .unwrap(),
+        )
+        .unwrap()
+        .as_str()
+        .unwrap()
+        .to_owned()
+    }
+
+    assert_eq!(&duration_to_string(prost_types::Duration {
+        seconds: 1,
+        nanos: 0,
+    }), "1s");
+    assert_eq!(&duration_to_string(prost_types::Duration {
+        seconds: 1,
+        nanos: 123000000,
+    }), "1.123s");
+    assert_eq!(&duration_to_string(prost_types::Duration {
+        seconds: 1,
+        nanos: 123456000,
+    }), "1.123456s");
+    assert_eq!(&duration_to_string(prost_types::Duration {
+        seconds: 1,
+        nanos: 123456789,
+    }), "1.123456789s");
 }
 
 proptest! {

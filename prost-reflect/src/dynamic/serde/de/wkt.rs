@@ -14,7 +14,7 @@ use serde::de::{
 
 use crate::{
     dynamic::{
-        serde::{is_well_known_type, DeserializeOptions, case::camel_case_to_snake_case},
+        serde::{case::camel_case_to_snake_case, is_well_known_type, DeserializeOptions},
         DynamicMessage,
     },
     FileDescriptor,
@@ -135,7 +135,8 @@ impl<'de> Visitor<'de> for GoogleProtobufNullVisitor {
 
     fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
     where
-            E: Error, {
+        E: Error,
+    {
         if v == "NULL_VALUE" {
             Ok(0)
         } else {

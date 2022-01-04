@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Deserialization of floats from JSON now validates the value is in range.
 - Nonzero trailing bits are allowed when deserializing JSON bytes from base64.
 - Serialization of `google.protobuf.FieldMask` fails if the path cannot be roundtripped through camelCase.
+- `google.protobuf.Duration` uses a different number of trailing zeroes depending on the precision of the input.
 
 ## [0.3.5] - 2022-01-02
 

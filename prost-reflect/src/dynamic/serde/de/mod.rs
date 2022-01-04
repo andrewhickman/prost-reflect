@@ -8,7 +8,7 @@ use serde::de::{DeserializeSeed, Deserializer, Error, Visitor};
 
 use crate::{
     dynamic::{serde::DeserializeOptions, DynamicMessage, Value},
-    EnumDescriptor, FieldDescriptor, MessageDescriptor, Kind,
+    EnumDescriptor, FieldDescriptor, Kind, MessageDescriptor,
 };
 
 pub(super) fn deserialize_message<'de, D>(
@@ -80,9 +80,7 @@ where
     D: Deserializer<'de>,
 {
     match desc.full_name() {
-        "google.protobuf.NullValue" => {
-            deserializer.deserialize_any(wkt::GoogleProtobufNullVisitor)
-        }
+        "google.protobuf.NullValue" => deserializer.deserialize_any(wkt::GoogleProtobufNullVisitor),
         _ => deserializer.deserialize_any(kind::EnumVisitor(desc)),
     }
 }
@@ -158,13 +156,17 @@ impl<'a, 'de> Visitor<'de> for OptionalFieldDescriptorSeed<'a> {
     {
         if let Kind::Message(message_desc) = self.0.kind() {
             match message_desc.full_name() {
-                "google.protobuf.Value" => make_message(&message_desc, prost_types::Value {
-                    kind: Some(prost_types::value::Kind::NullValue(0)),
-                }).map(|v| Some(Value::Message(v))),
+                "google.protobuf.Value" => make_message(
+                    &message_desc,
+                    prost_types::Value {
+                        kind: Some(prost_types::value::Kind::NullValue(0)),
+                    },
+                )
+                .map(|v| Some(Value::Message(v))),
                 _ => Ok(None),
             }
         } else {
-            return Ok(Some(Value::default_value_for_field(&self.0)))
+            return Ok(Some(Value::default_value_for_field(&self.0)));
         }
     }
 
