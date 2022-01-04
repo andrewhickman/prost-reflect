@@ -34,8 +34,6 @@ impl TypeMap {
         syntax: Syntax,
         protos: &HashMap<String, TyProto>,
     ) -> Result<TypeId, DescriptorError> {
-        use prost_types::field_descriptor_proto::{Label, Type as ProtoType};
-
         if let Some(id) = self.try_get_by_name(name) {
             return Ok(id);
         }
@@ -73,105 +71,7 @@ impl TypeMap {
             .field
             .iter()
             .map(|field_proto| {
-                let ty = self.add_message_field(field_proto, protos)?;
-
-                let number = field_proto.number() as u32;
-
-                let cardinality = match field_proto.label() {
-                    Label::Optional => Cardinality::Optional,
-                    Label::Required => Cardinality::Required,
-                    Label::Repeated => Cardinality::Repeated,
-                };
-
-                let is_packed = cardinality == Cardinality::Repeated
-                    && self.get(ty).is_packable()
-                    && (field_proto
-                        .options
-                        .as_ref()
-                        .map_or(syntax == Syntax::Proto3, |options| options.packed()));
-
-                let supports_presence = field_proto.proto3_optional()
-                    || field_proto.oneof_index.is_some()
-                    || (cardinality != Cardinality::Repeated
-                        && (field_proto.r#type() == ProtoType::Message
-                            || syntax == Syntax::Proto2));
-
-                let default_value = match &field_proto.default_value {
-                    Some(value) => match self.get(ty) {
-                        Type::Scalar(Scalar::Double) => {
-                            value.parse().map(crate::Value::F64).map_err(|_| ())
-                        }
-                        Type::Scalar(Scalar::Float) => {
-                            value.parse().map(crate::Value::F32).map_err(|_| ())
-                        }
-                        Type::Scalar(Scalar::Int32)
-                        | Type::Scalar(Scalar::Sint32)
-                        | Type::Scalar(Scalar::Sfixed32) => {
-                            value.parse().map(crate::Value::I32).map_err(|_| ())
-                        }
-                        Type::Scalar(Scalar::Int64)
-                        | Type::Scalar(Scalar::Sint64)
-                        | Type::Scalar(Scalar::Sfixed64) => {
-                            value.parse().map(crate::Value::I64).map_err(|_| ())
-                        }
-                        Type::Scalar(Scalar::Uint32) | Type::Scalar(Scalar::Fixed32) => {
-                            value.parse().map(crate::Value::U32).map_err(|_| ())
-                        }
-                        Type::Scalar(Scalar::Uint64) | Type::Scalar(Scalar::Fixed64) => {
-                            value.parse().map(crate::Value::U64).map_err(|_| ())
-                        }
-                        Type::Scalar(Scalar::Bool) => {
-                            value.parse().map(crate::Value::Bool).map_err(|_| ())
-                        }
-                        Type::Scalar(Scalar::String) => Ok(crate::Value::String(value.to_owned())),
-                        Type::Scalar(Scalar::Bytes) => {
-                            unescape_c_escape_string(value).map(crate::Value::Bytes)
-                        }
-                        Type::Enum(enum_ty) => enum_ty
-                            .values
-                            .iter()
-                            .find(|(_, v)| &v.name == value)
-                            .map(|(&n, _)| crate::Value::EnumNumber(n))
-                            .ok_or(()),
-                        Type::Message(_) => Err(()),
-                    }
-                    .map(Some)
-                    .map_err(|()| {
-                        DescriptorError::invalid_default_value(name, field_proto.name(), value)
-                    })?,
-                    None => None,
-                };
-
-                let oneof_index = match field_proto.oneof_index {
-                    Some(index) => {
-                        let index = index as usize;
-                        if let Some(oneof) = oneof_decls.get_mut(index) {
-                            oneof.fields.push(number);
-                        } else {
-                            return Err(DescriptorError::invalid_oneof_index(
-                                name,
-                                field_proto.name(),
-                            ));
-                        }
-                        Some(index)
-                    }
-                    None => None,
-                };
-
-                let field = FieldDescriptorInner {
-                    name: field_proto.name().to_owned(),
-                    full_name: make_full_name(name, field_proto.name()),
-                    json_name: field_proto.json_name().to_owned(),
-                    is_group: field_proto.r#type() == ProtoType::Group,
-                    cardinality,
-                    is_packed,
-                    supports_presence,
-                    default_value,
-                    oneof_index,
-                    ty,
-                };
-
-                Ok((number, field))
+                self.build_message_field(name, field_proto, protos, syntax, &mut oneof_decls)
             })
             .collect::<Result<BTreeMap<_, _>, _>>()?;
 
@@ -209,6 +109,102 @@ impl TypeMap {
         );
 
         Ok(id)
+    }
+
+    fn build_message_field(&mut self, message_name: &str, field_proto: &FieldDescriptorProto, protos: &HashMap<String, TyProto>, syntax: Syntax, oneof_decls: &mut Vec<OneofDescriptorInner>) -> Result<(u32, FieldDescriptorInner), DescriptorError> {
+        use prost_types::field_descriptor_proto::{Label, Type as ProtoType};
+
+        let ty = self.add_message_field(field_proto, protos)?;
+        let number = field_proto.number() as u32;
+        let cardinality = match field_proto.label() {
+            Label::Optional => Cardinality::Optional,
+            Label::Required => Cardinality::Required,
+            Label::Repeated => Cardinality::Repeated,
+        };
+        let is_packed = cardinality == Cardinality::Repeated
+            && self.get(ty).is_packable()
+            && (field_proto
+                .options
+                .as_ref()
+                .map_or(syntax == Syntax::Proto3, |options| options.packed()));
+        let supports_presence = field_proto.proto3_optional()
+            || field_proto.oneof_index.is_some()
+            || (cardinality != Cardinality::Repeated
+                && (field_proto.r#type() == ProtoType::Message
+                    || syntax == Syntax::Proto2));
+        let default_value = match &field_proto.default_value {
+            Some(value) => match self.get(ty) {
+                Type::Scalar(Scalar::Double) => {
+                    value.parse().map(crate::Value::F64).map_err(|_| ())
+                }
+                Type::Scalar(Scalar::Float) => {
+                    value.parse().map(crate::Value::F32).map_err(|_| ())
+                }
+                Type::Scalar(Scalar::Int32)
+                | Type::Scalar(Scalar::Sint32)
+                | Type::Scalar(Scalar::Sfixed32) => {
+                    value.parse().map(crate::Value::I32).map_err(|_| ())
+                }
+                Type::Scalar(Scalar::Int64)
+                | Type::Scalar(Scalar::Sint64)
+                | Type::Scalar(Scalar::Sfixed64) => {
+                    value.parse().map(crate::Value::I64).map_err(|_| ())
+                }
+                Type::Scalar(Scalar::Uint32) | Type::Scalar(Scalar::Fixed32) => {
+                    value.parse().map(crate::Value::U32).map_err(|_| ())
+                }
+                Type::Scalar(Scalar::Uint64) | Type::Scalar(Scalar::Fixed64) => {
+                    value.parse().map(crate::Value::U64).map_err(|_| ())
+                }
+                Type::Scalar(Scalar::Bool) => {
+                    value.parse().map(crate::Value::Bool).map_err(|_| ())
+                }
+                Type::Scalar(Scalar::String) => Ok(crate::Value::String(value.to_owned())),
+                Type::Scalar(Scalar::Bytes) => {
+                    unescape_c_escape_string(value).map(crate::Value::Bytes)
+                }
+                Type::Enum(enum_ty) => enum_ty
+                    .values
+                    .iter()
+                    .find(|(_, v)| &v.name == value)
+                    .map(|(&n, _)| crate::Value::EnumNumber(n))
+                    .ok_or(()),
+                Type::Message(_) => Err(()),
+            }
+            .map(Some)
+            .map_err(|()| {
+                DescriptorError::invalid_default_value(message_name, field_proto.name(), value)
+            })?,
+            None => None,
+        };
+        let oneof_index = match field_proto.oneof_index {
+            Some(index) => {
+                let index = index as usize;
+                if let Some(oneof) = oneof_decls.get_mut(index) {
+                    oneof.fields.push(number);
+                } else {
+                    return Err(DescriptorError::invalid_oneof_index(
+                        message_name,
+                        field_proto.name(),
+                    ));
+                }
+                Some(index)
+            }
+            None => None,
+        };
+        let field = FieldDescriptorInner {
+            name: field_proto.name().to_owned(),
+            full_name: make_full_name(message_name, field_proto.name()),
+            json_name: field_proto.json_name().to_owned(),
+            is_group: field_proto.r#type() == ProtoType::Group,
+            cardinality,
+            is_packed,
+            supports_presence,
+            default_value,
+            oneof_index,
+            ty,
+        };
+        Ok((number, field))
     }
 
     fn add_message_field(
