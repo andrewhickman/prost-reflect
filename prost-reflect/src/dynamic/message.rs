@@ -9,6 +9,8 @@ use crate::{
     DynamicMessage, FieldDescriptor, MapKey, Value,
 };
 
+use super::field::FieldDescriptorLike;
+
 impl Message for DynamicMessage {
     fn encode_raw<B>(&self, buf: &mut B)
     where
@@ -74,11 +76,11 @@ impl Message for DynamicMessage {
 }
 
 impl Value {
-    fn encode_field<B>(&self, field_desc: &FieldDescriptor, buf: &mut B)
+    fn encode_field<B>(&self, field_desc: &impl FieldDescriptorLike, buf: &mut B)
     where
         B: BufMut,
     {
-        if !field_desc.supports_presence() && self.is_default_for_field(field_desc) {
+        if !field_desc.supports_presence() && field_desc.is_default_value(self) {
             return;
         }
 
@@ -265,7 +267,7 @@ impl Value {
 
     fn merge_field<B>(
         &mut self,
-        field_desc: &FieldDescriptor,
+        field_desc: &impl FieldDescriptorLike,
         wire_type: WireType,
         buf: &mut B,
         ctx: DecodeContext,
@@ -389,8 +391,8 @@ impl Value {
         }
     }
 
-    fn encoded_len(&self, field_desc: &FieldDescriptor) -> usize {
-        if !field_desc.supports_presence() && self.is_default_for_field(field_desc) {
+    fn encoded_len(&self, field_desc: &impl FieldDescriptorLike) -> usize {
+        if !field_desc.supports_presence() && field_desc.is_default_value(self) {
             return 0;
         }
 

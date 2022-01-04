@@ -6,7 +6,10 @@ use serde::ser::{Serialize, SerializeMap, SerializeSeq, Serializer};
 
 use crate::{
     descriptor::Kind,
-    dynamic::{serde::SerializeOptions, DynamicMessage, DynamicMessageField, MapKey, Value},
+    dynamic::{
+        field::FieldDescriptorLike, serde::SerializeOptions, DynamicMessage, DynamicMessageField,
+        MapKey, Value,
+    },
     ReflectMessage,
 };
 
@@ -83,7 +86,10 @@ where
     Ok(())
 }
 
-impl<'a> Serialize for SerializeWrapper<'a, DynamicMessageField> {
+impl<'a, T> Serialize for SerializeWrapper<'a, DynamicMessageField<T>>
+where
+    T: FieldDescriptorLike,
+{
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,

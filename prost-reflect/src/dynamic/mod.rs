@@ -1,3 +1,4 @@
+mod field;
 mod message;
 #[cfg(feature = "serde")]
 mod serde;
@@ -16,9 +17,10 @@ use prost::{
     DecodeError, Message,
 };
 
-use self::unknown::UnknownFieldSet;
+use self::{field::DynamicMessageField, unknown::UnknownFieldSet};
 use crate::{
-    descriptor::Kind, FieldDescriptor, MessageDescriptor, OneofDescriptor, ReflectMessage,
+    descriptor::Kind, ExtensionDescriptor, FieldDescriptor, MessageDescriptor, OneofDescriptor,
+    ReflectMessage,
 };
 
 /// [`DynamicMessage`] provides encoding, decoding and reflection of a protobuf message.
@@ -28,7 +30,7 @@ use crate::{
 #[derive(Debug, Clone)]
 pub struct DynamicMessage {
     desc: MessageDescriptor,
-    fields: BTreeMap<u32, DynamicMessageField>,
+    fields: BTreeMap<u32, DynamicMessageField<FieldDescriptor>>,
     // Rarely used fields are put behind a box so they can be represented by just a null pointer in the common case.
     cold: Option<Box<DynamicMessageColdFields>>,
 }
@@ -36,12 +38,6 @@ pub struct DynamicMessage {
 #[derive(Default, Debug, Clone)]
 struct DynamicMessageColdFields {
     unknown: UnknownFieldSet,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-struct DynamicMessageField {
-    desc: FieldDescriptor,
-    value: Option<Value>,
 }
 
 /// A dynamically-typed protobuf value.
@@ -267,56 +263,6 @@ impl ReflectMessage for DynamicMessage {
     }
 }
 
-impl DynamicMessageField {
-    pub fn new(desc: FieldDescriptor) -> Self {
-        DynamicMessageField {
-            value: if desc.supports_presence() {
-                None
-            } else {
-                Some(Value::default_value_for_field(&desc))
-            },
-            desc,
-        }
-    }
-
-    pub fn get(&self) -> Cow<'_, Value> {
-        match &self.value {
-            Some(value) => Cow::Borrowed(value),
-            None => Cow::Owned(Value::default_value_for_field(&self.desc)),
-        }
-    }
-
-    pub fn is_populated(&self) -> bool {
-        if self.desc.supports_presence() {
-            self.value.is_some()
-        } else {
-            !self
-                .value
-                .as_ref()
-                .unwrap()
-                .is_default_for_field(&self.desc)
-        }
-    }
-
-    pub fn set(&mut self, value: Value) {
-        debug_assert!(
-            value.is_valid_for_field(&self.desc),
-            "invalid value {:?} for field {:?}",
-            value,
-            self.desc,
-        );
-        self.value = Some(value);
-    }
-
-    pub fn clear(&mut self) {
-        self.value = if self.desc.supports_presence() {
-            None
-        } else {
-            Some(Value::default_value_for_field(&self.desc))
-        };
-    }
-}
-
 impl Value {
     /// Returns the default value for the given protobuf field.
     ///
@@ -326,6 +272,21 @@ impl Value {
     /// * If the field is `repeated`, an empty list is returned.
     /// * If the field has a custom default value specified, that is returned (proto2 only).
     pub fn default_value_for_field(field_desc: &FieldDescriptor) -> Self {
+        if field_desc.is_list() {
+            Value::List(Vec::default())
+        } else if field_desc.is_map() {
+            Value::Map(HashMap::default())
+        } else if let Some(default_value) = field_desc.default_value() {
+            default_value.clone()
+        } else {
+            Self::default_value(&field_desc.kind())
+        }
+    }
+
+    /// Returns the default value for the given protobuf extension field.
+    ///
+    /// See [default_value_for_field][Value::default_value_for_field] for more details.
+    pub fn default_value_for_extension(field_desc: &ExtensionDescriptor) -> Self {
         if field_desc.is_list() {
             Value::List(Vec::default())
         } else if field_desc.is_map() {
@@ -359,6 +320,11 @@ impl Value {
         *self == Value::default_value_for_field(field_desc)
     }
 
+    /// Returns `true` if this is the default value for the given protobuf extension field.
+    pub fn is_default_for_extension(&self, field_desc: &ExtensionDescriptor) -> bool {
+        *self == Value::default_value_for_extension(field_desc)
+    }
+
     /// Returns `true` if this is the default value for the given protobuf type `kind`.
     pub fn is_default(&self, kind: &Kind) -> bool {
         *self == Value::default_value(kind)
@@ -369,6 +335,25 @@ impl Value {
     /// Note this only checks if the value can be successfully encoded. It doesn't
     /// check, for example, that enum values are in the defined range.
     pub fn is_valid_for_field(&self, field_desc: &FieldDescriptor) -> bool {
+        match (self, field_desc.kind()) {
+            (Value::List(list), kind) if field_desc.is_list() => {
+                list.iter().all(|value| value.is_valid(&kind))
+            }
+            (Value::Map(map), Kind::Message(message_desc)) if field_desc.is_map() => {
+                let key_desc = message_desc.map_entry_key_field().kind();
+                let value_desc = message_desc.map_entry_value_field();
+                map.iter().all(|(key, value)| {
+                    key.is_valid(&key_desc) && value.is_valid_for_field(&value_desc)
+                })
+            }
+            (value, kind) => value.is_valid(&kind),
+        }
+    }
+
+    /// Returns `true` if this value can be set for a given extension field.
+    ///
+    /// See [is_valid_for_field][Value::is_valid_for_field] for more details.
+    pub fn is_valid_for_extension(&self, field_desc: &ExtensionDescriptor) -> bool {
         match (self, field_desc.kind()) {
             (Value::List(list), kind) if field_desc.is_list() => {
                 list.iter().all(|value| value.is_valid(&kind))

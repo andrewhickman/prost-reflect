@@ -644,8 +644,17 @@ impl ExtensionDescriptor {
         self.message_field_ty().default_value.as_ref()
     }
 
+    pub(crate) fn is_packable(&self) -> bool {
+        self.message_field_inner_ty().is_packable()
+    }
+
     fn message_field_ty(&self) -> &FieldDescriptorInner {
         &self.extension_ty().field
+    }
+
+    fn message_field_inner_ty(&self) -> Type {
+        let ty = self.message_field_ty().ty;
+        self.file_set.inner.type_map.get(ty)
     }
 
     fn extension_ty(&self) -> &ExtensionDescriptorInner {
