@@ -1,6 +1,6 @@
-syntax = "proto3";
+syntax = "proto2";
 
-package my.package;
+package my.package2;
 
 message MyMessage {
   oneof my_oneof {
@@ -9,6 +9,7 @@ message MyMessage {
 
   reserved 2, 15, 9 to 11;
   reserved "foo", "bar";
+  extensions 100, 110 to 115;
 
   message MyNestedMessage {}
   enum MyNestedEnum {
@@ -18,9 +19,6 @@ message MyMessage {
 
 enum MyEnum {
   MY_VALUE = 0;
-
-  reserved -2, 15, 9 to 11;
-  reserved "FOO", "BAR";
 }
 
 service MyService {

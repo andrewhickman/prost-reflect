@@ -6,6 +6,7 @@ pub(in crate::descriptor) use self::map::{TypeId, TypeMap};
 use std::{
     collections::{BTreeMap, HashMap},
     fmt,
+    ops::{Range, RangeInclusive},
 };
 
 use crate::descriptor::{
@@ -20,6 +21,7 @@ pub struct MessageDescriptor {
     ty: TypeId,
 }
 
+#[derive(Default)]
 struct MessageDescriptorInner {
     full_name: Box<str>,
     parent: Option<TypeId>,
@@ -28,6 +30,9 @@ struct MessageDescriptorInner {
     field_names: HashMap<Box<str>, u32>,
     field_json_names: HashMap<Box<str>, u32>,
     oneof_decls: Box<[OneofDescriptorInner]>,
+    reserved_ranges: Box<[Range<u32>]>,
+    reserved_names: Box<[Box<str>]>,
+    extension_ranges: Box<[Range<u32>]>,
 }
 
 /// A oneof field in a protobuf message.
@@ -76,6 +81,8 @@ struct EnumDescriptorInner {
     value_names: HashMap<String, i32>,
     values: BTreeMap<i32, EnumValueDescriptorInner>,
     default_value: i32,
+    reserved_ranges: Box<[RangeInclusive<i32>]>,
+    reserved_names: Box<[Box<str>]>,
 }
 
 /// A value in a protobuf enum type.
@@ -316,6 +323,21 @@ impl MessageDescriptor {
         debug_assert!(self.is_map_entry());
         self.get_field(MAP_ENTRY_VALUE_NUMBER)
             .expect("map entry should have key field")
+    }
+
+    /// Gets an iterator over reserved field number ranges in this message.
+    pub fn reserved_ranges(&self) -> impl ExactSizeIterator<Item = Range<u32>> + '_ {
+        self.message_ty().reserved_ranges.iter().cloned()
+    }
+
+    /// Gets an iterator over reserved field names in this message.
+    pub fn reserved_names(&self) -> impl ExactSizeIterator<Item = &str> + '_ {
+        self.message_ty().reserved_names.iter().map(Box::as_ref)
+    }
+
+    /// Gets an iterator over extension field number ranges in this message.
+    pub fn extension_ranges(&self) -> impl ExactSizeIterator<Item = Range<u32>> + '_ {
+        self.message_ty().extension_ranges.iter().cloned()
     }
 
     fn message_ty(&self) -> &MessageDescriptorInner {
@@ -647,6 +669,16 @@ impl EnumDescriptor {
                 parent: self.clone(),
                 number,
             })
+    }
+
+    /// Gets an iterator over reserved value number ranges in this enum.
+    pub fn reserved_ranges(&self) -> impl ExactSizeIterator<Item = RangeInclusive<i32>> + '_ {
+        self.enum_ty().reserved_ranges.iter().cloned()
+    }
+
+    /// Gets an iterator over value names in this enum.
+    pub fn reserved_names(&self) -> impl ExactSizeIterator<Item = &str> + '_ {
+        self.enum_ty().reserved_names.iter().map(Box::as_ref)
     }
 
     fn enum_ty(&self) -> &EnumDescriptorInner {

@@ -45,15 +45,7 @@ impl TypeMap {
 
         let id = self.add_message(
             // Add a dummy value while we handle any recursive references.
-            MessageDescriptorInner {
-                full_name: Default::default(),
-                parent: Default::default(),
-                fields: Default::default(),
-                field_names: Default::default(),
-                field_json_names: Default::default(),
-                oneof_decls: Default::default(),
-                is_map_entry: Default::default(),
-            },
+            MessageDescriptorInner::default(),
         );
         self.add_name(name, id);
 
@@ -75,7 +67,9 @@ impl TypeMap {
             })
             .collect::<Result<BTreeMap<_, _>, _>>()?;
 
-        oneof_decls.iter_mut().for_each(|o| o.fields.shrink_to_fit());
+        oneof_decls
+            .iter_mut()
+            .for_each(|o| o.fields.shrink_to_fit());
 
         let field_names = fields
             .iter()
@@ -84,6 +78,22 @@ impl TypeMap {
         let field_json_names = fields
             .iter()
             .map(|(&number, field)| (field.json_name.clone(), number))
+            .collect();
+
+        let reserved_ranges = message_proto
+            .reserved_range
+            .iter()
+            .map(|n| (n.start() as u32)..(n.end() as u32))
+            .collect();
+        let reserved_names = message_proto
+            .reserved_name
+            .iter()
+            .map(|n| n.as_str().into())
+            .collect();
+        let extension_ranges = message_proto
+            .extension_range
+            .iter()
+            .map(|n| (n.start() as u32)..(n.end() as u32))
             .collect();
 
         if is_map_entry
@@ -107,13 +117,23 @@ impl TypeMap {
                 full_name: name.into(),
                 parent,
                 is_map_entry,
+                reserved_names,
+                reserved_ranges,
+                extension_ranges,
             },
         );
 
         Ok(id)
     }
 
-    fn build_message_field(&mut self, message_name: &str, field_proto: &FieldDescriptorProto, protos: &HashMap<Box<str>, TyProto>, syntax: Syntax, oneof_decls: &mut [OneofDescriptorInner]) -> Result<(u32, FieldDescriptorInner), DescriptorError> {
+    fn build_message_field(
+        &mut self,
+        message_name: &str,
+        field_proto: &FieldDescriptorProto,
+        protos: &HashMap<Box<str>, TyProto>,
+        syntax: Syntax,
+        oneof_decls: &mut [OneofDescriptorInner],
+    ) -> Result<(u32, FieldDescriptorInner), DescriptorError> {
         use prost_types::field_descriptor_proto::{Label, Type as ProtoType};
 
         let ty = self.add_message_field(field_proto, protos)?;
@@ -132,16 +152,13 @@ impl TypeMap {
         let supports_presence = field_proto.proto3_optional()
             || field_proto.oneof_index.is_some()
             || (cardinality != Cardinality::Repeated
-                && (field_proto.r#type() == ProtoType::Message
-                    || syntax == Syntax::Proto2));
+                && (field_proto.r#type() == ProtoType::Message || syntax == Syntax::Proto2));
         let default_value = match &field_proto.default_value {
             Some(value) => match self.get(ty) {
                 Type::Scalar(Scalar::Double) => {
                     value.parse().map(crate::Value::F64).map_err(|_| ())
                 }
-                Type::Scalar(Scalar::Float) => {
-                    value.parse().map(crate::Value::F32).map_err(|_| ())
-                }
+                Type::Scalar(Scalar::Float) => value.parse().map(crate::Value::F32).map_err(|_| ()),
                 Type::Scalar(Scalar::Int32)
                 | Type::Scalar(Scalar::Sint32)
                 | Type::Scalar(Scalar::Sfixed32) => {
@@ -158,9 +175,7 @@ impl TypeMap {
                 Type::Scalar(Scalar::Uint64) | Type::Scalar(Scalar::Fixed64) => {
                     value.parse().map(crate::Value::U64).map_err(|_| ())
                 }
-                Type::Scalar(Scalar::Bool) => {
-                    value.parse().map(crate::Value::Bool).map_err(|_| ())
-                }
+                Type::Scalar(Scalar::Bool) => value.parse().map(crate::Value::Bool).map_err(|_| ()),
                 Type::Scalar(Scalar::String) => Ok(crate::Value::String(value.to_owned())),
                 Type::Scalar(Scalar::Bytes) => {
                     unescape_c_escape_string(value).map(crate::Value::Bytes)
@@ -316,12 +331,25 @@ impl TypeMap {
             0
         };
 
+        let reserved_ranges = enum_proto
+            .reserved_range
+            .iter()
+            .map(|n| n.start()..=n.end())
+            .collect();
+        let reserved_names = enum_proto
+            .reserved_name
+            .iter()
+            .map(|n| n.as_str().into())
+            .collect();
+
         let id = self.add_enum(EnumDescriptorInner {
             full_name: name.into(),
             parent,
             value_names,
             values,
             default_value,
+            reserved_ranges,
+            reserved_names,
         });
         self.add_name(name, id);
         Ok(id)
@@ -374,7 +402,10 @@ fn iter_tys(raw: &FileDescriptorSet) -> Result<HashMap<Box<str>, TyProto<'_>>, D
                 )
                 .is_some()
             {
-                return Err(DescriptorError::type_already_exists(make_full_name(namespace, message_proto.name())));
+                return Err(DescriptorError::type_already_exists(make_full_name(
+                    namespace,
+                    message_proto.name(),
+                )));
             }
         }
         for enum_proto in &file.enum_type {
@@ -390,7 +421,10 @@ fn iter_tys(raw: &FileDescriptorSet) -> Result<HashMap<Box<str>, TyProto<'_>>, D
                 )
                 .is_some()
             {
-                return Err(DescriptorError::type_already_exists(make_full_name(namespace, enum_proto.name())));
+                return Err(DescriptorError::type_already_exists(make_full_name(
+                    namespace,
+                    enum_proto.name(),
+                )));
             }
         }
     }
@@ -418,7 +452,10 @@ fn iter_message<'a>(
             )
             .is_some()
         {
-            return Err(DescriptorError::type_already_exists(make_full_name(namespace, message_proto.name())));
+            return Err(DescriptorError::type_already_exists(make_full_name(
+                namespace,
+                message_proto.name(),
+            )));
         }
     }
 
@@ -435,7 +472,10 @@ fn iter_message<'a>(
             )
             .is_some()
         {
-            return Err(DescriptorError::type_already_exists(make_full_name(namespace, enum_proto.name())));
+            return Err(DescriptorError::type_already_exists(make_full_name(
+                namespace,
+                enum_proto.name(),
+            )));
         }
     }
 

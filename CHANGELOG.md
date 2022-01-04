@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Added a new helper method `DynamicMessage::decode`.
+- Added new APIs to get reserved names and fields for messages and enums
 
 ### Changed
 

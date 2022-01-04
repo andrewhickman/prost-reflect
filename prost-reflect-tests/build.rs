@@ -66,6 +66,7 @@ fn main() -> io::Result<()> {
                 "src/test.proto",
                 "src/test2.proto",
                 "src/desc.proto",
+                "src/desc2.proto",
                 "src/desc_no_package.proto",
                 "src/import_any.proto",
             ],

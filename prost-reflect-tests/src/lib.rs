@@ -85,6 +85,25 @@ fn test_descriptor_methods() {
     assert_eq!(message_desc.full_name(), "my.package.MyMessage");
     assert_eq!(message_desc.parent_message(), None);
     assert_eq!(message_desc.package_name(), "my.package");
+    assert_eq!(
+        message_desc
+            .reserved_ranges()
+            .flatten()
+            .collect::<Vec<_>>(),
+        vec![2, 15, 9, 10, 11]
+    );
+    assert_eq!(
+        message_desc
+            .reserved_names()
+            .collect::<Vec<_>>(),
+        vec!["foo", "bar"]
+    );
+    assert_eq!(
+        message_desc
+            .extension_ranges()
+            .count(),
+        0,
+    );
 
     let field_desc = message_desc.get_field_by_name("my_field").unwrap();
     assert_eq!(field_desc.name(), "my_field");
@@ -111,6 +130,19 @@ fn test_descriptor_methods() {
     assert_eq!(enum_desc.full_name(), "my.package.MyEnum");
     assert_eq!(enum_desc.parent_message(), None);
     assert_eq!(enum_desc.package_name(), "my.package");
+    assert_eq!(
+        enum_desc
+            .reserved_ranges()
+            .flatten()
+            .collect::<Vec<_>>(),
+        vec![-2, 15, 9, 10, 11]
+    );
+    assert_eq!(
+        enum_desc
+            .reserved_names()
+            .collect::<Vec<_>>(),
+        vec!["FOO", "BAR"]
+    );
 
     let enum_value_desc = enum_desc.get_value_by_name("MY_VALUE").unwrap();
     assert_eq!(enum_value_desc.name(), "MY_VALUE");
@@ -141,6 +173,24 @@ fn test_descriptor_methods() {
         .unwrap();
     assert_eq!(method_desc.name(), "MyMethod");
     assert_eq!(method_desc.full_name(), "my.package.MyService.MyMethod");
+}
+
+#[test]
+fn test_descriptor_methods_proto2() {
+    let message_desc = test_file_descriptor()
+        .get_message_by_name("my.package2.MyMessage")
+        .unwrap();
+    assert_eq!(message_desc.name(), "MyMessage");
+    assert_eq!(message_desc.full_name(), "my.package2.MyMessage");
+    assert_eq!(message_desc.parent_message(), None);
+    assert_eq!(message_desc.package_name(), "my.package2");
+    assert_eq!(
+        message_desc
+            .extension_ranges()
+            .flatten()
+            .collect::<Vec<_>>(),
+        vec![100, 110, 111, 112, 113, 114, 115],
+    );
 }
 
 #[test]
