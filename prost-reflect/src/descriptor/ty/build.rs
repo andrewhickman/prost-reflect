@@ -1,4 +1,7 @@
-use std::collections::{BTreeMap, HashMap};
+use std::{
+    borrow::Cow,
+    collections::{BTreeMap, HashMap},
+};
 
 use prost::bytes::Bytes;
 use prost_types::{DescriptorProto, EnumDescriptorProto, FieldDescriptorProto, FileDescriptorSet};
@@ -136,7 +139,7 @@ impl TypeMap {
     ) -> Result<(u32, FieldDescriptorInner), DescriptorError> {
         use prost_types::field_descriptor_proto::{Label, Type as ProtoType};
 
-        let ty = self.add_message_field(field_proto, protos)?;
+        let ty = self.add_message_field(message_name, field_proto, protos)?;
         let number = field_proto.number() as u32;
         let cardinality = match field_proto.label() {
             Label::Optional => Cardinality::Optional,
@@ -226,12 +229,11 @@ impl TypeMap {
 
     fn add_message_field(
         &mut self,
+        message_name: &str,
         field_proto: &FieldDescriptorProto,
         protos: &HashMap<Box<str>, TyProto>,
     ) -> Result<TypeId, DescriptorError> {
         use prost_types::field_descriptor_proto::Type as ProtoType;
-
-        let type_name = field_proto.type_name().trim_start_matches('.');
 
         let ty = match field_proto.r#type() {
             ProtoType::Double => self.get_scalar(Scalar::Double),
@@ -250,11 +252,37 @@ impl TypeMap {
             ProtoType::Sint32 => self.get_scalar(Scalar::Sint32),
             ProtoType::Sint64 => self.get_scalar(Scalar::Sint64),
             ProtoType::Enum | ProtoType::Message | ProtoType::Group => {
-                self.build_named_type(protos, type_name)?
+                let type_name = self.resolve_type_name(
+                    message_name,
+                    protos,
+                    field_proto.type_name(),
+                )?;
+                self.build_named_type(protos, &type_name)?
             }
         };
 
         Ok(ty)
+    }
+
+    fn resolve_type_name<'a>(
+        &self,
+        mut namespace: &str,
+        protos: &HashMap<Box<str>, TyProto>,
+        type_name: &'a str,
+    ) -> Result<Cow<'a, str>, DescriptorError> {
+        match type_name.strip_prefix('.') {
+            Some(full_name) => Ok(Cow::Borrowed(full_name)),
+            None => loop {
+                let full_name = make_full_name(namespace, type_name);
+                if protos.contains_key(&full_name) {
+                    break Ok(Cow::Owned(full_name.into()));
+                } else if protos.contains_key(namespace) {
+                    namespace = parse_namespace(namespace);
+                } else {
+                    break Err(DescriptorError::type_not_found(type_name));
+                }
+            },
+        }
     }
 
     fn build_named_type(
@@ -366,12 +394,12 @@ enum Syntax {
 enum TyProto<'a> {
     Message {
         message_proto: &'a DescriptorProto,
-        parent: Option<String>,
+        parent: Option<Box<str>>,
         syntax: Syntax,
     },
     Enum {
         enum_proto: &'a EnumDescriptorProto,
-        parent: Option<String>,
+        parent: Option<Box<str>>,
         syntax: Syntax,
     },
 }
@@ -446,7 +474,7 @@ fn iter_message<'a>(
                 full_name,
                 TyProto::Message {
                     message_proto,
-                    parent: Some(namespace.to_string()),
+                    parent: Some(namespace.into()),
                     syntax,
                 },
             )
@@ -466,7 +494,7 @@ fn iter_message<'a>(
                 full_name,
                 TyProto::Enum {
                     enum_proto,
-                    parent: Some(namespace.to_string()),
+                    parent: Some(namespace.into()),
                     syntax,
                 },
             )

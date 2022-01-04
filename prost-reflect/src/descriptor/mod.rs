@@ -149,7 +149,11 @@ fn make_full_name(namespace: &str, name: &str) -> Box<str> {
     if namespace.is_empty() {
         name.into()
     } else {
-        format!("{}.{}", namespace, name).into_boxed_str()
+        let mut full_name = String::with_capacity(namespace.len() + 1 + name.len());
+        full_name.push_str(namespace);
+        full_name.push('.');
+        full_name.push_str(name);
+        full_name.into_boxed_str()
     }
 }
 

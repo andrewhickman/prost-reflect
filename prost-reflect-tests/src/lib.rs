@@ -86,24 +86,14 @@ fn test_descriptor_methods() {
     assert_eq!(message_desc.parent_message(), None);
     assert_eq!(message_desc.package_name(), "my.package");
     assert_eq!(
-        message_desc
-            .reserved_ranges()
-            .flatten()
-            .collect::<Vec<_>>(),
+        message_desc.reserved_ranges().flatten().collect::<Vec<_>>(),
         vec![2, 15, 9, 10, 11]
     );
     assert_eq!(
-        message_desc
-            .reserved_names()
-            .collect::<Vec<_>>(),
+        message_desc.reserved_names().collect::<Vec<_>>(),
         vec!["foo", "bar"]
     );
-    assert_eq!(
-        message_desc
-            .extension_ranges()
-            .count(),
-        0,
-    );
+    assert_eq!(message_desc.extension_ranges().count(), 0,);
 
     let field_desc = message_desc.get_field_by_name("my_field").unwrap();
     assert_eq!(field_desc.name(), "my_field");
@@ -131,16 +121,11 @@ fn test_descriptor_methods() {
     assert_eq!(enum_desc.parent_message(), None);
     assert_eq!(enum_desc.package_name(), "my.package");
     assert_eq!(
-        enum_desc
-            .reserved_ranges()
-            .flatten()
-            .collect::<Vec<_>>(),
+        enum_desc.reserved_ranges().flatten().collect::<Vec<_>>(),
         vec![-2, 15, 9, 10, 11]
     );
     assert_eq!(
-        enum_desc
-            .reserved_names()
-            .collect::<Vec<_>>(),
+        enum_desc.reserved_names().collect::<Vec<_>>(),
         vec!["FOO", "BAR"]
     );
 

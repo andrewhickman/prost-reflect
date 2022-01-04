@@ -3,24 +3,11 @@ syntax = "proto2";
 package my.package2;
 
 message MyMessage {
-  oneof my_oneof {
-    int32 my_field = 1;
-  }
-
   reserved 2, 15, 9 to 11;
   reserved "foo", "bar";
   extensions 100, 110 to 115;
 
-  message MyNestedMessage {}
-  enum MyNestedEnum {
-    MY_VALUE = 0;
+  extend MyMessage {
+    optional int32 bar = 111;
   }
-}
-
-enum MyEnum {
-  MY_VALUE = 0;
-}
-
-service MyService {
-  rpc MyMethod(MyMessage) returns (MyMessage);
 }
