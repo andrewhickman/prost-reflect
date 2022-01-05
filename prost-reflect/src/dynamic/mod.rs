@@ -126,6 +126,12 @@ impl DynamicMessage {
         self.fields.get(field_desc)
     }
 
+    /// Gets a mutable reference to the value ofthe given field. If the field is not set,
+    /// it is inserted with its default value.
+    pub fn get_field_mut(&mut self, field_desc: &FieldDescriptor) -> &mut Value {
+        self.fields.get_mut(field_desc)
+    }
+
     /// Sets the value of the given field.
     ///
     /// # Panics
@@ -162,6 +168,18 @@ impl DynamicMessage {
         self.desc
             .get_field(number)
             .map(|field_desc| self.get_field(&field_desc))
+    }
+
+    /// Gets a mutable reference to the value of the field with the given number. If the field
+    /// is not set, it is inserted with its default value.
+    ///
+    /// If the message has no field with the given number, `None` is returned.
+    ///
+    /// See [`get_field_mut`][Self::get_field_mut] for more details.
+    pub fn get_field_by_number_mut(&mut self, number: u32) -> Option<&mut Value> {
+        self.desc
+            .get_field(number)
+            .map(move |field_desc| self.get_field_mut(&field_desc))
     }
 
     /// Sets the value of the field with number `number`, or the default value if it is unset.
@@ -206,6 +224,18 @@ impl DynamicMessage {
             .map(|field_desc| self.get_field(&field_desc))
     }
 
+    /// Gets a mutable reference to the value of the field with the given name. If the field
+    /// is not set, it is inserted with its default value.
+    ///
+    /// If the message has no field with the given name, `None` is returned.
+    ///
+    /// See [`get_field_mut`][Self::get_field_mut] for more details.
+    pub fn get_field_by_name_mut(&mut self, name: &str) -> Option<&mut Value> {
+        self.desc
+            .get_field_by_name(name)
+            .map(move |field_desc| self.get_field_mut(&field_desc))
+    }
+
     /// Sets the value of the field with name `name`.
     ///
     /// If no field with the given name exists, this method does nothing.
@@ -245,6 +275,14 @@ impl DynamicMessage {
             Some(extensions) => extensions.get(extension_desc),
             None => Cow::Owned(Value::default_value_for_extension(extension_desc)),
         }
+    }
+
+    /// Gets a mutable reference to the value of the given extension field. If the
+    /// field is not set, it is inserted with its default value.
+    ///
+    /// See [`get_field_mut`][Self::get_field_mut] for more details.
+    pub fn get_extension_mut(&mut self, extension_desc: &ExtensionDescriptor) -> &mut Value {
+        self.extension_fields_mut().get_mut(extension_desc)
     }
 
     /// Sets the value of the given extension field.
