@@ -988,3 +988,35 @@ where
     prop_assert_eq!(message, &roundtripped_message);
     Ok(())
 }
+
+#[test]
+fn test_debug_impls() {
+    // Check none of the debug impls accidentally recurse infinitely
+    for service in test_file_descriptor().services() {
+        let _ = format!("{:?}", service);
+        for method in service.methods() {
+            let _ = format!("{:?}", method);
+        }
+    }
+
+    for message in test_file_descriptor().all_messages() {
+        let _ = format!("{:?}", message);
+        for field in message.fields() {
+            let _ = format!("{:?}", field);
+        }
+        for oneof in message.oneofs() {
+            let _ = format!("{:?}", oneof);
+        }
+    }
+
+    for enum_ in test_file_descriptor().all_enums() {
+        let _ = format!("{:?}", enum_);
+        for value in enum_.values() {
+            let _ = format!("{:?}", value);
+        }
+    }
+
+    for extension in test_file_descriptor().all_extensions() {
+        let _ = format!("{:?}", extension);
+    }
+}

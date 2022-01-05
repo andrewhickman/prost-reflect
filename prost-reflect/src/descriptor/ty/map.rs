@@ -60,7 +60,7 @@ impl TypeMap {
     }
 
     pub fn enums(&self) -> impl ExactSizeIterator<Item = TypeId> + '_ {
-        (0..self.enums.len()).map(|id| TypeId(TypeKind::Message, id as u32))
+        (0..self.enums.len()).map(|id| TypeId(TypeKind::Enum, id as u32))
     }
 
     pub fn extensions(&self) -> impl ExactSizeIterator<Item = usize> + '_ {
