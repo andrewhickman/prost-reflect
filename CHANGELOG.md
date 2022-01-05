@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2022-01-05
+
 ### Added
 
 - Extension fields are now decoded from their byte representation
@@ -115,7 +117,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial release, including support for inspecting message types at runtime.
 
-[unreleased]: https://github.com/andrewhickman/prost-reflect/compare/0.4.0...HEAD
+[Unreleased]: https://github.com/andrewhickman/prost-reflect/compare/0.5.0...HEAD
+[0.5.0]: https://github.com/andrewhickman/prost-reflect/compare/0.4.0...0.5.0
 [0.4.0]: https://github.com/andrewhickman/prost-reflect/compare/0.3.4...0.4.0
 [0.3.5]: https://github.com/andrewhickman/prost-reflect/compare/0.3.4...0.3.5
 [0.3.4]: https://github.com/andrewhickman/prost-reflect/compare/0.3.3...0.3.4
