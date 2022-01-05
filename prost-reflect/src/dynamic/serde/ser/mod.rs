@@ -128,7 +128,6 @@ impl<'a> Serialize for SerializeWrapper<'a, ValueAndKind<'a>> {
     where
         S: Serializer,
     {
-        // Special cased well known types
         match self.value.value {
             Value::Bool(value) => serializer.serialize_bool(*value),
             Value::I32(value) => serializer.serialize_i32(*value),
