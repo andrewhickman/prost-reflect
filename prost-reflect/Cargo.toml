@@ -11,7 +11,7 @@ license = "MIT OR Apache-2.0"
 readme = "../README.md"
 edition = "2018"
 rust-version = "1.53.0"
-exclude = ["src/file_descriptor_set.bin"]
+exclude = ["proptest-regressions", "src/file_descriptor_set.bin"]
 
 [features]
 derive = ["prost-reflect-derive"]
