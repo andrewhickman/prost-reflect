@@ -986,6 +986,21 @@ where
     let dynamic_message = to_dynamic(message);
     let roundtripped_message: T = dynamic_message.transcode_to().unwrap();
     prop_assert_eq!(message, &roundtripped_message);
+
+    // Check roundtripping through unknown fields works
+    let mut empty_message = DynamicMessage::new(
+        test_file_descriptor()
+            .get_message_by_name("google.protobuf.Empty")
+            .unwrap(),
+    );
+    empty_message.transcode_from(message).unwrap();
+    let unknown_roundtripped_message: T = empty_message.transcode_to().unwrap();
+    prop_assert_eq!(
+        message,
+        &unknown_roundtripped_message,
+        "roundtrip through unknown fields failed"
+    );
+
     Ok(())
 }
 
