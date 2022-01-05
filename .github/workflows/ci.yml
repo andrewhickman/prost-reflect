@@ -73,7 +73,7 @@ jobs:
       - uses: actions/checkout@v2
       - name: Generate code coverage
         run: |
-          cargo tarpaulin --verbose --packages prost-reflect prost-reflect-derive prost-reflect-tests --all-features --timeout 120 --out Xml
+          cargo tarpaulin --verbose --packages prost-reflect prost-reflect-tests --all-features --timeout 120 --out Xml
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v1
         with:
