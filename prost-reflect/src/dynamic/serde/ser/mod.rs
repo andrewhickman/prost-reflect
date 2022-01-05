@@ -1,18 +1,12 @@
 mod wkt;
 
-use std::borrow::Cow;
-
 use base64::display::Base64Display;
 
 use serde::ser::{Serialize, SerializeMap, SerializeSeq, Serializer};
 
 use crate::{
     descriptor::Kind,
-    dynamic::{
-        field::{DynamicMessageField, FieldDescriptorLike},
-        serde::SerializeOptions,
-        DynamicMessage, MapKey, Value,
-    },
+    dynamic::{serde::SerializeOptions, DynamicMessage, MapKey, Value},
     ReflectMessage,
 };
 
@@ -61,91 +55,67 @@ where
     S: SerializeMap,
 {
     if options.skip_default_fields {
-        for field in value.fields.fields.values() {
-            if field.has() {
-                let name = if options.use_proto_field_name {
-                    field.desc.name()
-                } else {
-                    field.desc.json_name()
-                };
+        for (field_desc, field_value) in value.fields.iter() {
+            let name = if options.use_proto_field_name {
+                field_desc.name()
+            } else {
+                field_desc.json_name()
+            };
 
-                map.serialize_entry(
-                    name,
-                    &SerializeWrapper {
-                        value: field,
-                        options,
+            map.serialize_entry(
+                name,
+                &SerializeWrapper {
+                    value: &ValueAndKind {
+                        value: field_value,
+                        kind: &field_desc.kind(),
                     },
-                )?;
-            }
+                    options,
+                },
+            )?;
         }
     } else {
         for field_desc in value.desc.fields() {
-            let field = value
-                .fields
-                .fields
-                .get(&field_desc.number())
-                .map(Cow::Borrowed)
-                .unwrap_or_else(|| Cow::Owned(DynamicMessageField::new(field_desc.clone())));
-
-            if field.value.is_some() {
-                let name = if options.use_proto_field_name {
-                    field_desc.name()
-                } else {
-                    field_desc.json_name()
-                };
-
-                map.serialize_entry(
-                    name,
-                    &SerializeWrapper {
-                        value: field.as_ref(),
-                        options,
-                    },
-                )?;
+            if field_desc.supports_presence() && !value.fields.has(&field_desc) {
+                continue;
             }
+
+            let value = value.fields.get(&field_desc);
+            let name = if options.use_proto_field_name {
+                field_desc.name()
+            } else {
+                field_desc.json_name()
+            };
+
+            map.serialize_entry(
+                name,
+                &SerializeWrapper {
+                    value: &ValueAndKind {
+                        value: value.as_ref(),
+                        kind: &field_desc.kind(),
+                    },
+                    options,
+                },
+            )?;
         }
     }
 
     if let Some(extensions) = value.extension_fields() {
-        for field in extensions.fields.values() {
-            if field.value.is_some() {
-                let name = field.desc.json_name();
+        for (field_desc, field_value) in extensions.iter() {
+            let name = field_desc.json_name();
 
-                map.serialize_entry(
-                    name,
-                    &SerializeWrapper {
-                        value: field,
-                        options,
+            map.serialize_entry(
+                name,
+                &SerializeWrapper {
+                    value: &ValueAndKind {
+                        value: field_value,
+                        kind: &field_desc.kind(),
                     },
-                )?;
-            }
+                    options,
+                },
+            )?;
         }
     }
     Ok(())
-}
-
-impl<'a, T> Serialize for SerializeWrapper<'a, DynamicMessageField<T>>
-where
-    T: FieldDescriptorLike,
-{
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let value = self
-            .value
-            .value
-            .as_ref()
-            .expect("cannot serialize unpopulated field");
-
-        SerializeWrapper {
-            value: &ValueAndKind {
-                value,
-                kind: &self.value.desc.kind(),
-            },
-            options: self.options,
-        }
-        .serialize(serializer)
-    }
 }
 
 struct ValueAndKind<'a> {

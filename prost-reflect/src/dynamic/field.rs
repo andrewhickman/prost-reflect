@@ -1,4 +1,8 @@
-use std::{borrow::Cow, collections::BTreeMap, fmt};
+use std::{
+    borrow::Cow,
+    collections::btree_map::{self, BTreeMap},
+    fmt,
+};
 
 use crate::{ExtensionDescriptor, FieldDescriptor, Kind, OneofDescriptor, Value};
 
@@ -17,57 +21,10 @@ pub(super) trait FieldDescriptorLike: fmt::Debug + Clone {
     fn is_packable(&self) -> bool;
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub(super) struct DynamicMessageField<T> {
-    pub(super) desc: T,
-    pub(super) value: Option<Value>,
-}
-
-impl<T> DynamicMessageField<T>
-where
-    T: FieldDescriptorLike,
-{
-    pub fn new(desc: T) -> Self {
-        DynamicMessageField {
-            value: if desc.supports_presence() {
-                None
-            } else {
-                Some(desc.default_value())
-            },
-            desc,
-        }
-    }
-
-    pub fn get(&self) -> Cow<'_, Value> {
-        match &self.value {
-            Some(value) => Cow::Borrowed(value),
-            None => Cow::Owned(self.desc.default_value()),
-        }
-    }
-
-    pub fn has(&self) -> bool {
-        if self.desc.supports_presence() {
-            self.value.is_some()
-        } else {
-            !self.desc.is_default_value(self.value.as_ref().unwrap())
-        }
-    }
-
-    pub fn set(&mut self, value: Value) {
-        debug_assert!(
-            self.desc.is_valid(&value),
-            "invalid value {:?} for field {:?}",
-            value,
-            self.desc,
-        );
-        self.value = Some(value);
-    }
-}
-
 /// A set of extension fields in a protobuf message.
 #[derive(Debug, Clone, PartialEq)]
 pub(super) struct DynamicMessageFieldSet<T> {
-    pub(super) fields: BTreeMap<u32, DynamicMessageField<T>>,
+    fields: BTreeMap<u32, DynamicMessageField<T>>,
 }
 
 impl<T> Default for DynamicMessageFieldSet<T> {
@@ -95,23 +52,94 @@ where
 
     pub(super) fn get(&self, desc: &T) -> Cow<'_, Value> {
         match self.fields.get(&desc.number()) {
-            Some(field) => field.get(),
+            Some(field) => Cow::Borrowed(field.get()),
             None => Cow::Owned(desc.default_value()),
         }
     }
 
-    pub(super) fn get_mut(&mut self, desc: &T) -> &mut DynamicMessageField<T> {
+    pub(super) fn get_mut(&mut self, desc: &T) -> &mut Value {
         self.fields
             .entry(desc.number())
-            .or_insert_with(|| DynamicMessageField::new(desc.clone()))
+            .or_insert_with(|| DynamicMessageField::default(desc.clone()))
+            .get_mut()
     }
 
-    pub(super) fn set(&mut self, desc: &T, value: crate::Value) {
-        self.get_mut(desc).set(value);
+    pub(super) fn set(&mut self, desc: &T, value: Value) {
+        match self.fields.entry(desc.number()) {
+            btree_map::Entry::Vacant(entry) => {
+                entry.insert(DynamicMessageField::new(desc.clone(), value));
+            }
+            btree_map::Entry::Occupied(mut entry) => entry.get_mut().set(value),
+        }
     }
 
     pub(super) fn clear(&mut self, desc: &T) {
         self.fields.remove(&desc.number());
+    }
+
+    pub(super) fn iter(&self) -> impl Iterator<Item = (&T, &Value)> + '_ {
+        self.fields
+            .values()
+            .filter(|v| v.has())
+            .map(|field| (field.descriptor(), field.get()))
+    }
+
+    pub(super) fn clear_all(&mut self) {
+        self.fields.clear();
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+struct DynamicMessageField<T> {
+    desc: T,
+    value: Value,
+}
+
+impl<T> DynamicMessageField<T>
+where
+    T: FieldDescriptorLike,
+{
+    fn default(desc: T) -> Self {
+        DynamicMessageField {
+            value: desc.default_value(),
+            desc,
+        }
+    }
+
+    fn new(desc: T, value: Value) -> Self {
+        debug_assert!(
+            desc.is_valid(&value),
+            "invalid value {:?} for field {:?}",
+            value,
+            desc,
+        );
+        DynamicMessageField { value, desc }
+    }
+
+    fn has(&self) -> bool {
+        self.desc.supports_presence() || !self.desc.is_default_value(&self.value)
+    }
+
+    fn get(&self) -> &Value {
+        &self.value
+    }
+
+    fn get_mut(&mut self) -> &mut Value {
+        &mut self.value
+    }
+
+    fn set(&mut self, value: Value) {
+        debug_assert!(
+            self.desc.is_valid(&value),
+            "invalid value {:?} for field {:?}",
+            value,
+            self.desc,
+        );
+        self.value = value;
+    }
+
+    fn descriptor(&self) -> &T {
+        &self.desc
     }
 }
 
