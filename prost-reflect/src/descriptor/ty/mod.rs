@@ -1,18 +1,34 @@
 mod build;
-mod map;
+#[cfg(test)]
+mod tests;
 
-pub(in crate::descriptor) use self::map::{TypeId, TypeMap};
+use prost_types::field_descriptor_proto;
 
 use std::{
-    collections::{BTreeMap, HashMap},
+    collections::{
+        hash_map::{self, HashMap},
+        BTreeMap,
+    },
+    convert::TryInto,
     fmt,
     ops::{Range, RangeInclusive},
 };
 
 use crate::descriptor::{
-    debug_fmt_iter, parse_name, parse_namespace, FileDescriptor, MAP_ENTRY_KEY_NUMBER,
-    MAP_ENTRY_VALUE_NUMBER,
+    debug_fmt_iter, make_full_name, parse_name, parse_namespace, DescriptorError, FileDescriptor,
+    MAP_ENTRY_KEY_NUMBER, MAP_ENTRY_VALUE_NUMBER,
 };
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub(super) struct TypeId(field_descriptor_proto::Type, u32);
+
+pub(super) struct TypeMap {
+    named_types: HashMap<Box<str>, TypeId>,
+    messages: Vec<MessageDescriptorInner>,
+    enums: Vec<EnumDescriptorInner>,
+    extensions: Vec<ExtensionDescriptorInner>,
+    extension_names: HashMap<Box<str>, usize>,
+}
 
 /// A protobuf message definition.
 #[derive(Clone, PartialEq, Eq)]
@@ -21,7 +37,6 @@ pub struct MessageDescriptor {
     ty: TypeId,
 }
 
-#[derive(Default)]
 struct MessageDescriptorInner {
     full_name: Box<str>,
     parent: Option<TypeId>,
@@ -162,31 +177,6 @@ pub enum Cardinality {
     Repeated,
 }
 
-enum Type<'a> {
-    Message(&'a MessageDescriptorInner),
-    Enum(&'a EnumDescriptorInner),
-    Scalar(Scalar),
-}
-
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
-enum Scalar {
-    Double = 0,
-    Float,
-    Int32,
-    Int64,
-    Uint32,
-    Uint64,
-    Sint32,
-    Sint64,
-    Fixed32,
-    Fixed64,
-    Sfixed32,
-    Sfixed64,
-    Bool,
-    String,
-    Bytes,
-}
-
 impl MessageDescriptor {
     pub(in crate::descriptor) fn new(file_set: FileDescriptor, ty: TypeId) -> Self {
         MessageDescriptor { file_set, ty }
@@ -209,8 +199,8 @@ impl MessageDescriptor {
         file_set: &FileDescriptor,
         name: &str,
     ) -> Option<Self> {
-        let ty = file_set.inner.type_map.try_get_by_name(name)?;
-        if !file_set.inner.type_map.get(ty).is_message() {
+        let ty = file_set.inner.type_map.get_by_name(name)?;
+        if !ty.is_message() {
             return None;
         }
         Some(MessageDescriptor {
@@ -356,13 +346,13 @@ impl MessageDescriptor {
     }
 
     fn message_ty(&self) -> &MessageDescriptorInner {
-        self.file_set.inner.type_map.get(self.ty).unwrap_message()
+        self.file_set.inner.type_map.get_message(self.ty)
     }
 
     fn root_message_ty(&self) -> &MessageDescriptorInner {
         let mut curr = self.message_ty();
         while let Some(parent) = curr.parent {
-            curr = self.file_set.inner.type_map.get(parent).unwrap_message()
+            curr = self.file_set.inner.type_map.get_message(parent);
         }
         curr
     }
@@ -462,7 +452,7 @@ impl FieldDescriptor {
 
     /// Gets the [`Kind`] of this field.
     pub fn kind(&self) -> Kind {
-        Type::to_kind(self.message_field_ty().ty, &self.message.file_set)
+        self.message_field_ty().ty.to_kind(&self.message.file_set)
     }
 
     /// Gets a [`OneofDescriptor`] representing the oneof containing this field,
@@ -481,16 +471,11 @@ impl FieldDescriptor {
     }
 
     pub(crate) fn is_packable(&self) -> bool {
-        self.message_field_inner_ty().is_packable()
+        self.message_field_ty().ty.is_packable()
     }
 
     fn message_field_ty(&self) -> &FieldDescriptorInner {
         &self.message.message_ty().fields[&self.field]
-    }
-
-    fn message_field_inner_ty(&self) -> Type {
-        let ty = self.message_field_ty().ty;
-        self.message.file_set.inner.type_map.get(ty)
     }
 }
 
@@ -539,7 +524,7 @@ impl ExtensionDescriptor {
         file_set
             .inner
             .type_map
-            .try_get_extension_by_name(name)
+            .get_extension_by_name(name)
             .map(|index| ExtensionDescriptor {
                 file_set: file_set.clone(),
                 index,
@@ -642,7 +627,7 @@ impl ExtensionDescriptor {
 
     /// Gets the [`Kind`] of this field.
     pub fn kind(&self) -> Kind {
-        Type::to_kind(self.message_field_ty().ty, &self.file_set)
+        self.message_field_ty().ty.to_kind(&self.file_set)
     }
 
     /// Gets the containing message that this message belongs to.
@@ -658,16 +643,11 @@ impl ExtensionDescriptor {
     }
 
     pub(crate) fn is_packable(&self) -> bool {
-        self.message_field_inner_ty().is_packable()
+        self.message_field_ty().ty.is_packable()
     }
 
     fn message_field_ty(&self) -> &FieldDescriptorInner {
         &self.extension_ty().field
-    }
-
-    fn message_field_inner_ty(&self) -> Type {
-        let ty = self.message_field_ty().ty;
-        self.file_set.inner.type_map.get(ty)
     }
 
     fn extension_ty(&self) -> &ExtensionDescriptorInner {
@@ -677,7 +657,7 @@ impl ExtensionDescriptor {
     fn root_message_ty(&self) -> Option<&MessageDescriptorInner> {
         match self.extension_ty().parent {
             Some(mut curr) => loop {
-                let message = self.file_set.inner.type_map.get(curr).unwrap_message();
+                let message = self.file_set.inner.type_map.get_message(curr);
                 if let Some(parent) = message.parent {
                     curr = parent;
                 } else {
@@ -774,8 +754,8 @@ impl EnumDescriptor {
         file_set: &FileDescriptor,
         name: &str,
     ) -> Option<Self> {
-        let ty = file_set.inner.type_map.try_get_by_name(name)?;
-        if !file_set.inner.type_map.get(ty).is_enum() {
+        let ty = file_set.inner.type_map.get_by_name(name)?;
+        if !ty.is_enum() {
             return None;
         }
         Some(EnumDescriptor {
@@ -869,13 +849,13 @@ impl EnumDescriptor {
     }
 
     fn enum_ty(&self) -> &EnumDescriptorInner {
-        self.file_set.inner.type_map.get(self.ty).unwrap_enum()
+        self.file_set.inner.type_map.get_enum(self.ty)
     }
 
     fn root_message_ty(&self) -> Option<&MessageDescriptorInner> {
         match self.enum_ty().parent {
             Some(mut curr) => loop {
-                let message = self.file_set.inner.type_map.get(curr).unwrap_message();
+                let message = self.file_set.inner.type_map.get_message(curr);
                 if let Some(parent) = message.parent {
                     curr = parent;
                 } else {
@@ -986,85 +966,185 @@ impl fmt::Debug for OneofDescriptor {
     }
 }
 
-impl<'a> Type<'a> {
-    pub fn is_message(&self) -> bool {
-        matches!(self, Type::Message(_))
-    }
-
-    fn unwrap_message(&self) -> &'a MessageDescriptorInner {
-        match self {
-            Type::Message(message) => message,
-            _ => panic!("expected message type"),
+impl TypeMap {
+    pub fn new() -> Self {
+        TypeMap {
+            named_types: HashMap::new(),
+            messages: Vec::new(),
+            enums: Vec::new(),
+            extensions: Vec::new(),
+            extension_names: HashMap::new(),
         }
     }
 
-    pub fn is_enum(&self) -> bool {
-        matches!(self, Type::Enum(_))
+    pub fn shrink_to_fit(&mut self) {
+        self.named_types.shrink_to_fit();
+        self.messages.shrink_to_fit();
+        self.enums.shrink_to_fit();
+        self.extensions.shrink_to_fit();
+        self.extension_names.shrink_to_fit();
     }
 
-    fn unwrap_enum(&self) -> &'a EnumDescriptorInner {
-        match self {
-            Type::Enum(enum_ty) => enum_ty,
-            _ => panic!("expected enum type"),
-        }
+    pub fn try_get_by_name(&self, full_name: &str) -> Result<TypeId, DescriptorError> {
+        self.get_by_name(full_name)
+            .ok_or_else(|| DescriptorError::type_not_found(full_name))
     }
 
-    fn is_packable(&self) -> bool {
-        match self {
-            Type::Scalar(scalar) => scalar.is_packable(),
-            Type::Enum(_) => true,
-            _ => false,
-        }
+    pub fn get_by_name(&self, full_name: &str) -> Option<TypeId> {
+        let full_name = full_name.strip_prefix('.').unwrap_or(full_name);
+        self.named_types.get(full_name).copied()
     }
 
-    fn to_kind(ty: TypeId, file_set: &FileDescriptor) -> Kind {
-        match file_set.inner.type_map.get(ty) {
-            Type::Message(_) => Kind::Message(MessageDescriptor {
-                file_set: file_set.clone(),
-                ty,
-            }),
-            Type::Enum(_) => Kind::Enum(EnumDescriptor {
-                file_set: file_set.clone(),
-                ty,
-            }),
-            Type::Scalar(scalar) => match scalar {
-                Scalar::Double => Kind::Double,
-                Scalar::Float => Kind::Float,
-                Scalar::Int32 => Kind::Int32,
-                Scalar::Int64 => Kind::Int64,
-                Scalar::Uint32 => Kind::Uint32,
-                Scalar::Uint64 => Kind::Uint64,
-                Scalar::Sint32 => Kind::Sint32,
-                Scalar::Sint64 => Kind::Sint64,
-                Scalar::Fixed32 => Kind::Fixed32,
-                Scalar::Fixed64 => Kind::Fixed64,
-                Scalar::Sfixed32 => Kind::Sfixed32,
-                Scalar::Sfixed64 => Kind::Sfixed64,
-                Scalar::Bool => Kind::Bool,
-                Scalar::String => Kind::String,
-                Scalar::Bytes => Kind::Bytes,
+    pub fn resolve_type_name(
+        &self,
+        mut namespace: &str,
+        type_name: &str,
+    ) -> Result<TypeId, DescriptorError> {
+        match type_name.strip_prefix('.') {
+            Some(full_name) => self.try_get_by_name(full_name),
+            None => loop {
+                let full_name = make_full_name(namespace, type_name);
+                if let Some(ty) = self.get_by_name(&full_name) {
+                    break Ok(ty);
+                } else if namespace.is_empty() {
+                    break Err(DescriptorError::type_not_found(type_name));
+                } else {
+                    namespace = parse_namespace(namespace);
+                }
             },
         }
     }
+
+    fn add_named_type(&mut self, full_name: Box<str>, ty: TypeId) -> Result<(), DescriptorError> {
+        let full_name = full_name
+            .strip_prefix('.')
+            .map(Box::from)
+            .unwrap_or(full_name);
+        match self.named_types.entry(full_name) {
+            hash_map::Entry::Occupied(entry) => {
+                Err(DescriptorError::type_already_exists(entry.key()))
+            }
+            hash_map::Entry::Vacant(entry) => {
+                entry.insert(ty);
+                Ok(())
+            }
+        }
+    }
+
+    #[cfg(feature = "serde")]
+    pub fn get_extension_by_name(&self, name: &str) -> Option<usize> {
+        self.extension_names.get(name).copied()
+    }
+
+    fn get_message(&self, ty: TypeId) -> &MessageDescriptorInner {
+        debug_assert_eq!(ty.0, field_descriptor_proto::Type::Message);
+        &self.messages[ty.1 as usize]
+    }
+
+    fn get_enum(&self, ty: TypeId) -> &EnumDescriptorInner {
+        debug_assert_eq!(ty.0, field_descriptor_proto::Type::Enum);
+        &self.enums[ty.1 as usize]
+    }
+
+    fn get_extension(&self, index: usize) -> &ExtensionDescriptorInner {
+        &self.extensions[index]
+    }
+
+    fn messages(&self) -> impl ExactSizeIterator<Item = TypeId> {
+        (0..self.messages.len()).map(TypeId::new_message)
+    }
+
+    fn enums(&self) -> impl ExactSizeIterator<Item = TypeId> {
+        (0..self.enums.len()).map(TypeId::new_enum)
+    }
+
+    fn extensions(&self) -> impl ExactSizeIterator<Item = usize> {
+        0..self.extensions.len()
+    }
 }
 
-impl Scalar {
+impl TypeId {
+    pub fn new_message(index: usize) -> Self {
+        TypeId(
+            field_descriptor_proto::Type::Message,
+            index.try_into().expect("invalid message index"),
+        )
+    }
+
+    pub fn new_enum(index: usize) -> Self {
+        TypeId(
+            field_descriptor_proto::Type::Enum,
+            index.try_into().expect("invalid enum index"),
+        )
+    }
+
+    pub(crate) fn new_scalar(scalar: field_descriptor_proto::Type) -> Self {
+        debug_assert!(
+            scalar != field_descriptor_proto::Type::Message
+                && scalar != field_descriptor_proto::Type::Enum
+                && scalar != field_descriptor_proto::Type::Group
+        );
+        TypeId(scalar, 0)
+    }
+
+    pub fn is_message(&self) -> bool {
+        self.0 == field_descriptor_proto::Type::Message
+    }
+
+    pub fn is_enum(&self) -> bool {
+        self.0 == field_descriptor_proto::Type::Enum
+    }
+
     fn is_packable(&self) -> bool {
-        match self {
-            Scalar::Double
-            | Scalar::Float
-            | Scalar::Int32
-            | Scalar::Int64
-            | Scalar::Uint32
-            | Scalar::Uint64
-            | Scalar::Sint32
-            | Scalar::Sint64
-            | Scalar::Fixed32
-            | Scalar::Fixed64
-            | Scalar::Sfixed32
-            | Scalar::Sfixed64
-            | Scalar::Bool => true,
-            Scalar::String | Scalar::Bytes => false,
+        match self.0 {
+            field_descriptor_proto::Type::Double
+            | field_descriptor_proto::Type::Float
+            | field_descriptor_proto::Type::Int64
+            | field_descriptor_proto::Type::Uint64
+            | field_descriptor_proto::Type::Int32
+            | field_descriptor_proto::Type::Fixed64
+            | field_descriptor_proto::Type::Fixed32
+            | field_descriptor_proto::Type::Bool
+            | field_descriptor_proto::Type::Uint32
+            | field_descriptor_proto::Type::Enum
+            | field_descriptor_proto::Type::Sfixed32
+            | field_descriptor_proto::Type::Sfixed64
+            | field_descriptor_proto::Type::Sint32
+            | field_descriptor_proto::Type::Sint64 => true,
+            field_descriptor_proto::Type::String
+            | field_descriptor_proto::Type::Bytes
+            | field_descriptor_proto::Type::Group
+            | field_descriptor_proto::Type::Message => false,
+        }
+    }
+
+    fn to_kind(self, file_set: &FileDescriptor) -> Kind {
+        match self.0 {
+            field_descriptor_proto::Type::Double => Kind::Double,
+            field_descriptor_proto::Type::Float => Kind::Float,
+            field_descriptor_proto::Type::Int64 => Kind::Int64,
+            field_descriptor_proto::Type::Uint64 => Kind::Uint64,
+            field_descriptor_proto::Type::Int32 => Kind::Int32,
+            field_descriptor_proto::Type::Fixed64 => Kind::Fixed64,
+            field_descriptor_proto::Type::Fixed32 => Kind::Fixed32,
+            field_descriptor_proto::Type::Bool => Kind::Bool,
+            field_descriptor_proto::Type::Uint32 => Kind::Uint32,
+            field_descriptor_proto::Type::Sfixed32 => Kind::Sfixed32,
+            field_descriptor_proto::Type::Sfixed64 => Kind::Sfixed64,
+            field_descriptor_proto::Type::Sint32 => Kind::Sint32,
+            field_descriptor_proto::Type::Sint64 => Kind::Sint64,
+            field_descriptor_proto::Type::String => Kind::String,
+            field_descriptor_proto::Type::Bytes => Kind::Bytes,
+            field_descriptor_proto::Type::Enum => Kind::Enum(EnumDescriptor {
+                file_set: file_set.clone(),
+                ty: self,
+            }),
+            field_descriptor_proto::Type::Group | field_descriptor_proto::Type::Message => {
+                Kind::Message(MessageDescriptor {
+                    file_set: file_set.clone(),
+                    ty: self,
+                })
+            }
         }
     }
 }

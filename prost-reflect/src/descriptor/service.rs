@@ -194,8 +194,8 @@ impl MethodDescriptorInner {
         raw_method: &MethodDescriptorProto,
         type_map: &ty::TypeMap,
     ) -> Result<MethodDescriptorInner, DescriptorError> {
-        let request_ty = type_map.get_by_name(raw_method.input_type())?;
-        let response_ty = type_map.get_by_name(raw_method.output_type())?;
+        let request_ty = type_map.resolve_type_name(namespace, raw_method.input_type())?;
+        let response_ty = type_map.resolve_type_name(namespace, raw_method.output_type())?;
 
         Ok(MethodDescriptorInner {
             full_name: make_full_name(namespace, raw_method.name()),
