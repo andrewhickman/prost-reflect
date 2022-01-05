@@ -697,10 +697,39 @@ fn set_oneof() {
         "test_oneof"
     );
 
+    assert!(!dynamic.has_field_by_name("oneof_field_1"));
+    assert!(!dynamic.has_field_by_name("oneof_field_2"));
+
     dynamic.set_field_by_name("oneof_field_1", Value::String("hello".to_owned()));
     assert!(dynamic.has_field_by_name("oneof_field_1"));
+    assert!(!dynamic.has_field_by_name("oneof_field_2"));
 
     dynamic.set_field_by_name("oneof_field_2", Value::I32(5));
+    assert!(dynamic.has_field_by_name("oneof_field_2"));
+    assert!(!dynamic.has_field_by_name("oneof_field_1"));
+}
+
+#[test]
+fn set_oneof_to_default() {
+    let mut dynamic = DynamicMessage::new(
+        test_file_descriptor()
+            .get_message_by_name(".test.MessageWithOneof")
+            .unwrap(),
+    );
+
+    assert_eq!(
+        dynamic.descriptor().oneofs().next().unwrap().name(),
+        "test_oneof"
+    );
+
+    assert!(!dynamic.has_field_by_name("oneof_field_1"));
+    assert!(!dynamic.has_field_by_name("oneof_field_2"));
+
+    dynamic.set_field_by_name("oneof_field_1", Value::String("".to_owned()));
+    assert!(dynamic.has_field_by_name("oneof_field_1"));
+    assert!(!dynamic.has_field_by_name("oneof_field_2"));
+
+    dynamic.set_field_by_name("oneof_field_2", Value::I32(0));
     assert!(dynamic.has_field_by_name("oneof_field_2"));
     assert!(!dynamic.has_field_by_name("oneof_field_1"));
 }
