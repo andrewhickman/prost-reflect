@@ -145,6 +145,7 @@ impl fmt::Debug for FileDescriptor {
             .field("services", &debug_fmt_iter(self.services()))
             .field("all_messages", &debug_fmt_iter(self.all_messages()))
             .field("all_enums", &debug_fmt_iter(self.all_enums()))
+            .field("all_extensions", &debug_fmt_iter(self.all_extensions()))
             .finish()
     }
 }

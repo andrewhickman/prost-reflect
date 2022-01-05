@@ -992,6 +992,8 @@ where
 #[test]
 fn test_debug_impls() {
     // Check none of the debug impls accidentally recurse infinitely
+    let _ = format!("{:?}", test_file_descriptor());
+
     for service in test_file_descriptor().services() {
         let _ = format!("{:?}", service);
         for method in service.methods() {
