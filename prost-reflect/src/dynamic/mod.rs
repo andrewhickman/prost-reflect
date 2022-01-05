@@ -340,6 +340,13 @@ impl ReflectMessage for DynamicMessage {
     fn descriptor(&self) -> MessageDescriptor {
         self.desc.clone()
     }
+
+    fn transcode_to_dynamic(&self) -> DynamicMessage
+    where
+        Self: Sized,
+    {
+        self.clone()
+    }
 }
 
 impl Value {

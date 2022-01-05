@@ -28,7 +28,7 @@ fn test_file_descriptor() -> FileDescriptor {
 
 #[test]
 fn clear_message() {
-    let mut dynamic = to_dynamic(&Scalars {
+    let mut dynamic = Scalars {
         double: 1.1,
         float: 2.2,
         int32: 3,
@@ -44,7 +44,8 @@ fn clear_message() {
         r#bool: true,
         string: "5".to_owned(),
         bytes: b"6".to_vec(),
-    });
+    }
+    .transcode_to_dynamic();
 
     dynamic.clear();
 
@@ -71,7 +72,10 @@ fn clear_message() {
 #[test]
 #[should_panic(expected = "nvalid value U32(5) for field")]
 fn set_field_validates_type() {
-    let mut dynamic = to_dynamic(&Scalars::default());
+    let mut dynamic = {
+        let message = &Scalars::default();
+        message.transcode_to_dynamic()
+    };
 
     dynamic.set_field_by_name("double", Value::U32(5));
 }
@@ -285,7 +289,7 @@ fn test_descriptor_names_no_package() {
 
 #[test]
 fn decode_scalars() {
-    let dynamic = to_dynamic(&Scalars {
+    let dynamic = Scalars {
         double: 1.1,
         float: 2.2,
         int32: 3,
@@ -301,7 +305,8 @@ fn decode_scalars() {
         r#bool: true,
         string: "5".to_owned(),
         bytes: b"6".to_vec(),
-    });
+    }
+    .transcode_to_dynamic();
 
     assert_eq!(
         dynamic.get_field_by_name("double").unwrap().as_f64(),
@@ -367,7 +372,7 @@ fn decode_scalars() {
 
 #[test]
 fn decode_scalar_arrays() {
-    let dynamic = to_dynamic(&ScalarArrays {
+    let dynamic = ScalarArrays {
         double: vec![1.1, 2.2],
         float: vec![3.3f32, 4.4f32],
         int32: vec![5, -6],
@@ -383,7 +388,8 @@ fn decode_scalar_arrays() {
         r#bool: vec![true, false],
         string: vec!["25".to_owned(), "26".to_owned()],
         bytes: vec![b"27".to_vec(), b"28".to_vec()],
-    });
+    }
+    .transcode_to_dynamic();
 
     assert_eq!(
         dynamic.get_field_by_name("double").unwrap().as_list(),
@@ -461,7 +467,7 @@ fn decode_scalar_arrays() {
 
 #[test]
 fn decode_complex_type() {
-    let dynamic = to_dynamic(&ComplexType {
+    let dynamic = ComplexType {
         string_map: HashMap::from_iter([
             (
                 "1".to_owned(),
@@ -512,7 +518,8 @@ fn decode_complex_type() {
         }),
         my_enum: vec![0, 1, 2, 3, -4],
         optional_enum: 1,
-    });
+    }
+    .transcode_to_dynamic();
 
     fn empty_scalars() -> DynamicMessage {
         DynamicMessage::new(
@@ -932,10 +939,11 @@ fn unknown_fields_are_roundtripped() {
 
 #[test]
 fn proto3_default_fields_are_not_encoded() {
-    let message = to_dynamic(&ComplexType {
+    let message = ComplexType {
         optional_enum: 0,
         ..Default::default()
-    });
+    }
+    .transcode_to_dynamic();
 
     assert!(message.encode_to_vec().is_empty());
 }
@@ -970,20 +978,11 @@ fn oneof_set_multiple_values() {
     assert_eq!(dynamic_message.encode_to_vec().as_slice(), b"\x10\x05");
 }
 
-fn to_dynamic<T>(message: &T) -> DynamicMessage
-where
-    T: PartialEq + Debug + ReflectMessage + Default,
-{
-    let mut dynamic_message = DynamicMessage::new(message.descriptor());
-    dynamic_message.transcode_from(message).unwrap();
-    dynamic_message
-}
-
 fn roundtrip<T>(message: &T) -> Result<(), TestCaseError>
 where
     T: PartialEq + Debug + ReflectMessage + Default,
 {
-    let dynamic_message = to_dynamic(message);
+    let dynamic_message = message.transcode_to_dynamic();
     let roundtripped_message: T = dynamic_message.transcode_to().unwrap();
     prop_assert_eq!(message, &roundtripped_message);
 
@@ -1000,6 +999,11 @@ where
         &unknown_roundtripped_message,
         "roundtrip through unknown fields failed"
     );
+
+    // Check that transcoding to a new dynamic message is equivalent to just cloning it.
+    let mut duplicate_message = DynamicMessage::new(dynamic_message.descriptor());
+    duplicate_message.transcode_from(&dynamic_message).unwrap();
+    assert_eq!(dynamic_message, duplicate_message);
 
     Ok(())
 }

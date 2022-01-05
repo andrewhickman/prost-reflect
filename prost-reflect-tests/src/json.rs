@@ -10,8 +10,8 @@ use prost_reflect::{DeserializeOptions, DynamicMessage, ReflectMessage, Serializ
 use serde_json::json;
 
 use crate::{
-    message_with_oneof, test_file_descriptor, to_dynamic, ComplexType, MessageWithOneof, Point,
-    ScalarArrays, Scalars, WellKnownTypes,
+    message_with_oneof, test_file_descriptor, ComplexType, MessageWithOneof, Point, ScalarArrays,
+    Scalars, WellKnownTypes,
 };
 
 #[test]
@@ -1303,7 +1303,8 @@ fn to_json_with_options<T>(message: &T, options: &SerializeOptions) -> serde_jso
 where
     T: PartialEq + Debug + ReflectMessage + Default,
 {
-    to_dynamic(message)
+    message
+        .transcode_to_dynamic()
         .serialize_with_options(serde_json::value::Serializer, options)
         .unwrap()
 }
