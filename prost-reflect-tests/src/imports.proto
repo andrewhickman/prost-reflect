@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+import "google/protobuf/any.proto";
+import "google/protobuf/descriptor.proto";
+
+// Dummy message to prevent unused import warnings
+message Dummy {
+  google.protobuf.Any dummy = 1;
+  google.protobuf.FileDescriptorSet dummy2 = 2;
+}

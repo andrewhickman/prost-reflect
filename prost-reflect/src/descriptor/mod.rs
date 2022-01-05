@@ -131,12 +131,6 @@ impl FileDescriptor {
     pub fn get_enum_by_name(&self, name: &str) -> Option<EnumDescriptor> {
         EnumDescriptor::try_get_by_name(self, name)
     }
-
-    /// Gets an [`ExtensionDescriptor`] by its JSON name, for example `[my.package.my_extension]`.
-    #[cfg(feature = "serde")]
-    pub(crate) fn get_extension_by_name(&self, name: &str) -> Option<ExtensionDescriptor> {
-        ExtensionDescriptor::try_get_by_json_name(self, name)
-    }
 }
 
 impl fmt::Debug for FileDescriptor {

@@ -27,7 +27,6 @@ pub(super) struct TypeMap {
     messages: Vec<MessageDescriptorInner>,
     enums: Vec<EnumDescriptorInner>,
     extensions: Vec<ExtensionDescriptorInner>,
-    extension_names: HashMap<Box<str>, usize>,
 }
 
 /// A protobuf message definition.
@@ -48,6 +47,7 @@ struct MessageDescriptorInner {
     reserved_ranges: Box<[Range<u32>]>,
     reserved_names: Box<[Box<str>]>,
     extension_ranges: Box<[Range<u32>]>,
+    extensions: Vec<usize>,
 }
 
 /// A oneof field in a protobuf message.
@@ -345,6 +345,30 @@ impl MessageDescriptor {
         self.message_ty().extension_ranges.iter().cloned()
     }
 
+    /// Gets an iterator over extensions to this message.
+    ///
+    /// Note this iterates over extension fields defined in any file which extend this message, rather than
+    /// extensions defined nested within this message.
+    pub fn extensions(&self) -> impl ExactSizeIterator<Item = ExtensionDescriptor> + '_ {
+        self.message_ty()
+            .extensions
+            .iter()
+            .map(move |&index| ExtensionDescriptor {
+                file_set: self.file_set.clone(),
+                index,
+            })
+    }
+
+    /// Gets an extension to this message by its number, or `None` if no such extension exists.
+    pub fn get_extension(&self, number: u32) -> Option<ExtensionDescriptor> {
+        self.extensions().find(|ext| ext.number() == number)
+    }
+
+    /// Gets an extension to this message by its JSON name (e.g. `[my.package.my_extension]`), or `None` if no such extension exists.
+    pub fn get_extension_by_json_name(&self, name: &str) -> Option<ExtensionDescriptor> {
+        self.extensions().find(|ext| ext.json_name() == name)
+    }
+
     fn message_ty(&self) -> &MessageDescriptorInner {
         self.file_set.inner.type_map.get_message(self.ty)
     }
@@ -516,21 +540,6 @@ impl ExtensionDescriptor {
             })
     }
 
-    #[cfg(feature = "serde")]
-    pub(in crate::descriptor) fn try_get_by_json_name(
-        file_set: &FileDescriptor,
-        name: &str,
-    ) -> Option<Self> {
-        file_set
-            .inner
-            .type_map
-            .get_extension_by_name(name)
-            .map(|index| ExtensionDescriptor {
-                file_set: file_set.clone(),
-                index,
-            })
-    }
-
     /// Gets a reference to the [`FileDescriptor`] this extension field is defined in.
     pub fn parent_file(&self) -> &FileDescriptor {
         &self.file_set
@@ -539,7 +548,7 @@ impl ExtensionDescriptor {
     /// Gets the parent message type if this extension is defined within another message, or `None` otherwise.
     ///
     /// Note this just corresponds to where the extension was defined in the proto file. See [`containing_message`][ExtensionDescriptor::containing_message]
-    /// for the message this field is part of.
+    /// for the message this field extends.
     pub fn parent_message(&self) -> Option<MessageDescriptor> {
         self.extension_ty().parent.map(|ty| MessageDescriptor {
             file_set: self.file_set.clone(),
@@ -630,7 +639,7 @@ impl ExtensionDescriptor {
         self.message_field_ty().ty.to_kind(&self.file_set)
     }
 
-    /// Gets the containing message that this message belongs to.
+    /// Gets the containing message that this field extends.
     pub fn containing_message(&self) -> MessageDescriptor {
         MessageDescriptor {
             file_set: self.file_set.clone(),
@@ -973,7 +982,6 @@ impl TypeMap {
             messages: Vec::new(),
             enums: Vec::new(),
             extensions: Vec::new(),
-            extension_names: HashMap::new(),
         }
     }
 
@@ -982,7 +990,6 @@ impl TypeMap {
         self.messages.shrink_to_fit();
         self.enums.shrink_to_fit();
         self.extensions.shrink_to_fit();
-        self.extension_names.shrink_to_fit();
     }
 
     pub fn try_get_by_name(&self, full_name: &str) -> Result<TypeId, DescriptorError> {
@@ -1031,14 +1038,14 @@ impl TypeMap {
         }
     }
 
-    #[cfg(feature = "serde")]
-    pub fn get_extension_by_name(&self, name: &str) -> Option<usize> {
-        self.extension_names.get(name).copied()
-    }
-
     fn get_message(&self, ty: TypeId) -> &MessageDescriptorInner {
         debug_assert_eq!(ty.0, field_descriptor_proto::Type::Message);
         &self.messages[ty.1 as usize]
+    }
+
+    fn get_message_mut(&mut self, ty: TypeId) -> &mut MessageDescriptorInner {
+        debug_assert_eq!(ty.0, field_descriptor_proto::Type::Message);
+        &mut self.messages[ty.1 as usize]
     }
 
     fn get_enum(&self, ty: TypeId) -> &EnumDescriptorInner {

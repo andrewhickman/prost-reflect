@@ -1008,6 +1008,33 @@ fn oneof_set_multiple_values() {
 }
 
 #[test]
+fn roundtrip_extension() {
+    let message_desc = test_file_descriptor()
+        .get_message_by_name("my.package2.MyMessage")
+        .unwrap();
+
+    let extension_desc = message_desc.get_extension(113).unwrap();
+    assert_eq!(
+        message_desc.get_extension_by_json_name(extension_desc.json_name()),
+        Some(extension_desc.clone())
+    );
+
+    let mut dynamic_message = DynamicMessage::new(message_desc.clone());
+    dynamic_message.set_extension(&extension_desc, Value::F64(42.0));
+    let bytes = dynamic_message.encode_to_vec();
+
+    let roundtripped_dynamic_message =
+        DynamicMessage::decode(message_desc, bytes.as_ref()).unwrap();
+    assert!(roundtripped_dynamic_message.has_extension(&extension_desc));
+    assert_eq!(
+        roundtripped_dynamic_message
+            .get_extension(&extension_desc)
+            .as_ref(),
+        &Value::F64(42.0)
+    );
+}
+
+#[test]
 fn roundtrip_file_descriptor_set() {
     let fd = test_file_descriptor();
     let message = fd.file_descriptor_set();

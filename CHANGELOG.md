@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Extension fields are now decoded from their byte representation
+- Added APIs to get extensions for a given message.
+
+### Changed
+
+- `DynamicMessage::get_extension` no longer returns an option.
+
 ## [0.4.0] - 2022-01-04
 
 ### Added

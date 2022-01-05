@@ -126,6 +126,7 @@ impl TypeMap {
             reserved_names,
             reserved_ranges,
             extension_ranges,
+            extensions: vec![],
         });
 
         Ok(())
@@ -348,8 +349,8 @@ impl TypeMap {
 
         let parent = parent.map(|p| self.try_get_by_name(&p)).transpose()?;
 
-        self.extension_names
-            .insert(json_name.clone(), self.extensions.len());
+        let index = self.extensions.len();
+        self.get_message_mut(extendee).extensions.push(index);
         self.extensions.push(ExtensionDescriptorInner {
             field,
             number,

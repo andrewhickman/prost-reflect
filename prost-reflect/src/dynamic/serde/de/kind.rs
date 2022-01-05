@@ -560,9 +560,7 @@ impl<'a, 'de> Visitor<'de> for MessageVisitorInner<'a> {
 
                     self.0.set_field(&field, value);
                 }
-            } else if let Some(extension_desc) =
-                desc.parent_file().get_extension_by_name(key.as_ref())
-            {
+            } else if let Some(extension_desc) = desc.get_extension_by_json_name(key.as_ref()) {
                 if let Some(value) =
                     map.next_value_seed(OptionalFieldDescriptorSeed(&extension_desc, self.1))?
                 {

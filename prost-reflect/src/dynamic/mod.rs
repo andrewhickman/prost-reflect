@@ -240,12 +240,10 @@ impl DynamicMessage {
     /// Gets the value of the given extension field, or the default value if it is unset.
     ///
     /// See [`get_field`][Self::get_field] for more details.
-    pub fn get_extension(&self, extension_desc: &ExtensionDescriptor) -> Option<Cow<'_, Value>> {
+    pub fn get_extension(&self, extension_desc: &ExtensionDescriptor) -> Cow<'_, Value> {
         match self.extension_fields() {
-            Some(extensions) => Some(extensions.get(extension_desc)),
-            None => Some(Cow::Owned(Value::default_value_for_extension(
-                extension_desc,
-            ))),
+            Some(extensions) => extensions.get(extension_desc),
+            None => Cow::Owned(Value::default_value_for_extension(extension_desc)),
         }
     }
 
