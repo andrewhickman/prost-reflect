@@ -71,6 +71,7 @@ jobs:
           args: --package prost-reflect --package prost-reflect-derive --package prost-reflect-tests -- -D warnings
 
   coverage:
+    name: Coverage
     runs-on: ubuntu-latest
     container:
       image: xd009642/tarpaulin:develop
