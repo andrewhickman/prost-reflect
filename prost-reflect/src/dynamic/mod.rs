@@ -112,9 +112,9 @@ impl DynamicMessage {
 
     /// Returns `true` if this message has the given field set.
     ///
-    /// If the field type supports distinguishing whether a value has been set, such as
-    /// for messages, then this method returns `true` only if a value has been set. For other
-    /// types, such as integers, it returns `true` if the value is set to a non-default value.
+    /// If the field type supports distinguishing whether a value has been set (see [`supports_presence`][FieldDescriptor::supports_presence]),
+    /// such as for messages, then this method returns `true` only if a value has been set. For
+    /// other types, such as integers, it returns `true` if the value is set to a non-default value.
     ///
     /// If this method returns `false`, then the field will not be included in the encoded bytes
     /// of this message.
@@ -218,7 +218,7 @@ impl DynamicMessage {
             .map(|field_desc| self.get_field(&field_desc))
     }
 
-    /// Sets the value of the field with name `name`, or the default value if it is unset.
+    /// Sets the value of the field with name `name`.
     ///
     /// If no field with the given name exists, this method does nothing.
     ///
@@ -249,7 +249,7 @@ impl DynamicMessage {
             .unwrap_or(false)
     }
 
-    /// Gets the value of the give extension field, or the default value if it is unset.
+    /// Gets the value of the given extension field, or the default value if it is unset.
     ///
     /// See [`get_field`][Self::get_field] for more details.
     pub fn get_extension(&self, extension_desc: &ExtensionDescriptor) -> Option<Cow<'_, Value>> {
@@ -261,9 +261,9 @@ impl DynamicMessage {
         }
     }
 
-    /// Sets the value of the given extension field, or the default value if it is unset.
+    /// Sets the value of the given extension field.
     ///
-    /// See [`clear_field`][Self::clear_field] for more details.
+    /// See [`set_field`][Self::set_field] for more details.
     pub fn set_extension(&mut self, extension_desc: &ExtensionDescriptor, value: Value) {
         self.extension_fields_mut().set(extension_desc, value)
     }
