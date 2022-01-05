@@ -852,7 +852,7 @@ impl EnumDescriptor {
         self.enum_ty().reserved_ranges.iter().cloned()
     }
 
-    /// Gets an iterator over value names in this enum.
+    /// Gets an iterator over reserved value names in this enum.
     pub fn reserved_names(&self) -> impl ExactSizeIterator<Item = &str> + '_ {
         self.enum_ty().reserved_names.iter().map(Box::as_ref)
     }
