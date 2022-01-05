@@ -1007,6 +1007,23 @@ fn oneof_set_multiple_values() {
     assert_eq!(dynamic_message.encode_to_vec().as_slice(), b"\x10\x05");
 }
 
+#[test]
+fn roundtrip_file_descriptor_set() {
+    let fd = test_file_descriptor();
+    let message = fd.file_descriptor_set();
+
+    let mut dynamic_message = DynamicMessage::new(
+        test_file_descriptor()
+            .get_message_by_name("google.protobuf.FileDescriptorSet")
+            .unwrap(),
+    );
+    dynamic_message.transcode_from(message).unwrap();
+    let roundtripped_message: prost_types::FileDescriptorSet =
+        dynamic_message.transcode_to().unwrap();
+
+    assert_eq!(message, &roundtripped_message);
+}
+
 fn roundtrip<T>(message: &T) -> Result<(), TestCaseError>
 where
     T: PartialEq + Debug + ReflectMessage + Default,

@@ -7,6 +7,7 @@ use std::{
 use proptest::{prelude::*, test_runner::TestCaseError};
 use prost::Message;
 use prost_reflect::{DeserializeOptions, DynamicMessage, ReflectMessage, SerializeOptions};
+use serde::Serialize;
 use serde_json::json;
 
 use crate::{
@@ -1290,6 +1291,78 @@ proptest! {
                 .deny_unknown_fields(true)
         )?;
     }
+}
+
+#[test]
+fn roundtrip_file_descriptor_set() {
+    let fd = test_file_descriptor();
+    let message = fd.file_descriptor_set();
+
+    let mut dynamic_message = DynamicMessage::new(
+        test_file_descriptor()
+            .get_message_by_name("google.protobuf.FileDescriptorSet")
+            .unwrap(),
+    );
+    dynamic_message.transcode_from(message).unwrap();
+
+    let mut s = serde_json::Serializer::new(Vec::new());
+    dynamic_message.serialize(&mut s).unwrap();
+    let s = s.into_inner();
+
+    let mut d = serde_json::Deserializer::from_slice(&s);
+    let roundtripped_dynamic_message = DynamicMessage::deserialize(
+        test_file_descriptor()
+            .get_message_by_name("google.protobuf.FileDescriptorSet")
+            .unwrap(),
+        &mut d,
+    )
+    .unwrap();
+    d.end().unwrap();
+
+    let roundtripped_message: prost_types::FileDescriptorSet =
+        roundtripped_dynamic_message.transcode_to().unwrap();
+    assert_eq!(message, &roundtripped_message);
+}
+
+#[test]
+fn roundtrip_file_descriptor_set_with_options() {
+    let fd = test_file_descriptor();
+    let message = fd.file_descriptor_set();
+
+    let mut dynamic_message = DynamicMessage::new(
+        test_file_descriptor()
+            .get_message_by_name("google.protobuf.FileDescriptorSet")
+            .unwrap(),
+    );
+    dynamic_message.transcode_from(message).unwrap();
+
+    let mut s = serde_json::Serializer::new(Vec::new());
+    dynamic_message
+        .serialize_with_options(
+            &mut s,
+            &SerializeOptions::new()
+                .stringify_64_bit_integers(false)
+                .use_enum_numbers(true)
+                .use_proto_field_name(true)
+                .skip_default_fields(false),
+        )
+        .unwrap();
+    let s = s.into_inner();
+
+    let mut d = serde_json::Deserializer::from_slice(&s);
+    let roundtripped_dynamic_message = DynamicMessage::deserialize_with_options(
+        test_file_descriptor()
+            .get_message_by_name("google.protobuf.FileDescriptorSet")
+            .unwrap(),
+        &mut d,
+        &DeserializeOptions::new().deny_unknown_fields(true),
+    )
+    .unwrap();
+    d.end().unwrap();
+
+    let roundtripped_message: prost_types::FileDescriptorSet =
+        roundtripped_dynamic_message.transcode_to().unwrap();
+    assert_eq!(message, &roundtripped_message);
 }
 
 fn to_json<T>(message: &T) -> serde_json::Value
