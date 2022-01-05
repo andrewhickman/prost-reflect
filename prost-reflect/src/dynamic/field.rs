@@ -58,6 +58,7 @@ where
     }
 
     pub(super) fn get_mut(&mut self, desc: &T) -> &mut Value {
+        self.clear_oneof_fields(desc);
         self.fields
             .entry(desc.number())
             .or_insert_with(|| DynamicMessageField::default(desc.clone()))
@@ -65,6 +66,7 @@ where
     }
 
     pub(super) fn set(&mut self, desc: &T, value: Value) {
+        self.clear_oneof_fields(desc);
         match self.fields.entry(desc.number()) {
             btree_map::Entry::Vacant(entry) => {
                 entry.insert(DynamicMessageField::new(desc.clone(), value));
@@ -73,7 +75,17 @@ where
         }
     }
 
-    pub(super) fn clear(&mut self, desc: &T) {
+    fn clear_oneof_fields(&mut self, desc: &T) {
+        if let Some(oneof_desc) = desc.containing_oneof() {
+            for oneof_field in oneof_desc.fields() {
+                if oneof_field.number() != desc.number() {
+                    self.clear(&oneof_field);
+                }
+            }
+        }
+    }
+
+    pub(super) fn clear(&mut self, desc: &impl FieldDescriptorLike) {
         self.fields.remove(&desc.number());
     }
 

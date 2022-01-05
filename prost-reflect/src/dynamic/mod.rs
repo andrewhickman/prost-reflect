@@ -16,8 +16,7 @@ use prost::{
 
 use self::{field::DynamicMessageFieldSet, unknown::UnknownFieldSet};
 use crate::{
-    descriptor::Kind, ExtensionDescriptor, FieldDescriptor, MessageDescriptor, OneofDescriptor,
-    ReflectMessage,
+    descriptor::Kind, ExtensionDescriptor, FieldDescriptor, MessageDescriptor, ReflectMessage,
 };
 
 /// [`DynamicMessage`] provides encoding, decoding and reflection of a protobuf message.
@@ -135,17 +134,6 @@ impl DynamicMessage {
     /// by [`Value::is_valid_for_field`].
     pub fn set_field(&mut self, field_desc: &FieldDescriptor, value: Value) {
         self.fields.set(field_desc, value);
-        if let Some(oneof_desc) = field_desc.containing_oneof() {
-            self.clear_oneof_fields(oneof_desc, field_desc.number());
-        }
-    }
-
-    fn clear_oneof_fields(&mut self, oneof_desc: OneofDescriptor, set_field: u32) {
-        for oneof_field in oneof_desc.fields() {
-            if oneof_field.number() != set_field {
-                self.clear_field(&oneof_field);
-            }
-        }
     }
 
     /// Clears the given field.

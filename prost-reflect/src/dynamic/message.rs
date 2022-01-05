@@ -45,9 +45,6 @@ impl Message for DynamicMessage {
             self.fields
                 .get_mut(&field_desc)
                 .merge_field(&field_desc, wire_type, buf, ctx)?;
-            if let Some(oneof_desc) = field_desc.containing_oneof() {
-                self.clear_oneof_fields(oneof_desc, number);
-            }
             Ok(())
         } else {
             self.unknown_fields_mut()
