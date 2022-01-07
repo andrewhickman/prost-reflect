@@ -1382,6 +1382,18 @@ where
         .unwrap()
 }
 
+fn to_json_string_with_options<T>(message: &T, options: &SerializeOptions) -> String
+where
+    T: PartialEq + Debug + ReflectMessage + Default,
+{
+    let mut ser = serde_json::Serializer::new(Vec::new());
+    message
+        .transcode_to_dynamic()
+        .serialize_with_options(&mut ser, options)
+        .unwrap();
+    String::from_utf8(ser.into_inner()).unwrap()
+}
+
 fn wkt_to_json<T>(message: &T, message_name: &str) -> serde_json::Value
 where
     T: Message,
@@ -1422,6 +1434,31 @@ where
     .unwrap()
 }
 
+fn from_json_string_with_options<T>(
+    json: &str,
+    message_name: &str,
+    options: &DeserializeOptions,
+) -> T
+where
+    T: PartialEq + Debug + Message + Default,
+{
+    let mut de = serde_json::Deserializer::from_str(json);
+
+    let message = DynamicMessage::deserialize_with_options(
+        test_file_descriptor()
+            .get_message_by_name(message_name)
+            .unwrap(),
+        &mut de,
+        options,
+    )
+    .unwrap()
+    .transcode_to()
+    .unwrap();
+    de.end().unwrap();
+
+    message
+}
+
 fn roundtrip_json<T>(message: &T) -> Result<(), TestCaseError>
 where
     T: PartialEq + Debug + ReflectMessage + Default,
@@ -1437,9 +1474,9 @@ fn roundtrip_json_with_options<T>(
 where
     T: PartialEq + Debug + ReflectMessage + Default,
 {
-    let json = to_json_with_options(message, ser_options);
+    let json = to_json_string_with_options(message, ser_options);
     let roundtripped_message =
-        from_json_with_options(json, message.descriptor().full_name(), de_options);
+        from_json_string_with_options(&json, message.descriptor().full_name(), de_options);
     prop_assert_eq!(message, &roundtripped_message);
     Ok(())
 }
