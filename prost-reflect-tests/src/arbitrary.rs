@@ -110,18 +110,22 @@ pub fn json() -> impl Strategy<Value = String> {
         ]
     }
 
-    let leaf = prop_oneof![
-        Just(serde_json::Value::Null),
-        any::<bool>().prop_map(serde_json::Value::from),
-        any::<f64>().prop_map(serde_json::Value::from),
-        ".*".prop_map(serde_json::Value::from),
-    ];
-    leaf.prop_recursive(8, 256, 10, |inner| {
-        prop_oneof![
-            prop::collection::vec(inner.clone(), 0..10).prop_map(serde_json::Value::Array),
-            prop::collection::hash_map(arb_json_key(), inner, 0..10)
-                .prop_map(|map| serde_json::Map::from_iter(map).into()),
-        ]
-    })
-    .prop_map(|json| json.to_string())
+    fn arb_json_value() -> impl Strategy<Value = serde_json::Value> {
+        let leaf = prop_oneof![
+            Just(serde_json::Value::Null),
+            any::<bool>().prop_map(serde_json::Value::from),
+            any::<f64>().prop_map(serde_json::Value::from),
+            ".*".prop_map(serde_json::Value::from),
+        ];
+        leaf.prop_recursive(4, 32, 4, |inner| {
+            prop_oneof![
+                prop::collection::vec(inner.clone(), 0..4).prop_map(serde_json::Value::Array),
+                prop::collection::hash_map(arb_json_key(), inner, 0..4)
+                    .prop_map(|map| serde_json::Map::from_iter(map).into()),
+            ]
+        })
+    }
+
+    prop::collection::hash_map(arb_json_key(), arb_json_value(), 0..10)
+        .prop_map(|map| serde_json::Value::Object(map.into_iter().collect()).to_string())
 }
