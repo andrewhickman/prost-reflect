@@ -1,5 +1,5 @@
-use std::fmt::Write;
 use std::time::SystemTime;
+use std::{fmt::Write, iter::FromIterator};
 
 use proptest::prelude::*;
 use prost_types::{value::Kind, Duration, FieldMask, ListValue, Struct, Timestamp, Value};
@@ -74,4 +74,54 @@ pub fn mask() -> impl Strategy<Value = FieldMask> {
             })
             .collect(),
     })
+}
+
+pub fn json() -> impl Strategy<Value = String> {
+    fn arb_json_key() -> impl Strategy<Value = String> {
+        // Use real field names to make the deserialization error test more interesting
+        prop_oneof![
+            2 => Just("float".to_owned()),
+            2 => Just("double".to_owned()),
+            2 => Just("int32".to_owned()),
+            2 => Just("int64".to_owned()),
+            2 => Just("uint32".to_owned()),
+            2 => Just("uint64".to_owned()),
+            2 => Just("bool".to_owned()),
+            2 => Just("string".to_owned()),
+            2 => Just("bytes".to_owned()),
+            1 => Just("string_map".to_owned()),
+            1 => Just("int_map".to_owned()),
+            1 => Just("nested".to_owned()),
+            1 => Just("my_enum".to_owned()),
+            1 => Just("optional_enum".to_owned()),
+            1 => Just("timestamp".to_owned()),
+            1 => Just("duration".to_owned()),
+            1 => Just("struct".to_owned()),
+            1 => Just("mask".to_owned()),
+            1 => Just("list".to_owned()),
+            1 => Just("null".to_owned()),
+            1 => Just("empty".to_owned()),
+            1 => Just("sint32".to_owned()),
+            1 => Just("sint64".to_owned()),
+            1 => Just("fixed32".to_owned()),
+            1 => Just("fixed64".to_owned()),
+            1 => Just("sfixed32".to_owned()),
+            1 => Just("sfixed64".to_owned()),
+        ]
+    }
+
+    let leaf = prop_oneof![
+        Just(serde_json::Value::Null),
+        any::<bool>().prop_map(serde_json::Value::from),
+        any::<f64>().prop_map(serde_json::Value::from),
+        ".*".prop_map(serde_json::Value::from),
+    ];
+    leaf.prop_recursive(8, 256, 10, |inner| {
+        prop_oneof![
+            prop::collection::vec(inner.clone(), 0..10).prop_map(serde_json::Value::Array),
+            prop::collection::hash_map(arb_json_key(), inner, 0..10)
+                .prop_map(|map| serde_json::Map::from_iter(map).into()),
+        ]
+    })
+    .prop_map(|json| json.to_string())
 }

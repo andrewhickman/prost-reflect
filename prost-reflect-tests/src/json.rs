@@ -11,8 +11,8 @@ use serde::Serialize;
 use serde_json::json;
 
 use crate::{
-    message_with_oneof, test_file_descriptor, ComplexType, MessageWithOneof, Point, ScalarArrays,
-    Scalars, WellKnownTypes,
+    arbitrary, message_with_oneof, test_file_descriptor, ComplexType, MessageWithOneof, Point,
+    ScalarArrays, Scalars, WellKnownTypes,
 };
 
 #[test]
@@ -1236,6 +1236,12 @@ proptest! {
     }
 
     #[test]
+    fn deserialize_error_scalars(json in arbitrary::json()) {
+        let _ = try_from_json_string_with_options(&json, ".test.Scalars", &DeserializeOptions::default());
+        let _ = try_from_json_string_with_options(&json, ".test.Scalars", &DeserializeOptions::default().deny_unknown_fields(false));
+    }
+
+    #[test]
     fn roundtrip_arb_scalar_arrays(message: ScalarArrays) {
         roundtrip_json(&message)?;
     }
@@ -1252,6 +1258,12 @@ proptest! {
             &DeserializeOptions::new()
                 .deny_unknown_fields(true)
         )?;
+    }
+
+    #[test]
+    fn deserialize_error_scalar_arrays(json in arbitrary::json()) {
+        let _ = try_from_json_string_with_options(&json, ".test.ScalarArrays", &DeserializeOptions::default());
+        let _ = try_from_json_string_with_options(&json, ".test.ScalarArrays", &DeserializeOptions::default().deny_unknown_fields(false));
     }
 
     #[test]
@@ -1274,6 +1286,12 @@ proptest! {
     }
 
     #[test]
+    fn deserialize_error_complex_type(json in arbitrary::json()) {
+        let _ = try_from_json_string_with_options(&json, ".test.ComplexType", &DeserializeOptions::default());
+        let _ = try_from_json_string_with_options(&json, ".test.ComplexType", &DeserializeOptions::default().deny_unknown_fields(false));
+    }
+
+    #[test]
     fn roundtrip_arb_well_known_types(message: WellKnownTypes) {
         roundtrip_json(&message)?;
     }
@@ -1290,6 +1308,12 @@ proptest! {
             &DeserializeOptions::new()
                 .deny_unknown_fields(true)
         )?;
+    }
+
+    #[test]
+    fn deserialize_error_well_known_types(json in arbitrary::json()) {
+        let _ = try_from_json_string_with_options(&json, ".test.WellKnownTypes", &DeserializeOptions::default());
+        let _ = try_from_json_string_with_options(&json, ".test.WellKnownTypes", &DeserializeOptions::default().deny_unknown_fields(false));
     }
 }
 
@@ -1434,6 +1458,24 @@ where
     .unwrap()
 }
 
+fn try_from_json_string_with_options(
+    json: &str,
+    message_name: &str,
+    options: &DeserializeOptions,
+) -> serde_json::Result<DynamicMessage> {
+    let mut de = serde_json::Deserializer::from_str(json);
+    let message = DynamicMessage::deserialize_with_options(
+        test_file_descriptor()
+            .get_message_by_name(message_name)
+            .unwrap(),
+        &mut de,
+        options,
+    )?;
+    de.end().unwrap();
+
+    Ok(message)
+}
+
 fn from_json_string_with_options<T>(
     json: &str,
     message_name: &str,
@@ -1442,21 +1484,10 @@ fn from_json_string_with_options<T>(
 where
     T: PartialEq + Debug + Message + Default,
 {
-    let mut de = serde_json::Deserializer::from_str(json);
-
-    let message = DynamicMessage::deserialize_with_options(
-        test_file_descriptor()
-            .get_message_by_name(message_name)
-            .unwrap(),
-        &mut de,
-        options,
-    )
-    .unwrap()
-    .transcode_to()
-    .unwrap();
-    de.end().unwrap();
-
-    message
+    try_from_json_string_with_options(json, message_name, options)
+        .unwrap()
+        .transcode_to()
+        .unwrap()
 }
 
 fn roundtrip_json<T>(message: &T) -> Result<(), TestCaseError>
