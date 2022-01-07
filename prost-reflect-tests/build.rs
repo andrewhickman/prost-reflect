@@ -11,6 +11,7 @@ fn main() -> io::Result<()> {
         .type_attribute(".test.ComplexType", "#[derive(::proptest_derive::Arbitrary)]")
         .type_attribute(".test.WellKnownTypes", "#[derive(::proptest_derive::Arbitrary)]")
         .type_attribute(".test", "#[derive(::prost_reflect::ReflectMessage)]")
+        .type_attribute(".test2.ContainsGroup", "#[derive(::prost_reflect::ReflectMessage)]")
         .type_attribute(
             ".test.Scalars",
             "#[prost_reflect(file_descriptor = \"TEST_FILE_DESCRIPTOR\", message_name = \"test.Scalars\")]",
@@ -34,6 +35,10 @@ fn main() -> io::Result<()> {
         .type_attribute(
             ".test.Point",
             "#[prost_reflect(file_descriptor = \"TEST_FILE_DESCRIPTOR\", message_name = \"test.Point\")]",
+        )
+        .type_attribute(
+            ".test2.ContainsGroup",
+            "#[prost_reflect(file_descriptor = \"crate::TEST_FILE_DESCRIPTOR\", message_name = \"test2.ContainsGroup\")]",
         )
         .field_attribute(
             ".test.WellKnownTypes.timestamp",

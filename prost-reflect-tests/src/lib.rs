@@ -15,6 +15,7 @@ use prost::{bytes::Bytes, Message};
 use prost_reflect::{DynamicMessage, FileDescriptor, MapKey, ReflectMessage, Value};
 
 include!(concat!(env!("OUT_DIR"), "/test.rs"));
+include!(concat!(env!("OUT_DIR"), "/test2.rs"));
 
 const FILE_DESCRIPTOR_SET_BYTES: &[u8] =
     include_bytes!(concat!(env!("OUT_DIR"), "/file_descriptor_set.bin"));
@@ -1049,6 +1050,29 @@ fn roundtrip_file_descriptor_set() {
         dynamic_message.transcode_to().unwrap();
 
     assert_eq!(message, &roundtripped_message);
+}
+
+#[test]
+fn roundtrip_group() {
+    assert!(test_file_descriptor()
+        .get_message_by_name("test2.ContainsGroup")
+        .unwrap()
+        .get_field_by_name("groupmessage")
+        .unwrap()
+        .is_group());
+
+    roundtrip(&ContainsGroup {
+        groupmessage: vec![
+            contains_group::GroupMessage {
+                ..Default::default()
+            },
+            contains_group::GroupMessage {
+                url: "hello".to_string(),
+                id: Some(10),
+            },
+        ],
+    })
+    .unwrap();
 }
 
 fn roundtrip<T>(message: &T) -> Result<(), TestCaseError>

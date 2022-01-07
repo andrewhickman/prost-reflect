@@ -30,3 +30,10 @@ enum Proto2Enum {
   DEFAULT = 2;
   OTHER = 3;
 }
+
+message ContainsGroup {
+  repeated group GroupMessage = 1 {
+    required string url = 2;
+    optional int32 id = 3;
+  }
+}
