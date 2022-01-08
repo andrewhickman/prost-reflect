@@ -1,12 +1,11 @@
-use std::{
-    borrow::Cow,
-    collections::btree_map::{self, BTreeMap},
-    fmt,
+use std::{borrow::Cow, collections::BTreeMap, fmt};
+
+use crate::{
+    ExtensionDescriptor, FieldDescriptor, Kind, MessageDescriptor, OneofDescriptor, Value,
 };
 
-use crate::{ExtensionDescriptor, FieldDescriptor, Kind, OneofDescriptor, Value};
-
 pub(super) trait FieldDescriptorLike: fmt::Debug + Clone {
+    fn get(message: &MessageDescriptor, number: u32) -> Option<Self>;
     fn number(&self) -> u32;
     fn default_value(&self) -> Value;
     fn is_default_value(&self, value: &Value) -> bool;
@@ -19,63 +18,57 @@ pub(super) trait FieldDescriptorLike: fmt::Debug + Clone {
     fn is_map(&self) -> bool;
     fn is_packed(&self) -> bool;
     fn is_packable(&self) -> bool;
-}
 
-/// A set of extension fields in a protobuf message.
-#[derive(Debug, Clone, PartialEq)]
-pub(super) struct DynamicMessageFieldSet<T> {
-    fields: BTreeMap<u32, DynamicMessageField<T>>,
-}
-
-impl<T> Default for DynamicMessageFieldSet<T> {
-    fn default() -> Self {
-        DynamicMessageFieldSet {
-            fields: Default::default(),
-        }
+    fn has(&self, value: &Value) -> bool {
+        self.supports_presence() || !self.is_default_value(value)
     }
 }
 
-impl<T> DynamicMessageFieldSet<T>
-where
-    T: FieldDescriptorLike,
-{
+/// A set of extension fields in a protobuf message.
+#[derive(Default, Debug, Clone, PartialEq)]
+pub(super) struct DynamicMessageFieldSet {
+    fields: BTreeMap<u32, Value>,
+}
+
+impl DynamicMessageFieldSet {
     pub(super) fn is_empty(&self) -> bool {
         self.fields.is_empty()
     }
 
-    pub(super) fn has(&self, desc: &T) -> bool {
+    pub(super) fn has(&self, desc: &impl FieldDescriptorLike) -> bool {
         self.fields
             .get(&desc.number())
-            .map(|field| field.has())
+            .map(|value| desc.has(value))
             .unwrap_or(false)
     }
 
-    pub(super) fn get(&self, desc: &T) -> Cow<'_, Value> {
+    pub(super) fn get(&self, desc: &impl FieldDescriptorLike) -> Cow<'_, Value> {
         match self.fields.get(&desc.number()) {
-            Some(field) => Cow::Borrowed(field.get()),
+            Some(value) => Cow::Borrowed(value),
             None => Cow::Owned(desc.default_value()),
         }
     }
 
-    pub(super) fn get_mut(&mut self, desc: &T) -> &mut Value {
+    pub(super) fn get_mut(&mut self, desc: &impl FieldDescriptorLike) -> &mut Value {
         self.clear_oneof_fields(desc);
         self.fields
             .entry(desc.number())
-            .or_insert_with(|| DynamicMessageField::default(desc.clone()))
-            .get_mut()
+            .or_insert_with(|| desc.default_value())
     }
 
-    pub(super) fn set(&mut self, desc: &T, value: Value) {
+    pub(super) fn set(&mut self, desc: &impl FieldDescriptorLike, value: Value) {
+        debug_assert!(
+            desc.is_valid(&value),
+            "invalid value {:?} for field {:?}",
+            value,
+            desc,
+        );
+
         self.clear_oneof_fields(desc);
-        match self.fields.entry(desc.number()) {
-            btree_map::Entry::Vacant(entry) => {
-                entry.insert(DynamicMessageField::new(desc.clone(), value));
-            }
-            btree_map::Entry::Occupied(mut entry) => entry.get_mut().set(value),
-        }
+        self.fields.insert(desc.number(), value);
     }
 
-    fn clear_oneof_fields(&mut self, desc: &T) {
+    fn clear_oneof_fields(&mut self, desc: &impl FieldDescriptorLike) {
         if let Some(oneof_desc) = desc.containing_oneof() {
             for oneof_field in oneof_desc.fields() {
                 if oneof_field.number() != desc.number() {
@@ -89,11 +82,32 @@ where
         self.fields.remove(&desc.number());
     }
 
-    pub(super) fn iter(&self) -> impl Iterator<Item = (&T, &Value)> + '_ {
-        self.fields
-            .values()
-            .filter(|v| v.has())
-            .map(|field| (field.descriptor(), field.get()))
+    pub(super) fn iter_fields<'a>(
+        &'a self,
+        message: &'a MessageDescriptor,
+    ) -> impl Iterator<Item = (FieldDescriptor, &Value)> + 'a {
+        self.iter::<FieldDescriptor>(message)
+    }
+
+    pub(super) fn iter_extensions<'a>(
+        &'a self,
+        message: &'a MessageDescriptor,
+    ) -> impl Iterator<Item = (ExtensionDescriptor, &Value)> + 'a {
+        self.iter::<ExtensionDescriptor>(message)
+    }
+
+    fn iter<'a, T: FieldDescriptorLike>(
+        &'a self,
+        message: &'a MessageDescriptor,
+    ) -> impl Iterator<Item = (T, &Value)> + 'a {
+        self.fields.iter().filter_map(move |(&number, value)| {
+            let desc = T::get(message, number)?;
+            if desc.has(value) {
+                Some((desc, value))
+            } else {
+                None
+            }
+        })
     }
 
     pub(super) fn clear_all(&mut self) {
@@ -107,55 +121,11 @@ struct DynamicMessageField<T> {
     value: Value,
 }
 
-impl<T> DynamicMessageField<T>
-where
-    T: FieldDescriptorLike,
-{
-    fn default(desc: T) -> Self {
-        DynamicMessageField {
-            value: desc.default_value(),
-            desc,
-        }
-    }
-
-    fn new(desc: T, value: Value) -> Self {
-        debug_assert!(
-            desc.is_valid(&value),
-            "invalid value {:?} for field {:?}",
-            value,
-            desc,
-        );
-        DynamicMessageField { value, desc }
-    }
-
-    fn has(&self) -> bool {
-        self.desc.supports_presence() || !self.desc.is_default_value(&self.value)
-    }
-
-    fn get(&self) -> &Value {
-        &self.value
-    }
-
-    fn get_mut(&mut self) -> &mut Value {
-        &mut self.value
-    }
-
-    fn set(&mut self, value: Value) {
-        debug_assert!(
-            self.desc.is_valid(&value),
-            "invalid value {:?} for field {:?}",
-            value,
-            self.desc,
-        );
-        self.value = value;
-    }
-
-    fn descriptor(&self) -> &T {
-        &self.desc
-    }
-}
-
 impl FieldDescriptorLike for FieldDescriptor {
+    fn get(message: &MessageDescriptor, number: u32) -> Option<Self> {
+        message.get_field(number)
+    }
+
     fn number(&self) -> u32 {
         self.number()
     }
@@ -206,6 +176,10 @@ impl FieldDescriptorLike for FieldDescriptor {
 }
 
 impl FieldDescriptorLike for ExtensionDescriptor {
+    fn get(message: &MessageDescriptor, number: u32) -> Option<Self> {
+        message.get_extension(number)
+    }
+
     fn number(&self) -> u32 {
         self.number()
     }

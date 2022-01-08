@@ -55,7 +55,7 @@ where
     S: SerializeMap,
 {
     if options.skip_default_fields {
-        for (field_desc, field_value) in value.fields.iter() {
+        for (field_desc, field_value) in value.fields.iter_fields(&value.desc) {
             let name = if options.use_proto_field_name {
                 field_desc.name()
             } else {
@@ -100,7 +100,7 @@ where
     }
 
     if let Some(extensions) = value.extension_fields() {
-        for (field_desc, field_value) in extensions.iter() {
+        for (field_desc, field_value) in extensions.iter_extensions(&value.desc) {
             let name = field_desc.json_name();
 
             map.serialize_entry(

@@ -26,7 +26,7 @@ use crate::{
 #[derive(Debug, Clone)]
 pub struct DynamicMessage {
     desc: MessageDescriptor,
-    fields: DynamicMessageFieldSet<FieldDescriptor>,
+    fields: DynamicMessageFieldSet,
     // Rarely used fields are put behind a box so they can be represented by just a null pointer in the common case.
     cold: Option<Box<DynamicMessageColdFields>>,
 }
@@ -34,7 +34,7 @@ pub struct DynamicMessage {
 #[derive(Default, Debug, Clone)]
 struct DynamicMessageColdFields {
     unknown: UnknownFieldSet,
-    extensions: DynamicMessageFieldSet<ExtensionDescriptor>,
+    extensions: DynamicMessageFieldSet,
 }
 
 /// A dynamically-typed protobuf value.
@@ -331,7 +331,7 @@ impl DynamicMessage {
         self.cold.as_ref().map(|c| &c.unknown)
     }
 
-    fn extension_fields(&self) -> Option<&DynamicMessageFieldSet<ExtensionDescriptor>> {
+    fn extension_fields(&self) -> Option<&DynamicMessageFieldSet> {
         self.cold.as_ref().map(|c| &c.extensions)
     }
 
@@ -339,7 +339,7 @@ impl DynamicMessage {
         &mut self.cold.get_or_insert_with(Default::default).unknown
     }
 
-    fn extension_fields_mut(&mut self) -> &mut DynamicMessageFieldSet<ExtensionDescriptor> {
+    fn extension_fields_mut(&mut self) -> &mut DynamicMessageFieldSet {
         &mut self.cold.get_or_insert_with(Default::default).extensions
     }
 }

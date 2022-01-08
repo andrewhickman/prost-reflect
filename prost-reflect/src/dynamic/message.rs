@@ -5,8 +5,10 @@ use prost::{
 };
 
 use crate::{
-    descriptor::{Kind, MAP_ENTRY_KEY_NUMBER, MAP_ENTRY_VALUE_NUMBER},
-    DynamicMessage, FieldDescriptor, MapKey, Value,
+    descriptor::{
+        FieldDescriptor, Kind, MAP_ENTRY_KEY_NUMBER, MAP_ENTRY_VALUE_NUMBER,
+    },
+    DynamicMessage, MapKey, Value,
 };
 
 use super::field::FieldDescriptorLike;
@@ -17,12 +19,14 @@ impl Message for DynamicMessage {
         B: BufMut,
         Self: Sized,
     {
-        for (field_desc, field_value) in self.fields.iter() {
-            field_value.encode_field(field_desc, buf);
+        for (field_desc, field_value) in self.fields.iter_fields(&self.desc) {
+            field_value.encode_field(&field_desc, buf);
         }
         if let Some(extension_fields) = self.extension_fields() {
-            for (field_desc, field_value) in extension_fields.iter() {
-                field_value.encode_field(field_desc, buf);
+            for (extension_desc, field_value) in
+                extension_fields.iter_extensions(&self.desc)
+            {
+                field_value.encode_field(&extension_desc, buf);
             }
         }
         if let Some(unknown_fields) = self.unknown_fields() {
@@ -59,12 +63,12 @@ impl Message for DynamicMessage {
 
     fn encoded_len(&self) -> usize {
         let mut len = 0;
-        for (field_desc, field_value) in self.fields.iter() {
-            len += field_value.encoded_len(field_desc);
+        for (field_desc, field_value) in self.fields.iter_fields(&self.desc) {
+            len += field_value.encoded_len(&field_desc);
         }
         if let Some(extension_fields) = self.extension_fields() {
-            for (field_desc, field_value) in extension_fields.iter() {
-                len += field_value.encoded_len(field_desc);
+            for (field_desc, field_value) in extension_fields.iter_extensions(&self.desc) {
+                len += field_value.encoded_len(&field_desc);
             }
         }
         if let Some(unknown_fields) = self.unknown_fields() {
