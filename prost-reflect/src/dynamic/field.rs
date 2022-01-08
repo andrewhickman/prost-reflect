@@ -31,10 +31,6 @@ pub(super) struct DynamicMessageFieldSet {
 }
 
 impl DynamicMessageFieldSet {
-    pub(super) fn is_empty(&self) -> bool {
-        self.fields.is_empty()
-    }
-
     pub(super) fn has(&self, desc: &impl FieldDescriptorLike) -> bool {
         self.fields
             .get(&desc.number())

@@ -23,18 +23,11 @@ use crate::{
 ///
 /// It wraps a [`MessageDescriptor`] and the [`Value`] for each field of the message, and implements
 /// [`Message`][`prost::Message`].
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct DynamicMessage {
     desc: MessageDescriptor,
     fields: DynamicMessageFieldSet,
-    // Rarely used fields are put behind a box so they can be represented by just a null pointer in the common case.
-    cold: Option<Box<DynamicMessageColdFields>>,
-}
-
-#[derive(Default, Debug, Clone)]
-struct DynamicMessageColdFields {
     unknown: UnknownFieldSet,
-    extensions: DynamicMessageFieldSet,
 }
 
 /// A dynamically-typed protobuf value.
@@ -93,7 +86,7 @@ impl DynamicMessage {
     pub fn new(desc: MessageDescriptor) -> Self {
         DynamicMessage {
             fields: DynamicMessageFieldSet::default(),
-            cold: None,
+            unknown: UnknownFieldSet::default(),
             desc,
         }
     }
@@ -262,19 +255,14 @@ impl DynamicMessage {
     ///
     /// See [`has_field`][Self::has_field] for more details.
     pub fn has_extension(&self, extension_desc: &ExtensionDescriptor) -> bool {
-        self.extension_fields()
-            .map(|extensions| extensions.has(extension_desc))
-            .unwrap_or(false)
+        self.fields.has(extension_desc)
     }
 
     /// Gets the value of the given extension field, or the default value if it is unset.
     ///
     /// See [`get_field`][Self::get_field] for more details.
     pub fn get_extension(&self, extension_desc: &ExtensionDescriptor) -> Cow<'_, Value> {
-        match self.extension_fields() {
-            Some(extensions) => extensions.get(extension_desc),
-            None => Cow::Owned(Value::default_value_for_extension(extension_desc)),
-        }
+        self.fields.get(extension_desc)
     }
 
     /// Gets a mutable reference to the value of the given extension field. If the
@@ -282,23 +270,21 @@ impl DynamicMessage {
     ///
     /// See [`get_field_mut`][Self::get_field_mut] for more details.
     pub fn get_extension_mut(&mut self, extension_desc: &ExtensionDescriptor) -> &mut Value {
-        self.extension_fields_mut().get_mut(extension_desc)
+        self.fields.get_mut(extension_desc)
     }
 
     /// Sets the value of the given extension field.
     ///
     /// See [`set_field`][Self::set_field] for more details.
     pub fn set_extension(&mut self, extension_desc: &ExtensionDescriptor, value: Value) {
-        self.extension_fields_mut().set(extension_desc, value)
+        self.fields.set(extension_desc, value)
     }
 
     /// Clears the given extension field.
     ///
     /// See [`clear_field`][Self::clear_field] for more details.
     pub fn clear_extension(&mut self, extension_desc: &ExtensionDescriptor) {
-        if let Some(cold) = &mut self.cold {
-            cold.extensions.clear(extension_desc)
-        }
+        self.fields.clear(extension_desc)
     }
 
     /// Merge a strongly-typed message into this one.
@@ -325,38 +311,6 @@ impl DynamicMessage {
     {
         let buf = self.encode_to_vec();
         T::decode(buf.as_slice())
-    }
-
-    fn unknown_fields(&self) -> Option<&UnknownFieldSet> {
-        self.cold.as_ref().map(|c| &c.unknown)
-    }
-
-    fn extension_fields(&self) -> Option<&DynamicMessageFieldSet> {
-        self.cold.as_ref().map(|c| &c.extensions)
-    }
-
-    fn unknown_fields_mut(&mut self) -> &mut UnknownFieldSet {
-        &mut self.cold.get_or_insert_with(Default::default).unknown
-    }
-
-    fn extension_fields_mut(&mut self) -> &mut DynamicMessageFieldSet {
-        &mut self.cold.get_or_insert_with(Default::default).extensions
-    }
-}
-
-impl PartialEq for DynamicMessage {
-    fn eq(&self, other: &Self) -> bool {
-        self.desc == other.desc
-            && self.fields == other.fields
-            && match (&self.cold, &other.cold) {
-                (None, None) => true,
-                (None, Some(cold)) | (Some(cold), None) => {
-                    cold.unknown.is_empty() && cold.extensions.is_empty()
-                }
-                (Some(lhs), Some(rhs)) => {
-                    lhs.unknown == rhs.unknown && lhs.extensions == rhs.extensions
-                }
-            }
     }
 }
 

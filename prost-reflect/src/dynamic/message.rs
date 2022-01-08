@@ -5,9 +5,7 @@ use prost::{
 };
 
 use crate::{
-    descriptor::{
-        FieldDescriptor, Kind, MAP_ENTRY_KEY_NUMBER, MAP_ENTRY_VALUE_NUMBER,
-    },
+    descriptor::{FieldDescriptor, Kind, MAP_ENTRY_KEY_NUMBER, MAP_ENTRY_VALUE_NUMBER},
     DynamicMessage, MapKey, Value,
 };
 
@@ -22,16 +20,10 @@ impl Message for DynamicMessage {
         for (field_desc, field_value) in self.fields.iter_fields(&self.desc) {
             field_value.encode_field(&field_desc, buf);
         }
-        if let Some(extension_fields) = self.extension_fields() {
-            for (extension_desc, field_value) in
-                extension_fields.iter_extensions(&self.desc)
-            {
-                field_value.encode_field(&extension_desc, buf);
-            }
+        for (field_desc, field_value) in self.fields.iter_extensions(&self.desc) {
+            field_value.encode_field(&field_desc, buf);
         }
-        if let Some(unknown_fields) = self.unknown_fields() {
-            unknown_fields.encode_raw(buf);
-        }
+        self.unknown.encode_raw(buf);
     }
 
     fn merge_field<B>(
@@ -56,8 +48,7 @@ impl Message for DynamicMessage {
                 ctx,
             )
         } else {
-            self.unknown_fields_mut()
-                .merge_field(number, wire_type, buf, ctx)
+            self.unknown.merge_field(number, wire_type, buf, ctx)
         }
     }
 
@@ -66,20 +57,16 @@ impl Message for DynamicMessage {
         for (field_desc, field_value) in self.fields.iter_fields(&self.desc) {
             len += field_value.encoded_len(&field_desc);
         }
-        if let Some(extension_fields) = self.extension_fields() {
-            for (field_desc, field_value) in extension_fields.iter_extensions(&self.desc) {
-                len += field_value.encoded_len(&field_desc);
-            }
+        for (field_desc, field_value) in self.fields.iter_extensions(&self.desc) {
+            len += field_value.encoded_len(&field_desc);
         }
-        if let Some(unknown_fields) = self.unknown_fields() {
-            len += unknown_fields.encoded_len();
-        }
+        len += self.unknown.encoded_len();
         len
     }
 
     fn clear(&mut self) {
         self.fields.clear_all();
-        self.cold = None;
+        self.unknown.clear();
     }
 }
 

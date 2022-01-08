@@ -27,12 +27,6 @@ pub(crate) enum UnknownField {
     ThirtyTwoBit([u8; 4]),
 }
 
-impl UnknownFieldSet {
-    pub fn is_empty(&self) -> bool {
-        self.fields.is_empty()
-    }
-}
-
 impl Message for UnknownFieldSet {
     fn encode_raw<B>(&self, buf: &mut B)
     where

@@ -99,21 +99,19 @@ where
         }
     }
 
-    if let Some(extensions) = value.extension_fields() {
-        for (field_desc, field_value) in extensions.iter_extensions(&value.desc) {
-            let name = field_desc.json_name();
+    for (field_desc, field_value) in value.fields.iter_extensions(&value.desc) {
+        let name = field_desc.json_name();
 
-            map.serialize_entry(
-                name,
-                &SerializeWrapper {
-                    value: &ValueAndKind {
-                        value: field_value,
-                        kind: &field_desc.kind(),
-                    },
-                    options,
+        map.serialize_entry(
+            name,
+            &SerializeWrapper {
+                value: &ValueAndKind {
+                    value: field_value,
+                    kind: &field_desc.kind(),
                 },
-            )?;
-        }
+                options,
+            },
+        )?;
     }
     Ok(())
 }
