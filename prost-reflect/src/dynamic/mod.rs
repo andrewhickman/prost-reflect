@@ -810,3 +810,9 @@ impl From<MapKey> for Value {
         }
     }
 }
+
+#[test]
+fn type_sizes() {
+    assert_eq!(std::mem::size_of::<DynamicMessage>(), 40);
+    assert_eq!(std::mem::size_of::<Value>(), 56);
+}
