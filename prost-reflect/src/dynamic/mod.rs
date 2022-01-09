@@ -1,4 +1,4 @@
-mod field;
+mod fields;
 mod message;
 #[cfg(feature = "serde")]
 mod serde;
@@ -14,7 +14,7 @@ use prost::{
     DecodeError, Message,
 };
 
-use self::{field::DynamicMessageFieldSet, unknown::UnknownFieldSet};
+use self::fields::DynamicMessageFieldSet;
 use crate::{
     descriptor::Kind, ExtensionDescriptor, FieldDescriptor, MessageDescriptor, ReflectMessage,
 };
@@ -27,7 +27,6 @@ use crate::{
 pub struct DynamicMessage {
     desc: MessageDescriptor,
     fields: DynamicMessageFieldSet,
-    unknown: UnknownFieldSet,
 }
 
 /// A dynamically-typed protobuf value.
@@ -86,7 +85,6 @@ impl DynamicMessage {
     pub fn new(desc: MessageDescriptor) -> Self {
         DynamicMessage {
             fields: DynamicMessageFieldSet::default(),
-            unknown: UnknownFieldSet::default(),
             desc,
         }
     }

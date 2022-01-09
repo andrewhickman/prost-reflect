@@ -9,7 +9,10 @@ use crate::{
     DynamicMessage, MapKey, Value,
 };
 
-use super::field::FieldDescriptorLike;
+use super::{
+    fields::{FieldDescriptorLike, ValueAndDescriptor},
+    unknown::UnknownField,
+};
 
 impl Message for DynamicMessage {
     fn encode_raw<B>(&self, buf: &mut B)
@@ -17,13 +20,21 @@ impl Message for DynamicMessage {
         B: BufMut,
         Self: Sized,
     {
-        for (field_desc, field_value) in self.fields.iter_fields(&self.desc) {
-            field_value.encode_field(&field_desc, buf);
+        for field in self.fields.iter(&self.desc) {
+            match field {
+                ValueAndDescriptor::Field(value, field_desc) => {
+                    value.encode_field(&field_desc, buf)
+                }
+                ValueAndDescriptor::Extension(value, extension_desc) => {
+                    value.encode_field(&extension_desc, buf)
+                }
+                ValueAndDescriptor::Unknown(number, unknowns) => {
+                    for unknown in unknowns {
+                        unknown.encode_field(number, buf);
+                    }
+                }
+            }
         }
-        for (field_desc, field_value) in self.fields.iter_extensions(&self.desc) {
-            field_value.encode_field(&field_desc, buf);
-        }
-        self.unknown.encode_raw(buf);
     }
 
     fn merge_field<B>(
@@ -48,25 +59,34 @@ impl Message for DynamicMessage {
                 ctx,
             )
         } else {
-            self.unknown.merge_field(number, wire_type, buf, ctx)
+            let field = UnknownField::decode(number, wire_type, buf, ctx)?;
+            self.fields.add_unknown(number, field);
+            Ok(())
         }
     }
 
     fn encoded_len(&self) -> usize {
         let mut len = 0;
-        for (field_desc, field_value) in self.fields.iter_fields(&self.desc) {
-            len += field_value.encoded_len(&field_desc);
+        for field in self.fields.iter(&self.desc) {
+            match field {
+                ValueAndDescriptor::Field(value, field_desc) => {
+                    len += value.encoded_len(&field_desc);
+                }
+                ValueAndDescriptor::Extension(value, extension_desc) => {
+                    len += value.encoded_len(&extension_desc);
+                }
+                ValueAndDescriptor::Unknown(number, unknowns) => {
+                    for unknown in unknowns {
+                        len += unknown.encoded_len(number)
+                    }
+                }
+            }
         }
-        for (field_desc, field_value) in self.fields.iter_extensions(&self.desc) {
-            len += field_value.encoded_len(&field_desc);
-        }
-        len += self.unknown.encoded_len();
         len
     }
 
     fn clear(&mut self) {
         self.fields.clear_all();
-        self.unknown.clear();
     }
 }
 
@@ -328,22 +348,9 @@ impl Value {
             }
             (Value::List(values), field_kind) if field_desc.is_list() => {
                 if wire_type == WireType::LengthDelimited && field_desc.is_packable() {
-                    let packed_wire_type = match field_desc.kind() {
-                        Kind::Double | Kind::Fixed64 | Kind::Sfixed64 => WireType::SixtyFourBit,
-                        Kind::Float | Kind::Fixed32 | Kind::Sfixed32 => WireType::ThirtyTwoBit,
-                        Kind::Enum(_)
-                        | Kind::Int32
-                        | Kind::Int64
-                        | Kind::Uint32
-                        | Kind::Uint64
-                        | Kind::Sint32
-                        | Kind::Sint64
-                        | Kind::Bool => WireType::Varint,
-                        _ => unreachable!("invalid entry type for packed list"),
-                    };
                     prost::encoding::merge_loop(values, buf, ctx, |values, buf, ctx| {
                         let mut value = Value::default_value(&field_kind);
-                        value.merge_field(field_desc, packed_wire_type, buf, ctx)?;
+                        value.merge_field(field_desc, field_kind.wire_type(), buf, ctx)?;
                         values.push(value);
                         Ok(())
                     })

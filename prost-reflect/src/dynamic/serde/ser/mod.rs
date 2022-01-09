@@ -6,7 +6,7 @@ use serde::ser::{Serialize, SerializeMap, SerializeSeq, Serializer};
 
 use crate::{
     descriptor::Kind,
-    dynamic::{serde::SerializeOptions, DynamicMessage, MapKey, Value},
+    dynamic::{fields::ValueAndDescriptor, serde::SerializeOptions, DynamicMessage, MapKey, Value},
     ReflectMessage,
 };
 
@@ -55,64 +55,67 @@ where
     S: SerializeMap,
 {
     if options.skip_default_fields {
-        for (field_desc, field_value) in value.fields.iter_fields(&value.desc) {
-            let name = if options.use_proto_field_name {
-                field_desc.name()
-            } else {
-                field_desc.json_name()
+        for field in value.fields.iter(&value.desc) {
+            let (name, value, ref kind) = match field {
+                ValueAndDescriptor::Field(value, ref field_desc) => {
+                    let name = if options.use_proto_field_name {
+                        field_desc.name()
+                    } else {
+                        field_desc.json_name()
+                    };
+                    (name, value, field_desc.kind())
+                }
+                ValueAndDescriptor::Extension(value, ref extension_desc) => {
+                    (extension_desc.json_name(), value, extension_desc.kind())
+                }
+                ValueAndDescriptor::Unknown(_, _) => continue,
             };
 
             map.serialize_entry(
                 name,
                 &SerializeWrapper {
-                    value: &ValueAndKind {
-                        value: field_value,
-                        kind: &field_desc.kind(),
-                    },
+                    value: &ValueAndKind { value, kind },
                     options,
                 },
             )?;
         }
     } else {
         for field_desc in value.desc.fields() {
-            if field_desc.supports_presence() && !value.fields.has(&field_desc) {
-                continue;
-            }
+            if !field_desc.supports_presence() || value.fields.has(&field_desc) {
+                let name = if options.use_proto_field_name {
+                    field_desc.name()
+                } else {
+                    field_desc.json_name()
+                };
 
-            let value = value.fields.get(&field_desc);
-            let name = if options.use_proto_field_name {
-                field_desc.name()
-            } else {
-                field_desc.json_name()
-            };
-
-            map.serialize_entry(
-                name,
-                &SerializeWrapper {
-                    value: &ValueAndKind {
-                        value: value.as_ref(),
-                        kind: &field_desc.kind(),
+                map.serialize_entry(
+                    name,
+                    &SerializeWrapper {
+                        value: &ValueAndKind {
+                            value: value.fields.get(&field_desc).as_ref(),
+                            kind: &field_desc.kind(),
+                        },
+                        options,
                     },
-                    options,
-                },
-            )?;
+                )?;
+            }
+        }
+        for extension_desc in value.desc.extensions() {
+            if !extension_desc.supports_presence() || value.fields.has(&extension_desc) {
+                map.serialize_entry(
+                    extension_desc.json_name(),
+                    &SerializeWrapper {
+                        value: &ValueAndKind {
+                            value: value.fields.get(&extension_desc).as_ref(),
+                            kind: &extension_desc.kind(),
+                        },
+                        options,
+                    },
+                )?;
+            }
         }
     }
 
-    for (field_desc, field_value) in value.fields.iter_extensions(&value.desc) {
-        let name = field_desc.json_name();
-
-        map.serialize_entry(
-            name,
-            &SerializeWrapper {
-                value: &ValueAndKind {
-                    value: field_value,
-                    kind: &field_desc.kind(),
-                },
-                options,
-            },
-        )?;
-    }
     Ok(())
 }
 

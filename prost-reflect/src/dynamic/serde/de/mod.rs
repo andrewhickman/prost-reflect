@@ -7,7 +7,7 @@ use prost::Message;
 use serde::de::{DeserializeSeed, Deserializer, Error, Visitor};
 
 use crate::{
-    dynamic::{field::FieldDescriptorLike, serde::DeserializeOptions, DynamicMessage, Value},
+    dynamic::{fields::FieldDescriptorLike, serde::DeserializeOptions, DynamicMessage, Value},
     EnumDescriptor, Kind, MessageDescriptor,
 };
 

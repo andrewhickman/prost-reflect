@@ -2,6 +2,7 @@ mod build;
 #[cfg(test)]
 mod tests;
 
+use prost::encoding::WireType;
 use prost_types::field_descriptor_proto;
 
 use std::{
@@ -717,6 +718,22 @@ impl Kind {
         match self {
             Kind::Enum(desc) => Some(desc),
             _ => None,
+        }
+    }
+
+    pub(crate) fn wire_type(&self) -> WireType {
+        match self {
+            Kind::Double | Kind::Fixed64 | Kind::Sfixed64 => WireType::SixtyFourBit,
+            Kind::Float | Kind::Fixed32 | Kind::Sfixed32 => WireType::ThirtyTwoBit,
+            Kind::Enum(_)
+            | Kind::Int32
+            | Kind::Int64
+            | Kind::Uint32
+            | Kind::Uint64
+            | Kind::Sint32
+            | Kind::Sint64
+            | Kind::Bool => WireType::Varint,
+            Kind::String | Kind::Bytes | Kind::Message(_) => WireType::LengthDelimited,
         }
     }
 }
