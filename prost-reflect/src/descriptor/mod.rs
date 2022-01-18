@@ -6,8 +6,8 @@ pub use self::{
     error::DescriptorError,
     service::{MethodDescriptor, ServiceDescriptor},
     ty::{
-        EnumDescriptor, EnumValueDescriptor, ExtensionDescriptor, FieldDescriptor, Kind,
-        MessageDescriptor, OneofDescriptor,
+        Cardinality, EnumDescriptor, EnumValueDescriptor, ExtensionDescriptor, FieldDescriptor,
+        Kind, MessageDescriptor, OneofDescriptor,
     },
 };
 
