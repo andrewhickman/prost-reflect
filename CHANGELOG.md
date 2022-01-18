@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.3] - 2022-01-18
+
+### Fixed
+
+- The `Cardinality` enum is now exported. Thanks to [@benesch] for [#4].
+
 ## [0.5.2] - 2022-01-09
 
 ### Changed
@@ -129,7 +135,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial release, including support for inspecting message types at runtime.
 
-[Unreleased]: https://github.com/andrewhickman/prost-reflect/compare/0.5.2...HEAD
+[Unreleased]: https://github.com/andrewhickman/prost-reflect/compare/0.5.3...HEAD
+[0.5.3]: https://github.com/andrewhickman/prost-reflect/compare/0.5.2...0.5.3
 [0.5.2]: https://github.com/andrewhickman/prost-reflect/compare/0.5.1...0.5.2
 [0.5.1]: https://github.com/andrewhickman/prost-reflect/compare/0.5.0...0.5.1
 [0.5.0]: https://github.com/andrewhickman/prost-reflect/compare/0.4.0...0.5.0
@@ -142,3 +149,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [0.3.0]: https://github.com/andrewhickman/prost-reflect/compare/0.2.0...0.3.0
 [0.2.0]: https://github.com/andrewhickman/prost-reflect/compare/0.1.0...0.2.0
 [0.1.0]: https://github.com/andrewhickman/prost-reflect/releases/tag/0.1.0
+
+[@benesch]: https://github.com/benesch
+
+[#4]: https://github.com/andrewhickman/prost-reflect/pull/4
