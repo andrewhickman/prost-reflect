@@ -328,7 +328,7 @@ impl ReflectMessage for DynamicMessage {
 impl Value {
     /// Returns the default value for the given protobuf field.
     ///
-    /// This is equivalent to [default_value][Value::default_value] except for the following cases:
+    /// This is equivalent to [`default_value`][Value::default_value] except for the following cases:
     ///
     /// * If the field is a map, an empty map is returned.
     /// * If the field is `repeated`, an empty list is returned.
@@ -347,7 +347,7 @@ impl Value {
 
     /// Returns the default value for the given protobuf extension field.
     ///
-    /// See [default_value_for_field][Value::default_value_for_field] for more details.
+    /// See [`default_value_for_field`][Value::default_value_for_field] for more details.
     pub fn default_value_for_extension(extension_desc: &ExtensionDescriptor) -> Self {
         if extension_desc.is_list() {
             Value::List(Vec::default())
@@ -361,6 +361,9 @@ impl Value {
     }
 
     /// Returns the default value for the given protobuf type `kind`.
+    ///
+    /// Unlike [`default_value_for_field`](Value::default_value_for_field), this method does not
+    /// look at field cardinality, so it will never return a list or map.
     pub fn default_value(kind: &Kind) -> Self {
         match kind {
             Kind::Message(desc) => Value::Message(DynamicMessage::new(desc.clone())),
@@ -414,7 +417,7 @@ impl Value {
 
     /// Returns `true` if this value can be set for a given extension field.
     ///
-    /// See [is_valid_for_field][Value::is_valid_for_field] for more details.
+    /// See [`is_valid_for_field`][Value::is_valid_for_field] for more details.
     pub fn is_valid_for_extension(&self, extension_desc: &ExtensionDescriptor) -> bool {
         match (self, extension_desc.kind()) {
             (Value::List(list), kind) if extension_desc.is_list() => {
