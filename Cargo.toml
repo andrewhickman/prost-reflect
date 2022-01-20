@@ -5,3 +5,7 @@ members = [
     "prost-reflect-tests",
     "prost-reflect-conformance-tests"
 ]
+
+[workspace.metadata.release]
+allow-branch = ["main"]
+pre-release-commit-message = "(cargo-release) {{crate_name}} version {{version}}"
