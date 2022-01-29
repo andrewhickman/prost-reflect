@@ -951,7 +951,7 @@ impl OneofDescriptor {
         self.message.parent_file()
     }
 
-    /// Gets a reference to the [`MessageDescriptor`] this message is defined in.
+    /// Gets a reference to the [`MessageDescriptor`] this oneof is defined in.
     pub fn parent_message(&self) -> &MessageDescriptor {
         &self.message
     }
