@@ -1,9 +1,9 @@
-use std::{cmp::Ordering, convert::TryFrom};
+use std::cmp::Ordering;
 
 use base64::display::Base64Display;
-use chrono::{TimeZone, Utc};
 use prost::{DecodeError, Message};
 use serde::ser::{Error, Serialize, SerializeMap, SerializeSeq, Serializer};
+use time::{Duration, OffsetDateTime, UtcOffset};
 
 use crate::{
     dynamic::{
@@ -112,15 +112,12 @@ where
         return Err(Error::custom("timestamp out of range"));
     }
 
-    let datetime = Utc
-        .timestamp_opt(
-            raw.seconds,
-            u32::try_from(raw.nanos).map_err(|_| Error::custom("invalid timestamp"))?,
-        )
-        .single()
-        .ok_or_else(|| Error::custom("invalid timestamp"))?;
+    let datetime = OffsetDateTime::from_unix_timestamp(raw.seconds)
+        .map_err(|_| Error::custom("invalid timestamp"))?
+        + Duration::nanoseconds(raw.nanos.into());
+    let rfc3339 = format_rfc3339(&datetime).map_err(|_| Error::custom("invalid timestamp"))?;
 
-    serializer.serialize_str(&datetime.to_rfc3339_opts(chrono::SecondsFormat::AutoSi, true))
+    serializer.serialize_str(&rfc3339)
 }
 
 fn serialize_duration<S>(
@@ -452,4 +449,66 @@ where
     E: Error,
 {
     Error::custom(format!("error decoding: {}", err))
+}
+
+fn format_rfc3339(date_time: &OffsetDateTime) -> Result<String, time::error::Format> {
+    use time::format_description::{modifier::*, Component, FormatItem};
+
+    debug_assert_eq!(date_time.offset(), UtcOffset::UTC);
+
+    static PREFIX: &[FormatItem] = &[
+        FormatItem::Component(Component::Year(Year::default())),
+        FormatItem::Literal(b"-"),
+        FormatItem::Component(Component::Month(Month::default())),
+        FormatItem::Literal(b"-"),
+        FormatItem::Component(Component::Day(Day::default())),
+        FormatItem::Literal(b"T"),
+        FormatItem::Component(Component::Hour(Hour::default())),
+        FormatItem::Literal(b":"),
+        FormatItem::Component(Component::Minute(Minute::default())),
+        FormatItem::Literal(b":"),
+        FormatItem::Component(Component::Second(Second::default())),
+    ];
+
+    let nanos = date_time.nanosecond();
+    if nanos == 0 {
+        let format_desc = [FormatItem::Compound(PREFIX), FormatItem::Literal(b"Z")];
+        date_time.format(format_desc.as_ref())
+    } else if nanos % 1_000_000 == 0 {
+        let format_desc = [
+            FormatItem::Compound(PREFIX),
+            FormatItem::Literal(b"."),
+            FormatItem::Component(Component::Subsecond({
+                let mut subsec = Subsecond::default();
+                subsec.digits = SubsecondDigits::Three;
+                subsec
+            })),
+            FormatItem::Literal(b"Z"),
+        ];
+        date_time.format(format_desc.as_ref())
+    } else if nanos % 1_000 == 0 {
+        let format_desc = [
+            FormatItem::Compound(PREFIX),
+            FormatItem::Literal(b"."),
+            FormatItem::Component(Component::Subsecond({
+                let mut subsec = Subsecond::default();
+                subsec.digits = SubsecondDigits::Six;
+                subsec
+            })),
+            FormatItem::Literal(b"Z"),
+        ];
+        date_time.format(format_desc.as_ref())
+    } else {
+        let format_desc = [
+            FormatItem::Compound(PREFIX),
+            FormatItem::Literal(b"."),
+            FormatItem::Component(Component::Subsecond({
+                let mut subsec = Subsecond::default();
+                subsec.digits = SubsecondDigits::Nine;
+                subsec
+            })),
+            FormatItem::Literal(b"Z"),
+        ];
+        date_time.format(format_desc.as_ref())
+    }
 }

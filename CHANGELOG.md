@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Replace [`chrono`](https://crates.io/crates/chrono) dependency with [`time`](https://crates.io/crates/time) for parsing and formatting RFC 3339 timestamps when the `serde` feature is enabled. This avoids security vulnerabilities [RUSTSEC-2020-0071](https://rustsec.org/advisories/RUSTSEC-2020-0071) and [RUSTSEC-2020-0159](https://rustsec.org/advisories/RUSTSEC-2020-0159) which are not yet patched in `chrono`.
+
 ## [0.5.3] - 2022-01-18
 
 ### Fixed

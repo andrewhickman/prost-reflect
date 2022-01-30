@@ -5,12 +5,12 @@ use std::{
     str::FromStr,
 };
 
-use chrono::{DateTime, Utc};
 use prost::Message;
 use serde::de::{
     DeserializeSeed, Deserializer, Error, IgnoredAny, IntoDeserializer, MapAccess, SeqAccess,
     Visitor,
 };
+use time::{format_description::well_known::Rfc3339, OffsetDateTime};
 
 use crate::{
     dynamic::{
@@ -172,13 +172,10 @@ impl<'de> Visitor<'de> for GoogleProtobufTimestampVisitor {
             return Err(Error::custom("timestamp contains lowercase character"));
         }
 
-        let fixed_offset = DateTime::parse_from_rfc3339(v).map_err(Error::custom)?;
-
-        let utc: DateTime<Utc> = fixed_offset.into();
-
+        let datetime = OffsetDateTime::parse(v, &Rfc3339).map_err(Error::custom)?;
         let mut timestamp = prost_types::Timestamp {
-            seconds: utc.timestamp(),
-            nanos: utc.timestamp_subsec_nanos() as i32,
+            seconds: datetime.unix_timestamp(),
+            nanos: datetime.nanosecond() as i32,
         };
 
         if timestamp.seconds < MIN_TIMESTAMP_SECONDS || timestamp.seconds > MAX_TIMESTAMP_SECONDS {
