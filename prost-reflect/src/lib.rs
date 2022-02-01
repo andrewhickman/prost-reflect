@@ -100,7 +100,7 @@ Config::new()
 )]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![warn(missing_debug_implementations, missing_docs)]
-#![doc(html_root_url = "https://docs.rs/prost-reflect/0.5.4/")]
+#![doc(html_root_url = "https://docs.rs/prost-reflect/0.5.5/")]
 
 #[cfg(feature = "serde1")]
 extern crate serde1 as serde;
