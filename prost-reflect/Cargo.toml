@@ -60,7 +60,7 @@ exactly = 1
 [[package.metadata.release.pre-release-replacements]]
 file = "../CHANGELOG.md"
 search = "\\[Unreleased\\]: https://github\\.com/andrewhickman/prost-reflect/compare/.*?...HEAD"
-replace = "^[Unreleased]: https://github.com/andrewhickman/prost-reflect/compare/{{version}}...HEAD\n[{{version}}]: https://github.com/andrewhickman/prost-reflect/compare/{{prev_version}}...{{version}}"
+replace = "[Unreleased]: https://github.com/andrewhickman/prost-reflect/compare/{{version}}...HEAD\n[{{version}}]: https://github.com/andrewhickman/prost-reflect/compare/{{prev_version}}...{{version}}"
 exactly = 1
 
 [package.metadata.docs.rs]
