@@ -86,22 +86,6 @@ impl TypeMap {
             .map(|(&number, field)| (field.json_name.clone(), number))
             .collect();
 
-        let reserved_ranges = message_proto
-            .reserved_range
-            .iter()
-            .map(|n| (n.start() as u32)..(n.end() as u32))
-            .collect();
-        let reserved_names = message_proto
-            .reserved_name
-            .iter()
-            .map(|n| n.as_str().into())
-            .collect();
-        let extension_ranges = message_proto
-            .extension_range
-            .iter()
-            .map(|n| (n.start() as u32)..(n.end() as u32))
-            .collect();
-
         if is_map_entry
             && (!fields.contains_key(&MAP_ENTRY_KEY_NUMBER)
                 || !fields.contains_key(&MAP_ENTRY_VALUE_NUMBER))
@@ -123,9 +107,6 @@ impl TypeMap {
             full_name,
             parent,
             is_map_entry,
-            reserved_names,
-            reserved_ranges,
-            extension_ranges,
             extensions: vec![],
         });
 
@@ -301,17 +282,6 @@ impl TypeMap {
             0
         };
 
-        let reserved_ranges = enum_proto
-            .reserved_range
-            .iter()
-            .map(|n| n.start()..=n.end())
-            .collect();
-        let reserved_names = enum_proto
-            .reserved_name
-            .iter()
-            .map(|n| n.as_str().into())
-            .collect();
-
         debug_assert_eq!(
             self.get_by_name(&full_name),
             Some(TypeId::new_enum(self.enums.len()))
@@ -322,8 +292,6 @@ impl TypeMap {
             value_names,
             values,
             default_value,
-            reserved_ranges,
-            reserved_names,
         });
         Ok(())
     }
