@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added `MessageDescriptor::descriptor_proto` and friends to get the raw `prost_types` representation of protobuf definitions.
+
 ## [0.5.4] - 2022-02-01
 
 ### Changed

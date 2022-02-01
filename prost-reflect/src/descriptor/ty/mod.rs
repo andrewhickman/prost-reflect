@@ -2,9 +2,6 @@ mod build;
 #[cfg(test)]
 mod tests;
 
-use prost::encoding::WireType;
-use prost_types::field_descriptor_proto;
-
 use std::{
     collections::{
         hash_map::{self, HashMap},
@@ -13,6 +10,12 @@ use std::{
     convert::TryInto,
     fmt,
     ops::{Range, RangeInclusive},
+};
+
+use prost::encoding::WireType;
+use prost_types::{
+    field_descriptor_proto, DescriptorProto, EnumDescriptorProto, EnumValueDescriptorProto,
+    FieldDescriptorProto, OneofDescriptorProto,
 };
 
 use crate::descriptor::{
@@ -240,6 +243,12 @@ impl MessageDescriptor {
         parse_namespace(&self.root_message_ty().full_name)
     }
 
+    /// Gets a reference to the raw [`DescriptorProto`] wrapped by this [`MessageDescriptor`].
+    pub fn descriptor_proto(&self) -> &DescriptorProto {
+        self.parent_file()
+            .find_message_descriptor_proto(self.package_name(), self.full_name())
+    }
+
     /// Gets an iterator yielding a [`FieldDescriptor`] for each field defined in this message.
     pub fn fields(&self) -> impl ExactSizeIterator<Item = FieldDescriptor> + '_ {
         self.message_ty()
@@ -416,6 +425,16 @@ impl FieldDescriptor {
         &self.message_field_ty().full_name
     }
 
+    /// Gets a reference to the raw [`FieldDescriptorProto`] wrapped by this [`FieldDescriptor`].
+    pub fn field_descriptor_proto(&self) -> &FieldDescriptorProto {
+        self.parent_message()
+            .descriptor_proto()
+            .field
+            .iter()
+            .find(|field| field.number() as u32 == self.field)
+            .expect("field not found")
+    }
+
     /// Gets the unique number for this message field.
     pub fn number(&self) -> u32 {
         self.field
@@ -576,6 +595,28 @@ impl ExtensionDescriptor {
         match self.root_message_ty() {
             Some(message) => parse_namespace(&message.full_name),
             None => parse_namespace(self.full_name()),
+        }
+    }
+
+    /// Gets a reference to the raw [`FieldDescriptorProto`] wrapped by this [`ExtensionDescriptor`].
+    pub fn field_descriptor_proto(&self) -> &FieldDescriptorProto {
+        let name = self.name();
+        let package = self.package_name();
+        let namespace = parse_namespace(self.full_name());
+
+        if namespace == package {
+            self.parent_file()
+                .filter_file_descriptor_protos_by_package(package)
+                .flat_map(|file| file.extension.iter())
+                .find(|extension| extension.name() == name)
+                .expect("extension not found")
+        } else {
+            self.parent_file()
+                .find_message_descriptor_proto(package, namespace)
+                .extension
+                .iter()
+                .find(|extension| extension.name() == name)
+                .expect("extension not found")
         }
     }
 
@@ -823,6 +864,28 @@ impl EnumDescriptor {
         }
     }
 
+    /// Gets a reference to the raw [`EnumDescriptorProto`] wrapped by this [`EnumDescriptor`].
+    pub fn enum_descriptor_proto(&self) -> &EnumDescriptorProto {
+        let name = self.name();
+        let package = self.package_name();
+        let namespace = parse_namespace(self.full_name());
+
+        if namespace == package {
+            self.parent_file()
+                .filter_file_descriptor_protos_by_package(package)
+                .flat_map(|file| file.enum_type.iter())
+                .find(|extension| extension.name() == name)
+                .expect("enum not found")
+        } else {
+            self.parent_file()
+                .find_message_descriptor_proto(package, namespace)
+                .enum_type
+                .iter()
+                .find(|enum_ty| enum_ty.name() == name)
+                .expect("enum not found")
+        }
+    }
+
     /// Gets the default value for the enum type.
     pub fn default_value(&self) -> EnumValueDescriptor {
         EnumValueDescriptor {
@@ -925,6 +988,16 @@ impl EnumValueDescriptor {
         &self.enum_value_ty().full_name
     }
 
+    /// Gets a reference to the raw [`EnumValueDescriptorProto`] wrapped by this [`EnumValueDescriptor`].
+    pub fn enum_value_descriptor_proto(&self) -> &EnumValueDescriptorProto {
+        self.parent_enum()
+            .enum_descriptor_proto()
+            .value
+            .iter()
+            .find(|value| value.number() == self.number)
+            .expect("enum value not found")
+    }
+
     /// Gets the number representing this enum value.
     pub fn number(&self) -> i32 {
         self.number
@@ -964,6 +1037,11 @@ impl OneofDescriptor {
     /// Gets the full name of the oneof, e.g. `my.package.MyMessage.my_oneof`.
     pub fn full_name(&self) -> &str {
         &self.oneof_ty().full_name
+    }
+
+    /// Gets a reference to the raw [`OneofDescriptorProto`] wrapped by this [`OneofDescriptor`].
+    pub fn oneof_descriptor_proto(&self) -> &OneofDescriptorProto {
+        &self.parent_message().descriptor_proto().oneof_decl[self.index]
     }
 
     /// Gets an iterator yielding a [`FieldDescriptor`] for each field of the parent message this oneof contains.

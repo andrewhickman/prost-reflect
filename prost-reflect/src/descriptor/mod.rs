@@ -14,7 +14,7 @@ pub use self::{
 use std::{fmt, sync::Arc};
 
 use prost::{bytes::Buf, Message};
-use prost_types::FileDescriptorSet;
+use prost_types::{DescriptorProto, FileDescriptorProto, FileDescriptorSet};
 
 use self::service::ServiceDescriptorInner;
 
@@ -131,6 +131,41 @@ impl FileDescriptor {
     pub fn get_enum_by_name(&self, name: &str) -> Option<EnumDescriptor> {
         EnumDescriptor::try_get_by_name(self, name)
     }
+
+    fn filter_file_descriptor_protos_by_package<'a>(
+        &'a self,
+        package: &'a str,
+    ) -> impl Iterator<Item = &FileDescriptorProto> + 'a {
+        self.file_descriptor_set()
+            .file
+            .iter()
+            .filter(move |file| file.package() == package)
+    }
+
+    fn find_message_descriptor_proto<'a>(
+        &'a self,
+        package: &'a str,
+        full_name: &'a str,
+    ) -> &'a DescriptorProto {
+        let mut ancestors = strip_namespace(package, full_name).split('.');
+        let root_name = ancestors.next().expect("expected at least one name");
+
+        let mut message_proto = self
+            .filter_file_descriptor_protos_by_package(package)
+            .flat_map(|file| file.message_type.iter())
+            .find(|message| message.name() == root_name)
+            .expect("message not found");
+
+        for child_message_name in ancestors {
+            message_proto = message_proto
+                .nested_type
+                .iter()
+                .find(|message| message.name() == child_message_name)
+                .expect("message proto not found");
+        }
+
+        message_proto
+    }
 }
 
 impl fmt::Debug for FileDescriptor {
@@ -176,6 +211,16 @@ fn parse_name(full_name: &str) -> &str {
     match full_name.rsplit_once('.') {
         Some((_, name)) => name,
         None => full_name,
+    }
+}
+
+fn strip_namespace<'a>(namespace: &str, full_name: &'a str) -> &'a str {
+    if namespace.is_empty() {
+        full_name
+    } else {
+        debug_assert!(full_name.starts_with(namespace));
+        debug_assert_eq!(full_name.as_bytes()[namespace.len()], b'.');
+        &full_name[namespace.len() + 1..]
     }
 }
 

@@ -206,3 +206,71 @@ fn test_descriptor_names_no_package() {
     assert_eq!(method_desc.name(), "MyMethod");
     assert_eq!(method_desc.full_name(), "MyService.MyMethod");
 }
+
+#[test]
+fn test_debug_impls() {
+    // Check none of the debug impls accidentally recurse infinitely
+    let _ = format!("{:?}", test_file_descriptor());
+
+    for service in test_file_descriptor().services() {
+        let _ = format!("{:?}", service);
+        for method in service.methods() {
+            let _ = format!("{:?}", method);
+        }
+    }
+
+    for message in test_file_descriptor().all_messages() {
+        let _ = format!("{:?}", message);
+        for field in message.fields() {
+            let _ = format!("{:?}", field);
+        }
+        for oneof in message.oneofs() {
+            let _ = format!("{:?}", oneof);
+        }
+    }
+
+    for enum_ in test_file_descriptor().all_enums() {
+        let _ = format!("{:?}", enum_);
+        for value in enum_.values() {
+            let _ = format!("{:?}", value);
+        }
+    }
+
+    for extension in test_file_descriptor().all_extensions() {
+        let _ = format!("{:?}", extension);
+    }
+}
+
+#[test]
+fn test_raw_getters() {
+    // Check none of the debug impls accidentally recurse infinitely
+    let _ = format!("{:?}", test_file_descriptor());
+
+    for service in test_file_descriptor().services() {
+        assert_eq!(service.service_descriptor_proto().name(), service.name());
+        for method in service.methods() {
+            assert_eq!(method.method_descriptor_proto().name(), method.name());
+        }
+    }
+
+    for message in test_file_descriptor().all_messages() {
+        assert_eq!(message.descriptor_proto().name(), message.name());
+        for field in message.fields() {
+            assert_eq!(field.field_descriptor_proto().name(), field.name());
+        }
+        for oneof in message.oneofs() {
+            assert_eq!(oneof.oneof_descriptor_proto().name(), oneof.name());
+        }
+    }
+
+    for enum_ in test_file_descriptor().all_enums() {
+        assert_eq!(enum_.enum_descriptor_proto().name(), enum_.name());
+        for value in enum_.values() {
+            assert_eq!(value.enum_value_descriptor_proto().name(), value.name());
+        }
+    }
+
+    for extension in test_file_descriptor().all_extensions() {
+        assert_eq!(extension.field_descriptor_proto().name(), extension.name());
+    }
+}

@@ -77,6 +77,20 @@ impl ServiceDescriptor {
         parse_namespace(self.full_name())
     }
 
+    /// Gets a reference to the raw [`ServiceDescriptorProto`] wrapped by this [`ServiceDescriptor`].
+    pub fn service_descriptor_proto(&self) -> &ServiceDescriptorProto {
+        let name = self.name();
+        let package = self.package_name();
+        self.parent_file()
+            .file_descriptor_set()
+            .file
+            .iter()
+            .filter(|file| file.package() == package)
+            .flat_map(|file| file.service.iter())
+            .find(|service| service.name() == name)
+            .expect("service proto not found")
+    }
+
     /// Gets an iterator yielding a [`MethodDescriptor`] for each method defined in this service.
     pub fn methods(&self) -> impl ExactSizeIterator<Item = MethodDescriptor> + '_ {
         (0..self.inner().methods.len()).map(move |index| MethodDescriptor {
@@ -159,6 +173,11 @@ impl MethodDescriptor {
     /// Gets the full name of the method, e.g. `my.package.MyService.my_method`.
     pub fn full_name(&self) -> &str {
         &self.inner().full_name
+    }
+
+    /// Gets a reference to the raw [`MethodDescriptorProto`] wrapped by this [`MethodDescriptor`].
+    pub fn method_descriptor_proto(&self) -> &MethodDescriptorProto {
+        &self.parent_service().service_descriptor_proto().method[self.index]
     }
 
     /// Gets the [`MessageDescriptor`] for the input type of this method.
