@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.4] - 2022-02-01
+
 ### Changed
 
 - Replace [`chrono`](https://crates.io/crates/chrono) dependency with [`time`](https://crates.io/crates/time) for parsing and formatting RFC 3339 timestamps when the `serde` feature is enabled. This avoids security vulnerabilities [RUSTSEC-2020-0071](https://rustsec.org/advisories/RUSTSEC-2020-0071) and [RUSTSEC-2020-0159](https://rustsec.org/advisories/RUSTSEC-2020-0159) which are not yet patched in `chrono`.
@@ -139,7 +141,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial release, including support for inspecting message types at runtime.
 
-[Unreleased]: https://github.com/andrewhickman/prost-reflect/compare/0.5.3...HEAD
+^[Unreleased]: https://github.com/andrewhickman/prost-reflect/compare/0.5.4...HEAD
+[0.5.4]: https://github.com/andrewhickman/prost-reflect/compare/0.5.3...0.5.4
 [0.5.3]: https://github.com/andrewhickman/prost-reflect/compare/0.5.2...0.5.3
 [0.5.2]: https://github.com/andrewhickman/prost-reflect/compare/0.5.1...0.5.2
 [0.5.1]: https://github.com/andrewhickman/prost-reflect/compare/0.5.0...0.5.1
