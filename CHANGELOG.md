@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.6] - 2022-02-03
+
 ### Fixed
 
 - Fixed handling of enums with the `allow_alias` option (see [#9]).
@@ -151,7 +153,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial release, including support for inspecting message types at runtime.
 
-[Unreleased]: https://github.com/andrewhickman/prost-reflect/compare/0.5.5...HEAD
+[Unreleased]: https://github.com/andrewhickman/prost-reflect/compare/0.5.6...HEAD
+[0.5.6]: https://github.com/andrewhickman/prost-reflect/compare/0.5.5...0.5.6
 [0.5.5]: https://github.com/andrewhickman/prost-reflect/compare/0.5.4...0.5.5
 [0.5.4]: https://github.com/andrewhickman/prost-reflect/compare/0.5.3...0.5.4
 [0.5.3]: https://github.com/andrewhickman/prost-reflect/compare/0.5.2...0.5.3
