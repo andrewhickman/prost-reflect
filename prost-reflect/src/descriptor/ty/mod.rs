@@ -109,20 +109,21 @@ pub struct EnumDescriptor {
 struct EnumDescriptorInner {
     full_name: Box<str>,
     parent: Option<TypeId>,
-    value_names: HashMap<String, i32>,
-    values: BTreeMap<i32, EnumValueDescriptorInner>,
-    default_value: i32,
+    value_names: HashMap<Box<str>, usize>,
+    values: Vec<EnumValueDescriptorInner>,
+    default_value: usize,
 }
 
 /// A value in a protobuf enum type.
 #[derive(Clone, PartialEq, Eq)]
 pub struct EnumValueDescriptor {
     parent: EnumDescriptor,
-    number: i32,
+    index: usize,
 }
 
 struct EnumValueDescriptorInner {
     name: Box<str>,
+    number: i32,
     full_name: Box<str>,
 }
 
@@ -894,7 +895,7 @@ impl EnumDescriptor {
     pub fn default_value(&self) -> EnumValueDescriptor {
         EnumValueDescriptor {
             parent: self.clone(),
-            number: self.enum_ty().default_value,
+            index: self.enum_ty().default_value,
         }
     }
 
@@ -903,32 +904,36 @@ impl EnumDescriptor {
         self.enum_ty()
             .value_names
             .get(name)
-            .map(|&number| EnumValueDescriptor {
+            .map(|&index| EnumValueDescriptor {
                 parent: self.clone(),
-                number,
+                index,
             })
     }
 
     /// Gets a [`EnumValueDescriptor`] for the enum value with the given number, or `None` if no such value exists.
+    ///
+    /// If the enum was defined with the `allow_alias` option and has multiple values with the given number, it is
+    /// unspecified which one will be returned.
     pub fn get_value(&self, number: i32) -> Option<EnumValueDescriptor> {
-        self.enum_ty()
+        match self
+            .enum_ty()
             .values
-            .get(&number)
-            .map(|_| EnumValueDescriptor {
+            .binary_search_by_key(&number, |v| v.number)
+        {
+            Ok(index) => Some(EnumValueDescriptor {
                 parent: self.clone(),
-                number,
-            })
+                index,
+            }),
+            Err(_) => None,
+        }
     }
 
     /// Gets an iterator yielding a [`EnumValueDescriptor`] for each value in this enum.
     pub fn values(&self) -> impl ExactSizeIterator<Item = EnumValueDescriptor> + '_ {
-        self.enum_ty()
-            .values
-            .keys()
-            .map(move |&number| EnumValueDescriptor {
-                parent: self.clone(),
-                number,
-            })
+        (0..self.enum_ty().values.len()).map(move |index| EnumValueDescriptor {
+            parent: self.clone(),
+            index,
+        })
     }
 
     /// Gets an iterator over reserved value number ranges in this enum.
@@ -1004,17 +1009,17 @@ impl EnumValueDescriptor {
             .enum_descriptor_proto()
             .value
             .iter()
-            .find(|value| value.number() == self.number)
+            .find(|value| value.name() == self.name())
             .expect("enum value not found")
     }
 
     /// Gets the number representing this enum value.
     pub fn number(&self) -> i32 {
-        self.number
+        self.enum_value_ty().number
     }
 
     fn enum_value_ty(&self) -> &EnumValueDescriptorInner {
-        self.parent.enum_ty().values.get(&self.number).unwrap()
+        &self.parent.enum_ty().values[self.index]
     }
 }
 

@@ -1,4 +1,7 @@
-use std::{collections::BTreeMap, rc::Rc};
+use std::{
+    collections::{BTreeMap, HashMap},
+    rc::Rc,
+};
 
 use prost::bytes::Bytes;
 use prost_types::{
@@ -171,10 +174,9 @@ impl TypeMap {
                 field_descriptor_proto::Type::Enum => {
                     let enum_ty = self.get_enum(ty);
                     enum_ty
-                        .values
-                        .iter()
-                        .find(|(_, v)| *v.name == *value)
-                        .map(|(&n, _)| crate::Value::EnumNumber(n))
+                        .value_names
+                        .get(value.as_str())
+                        .map(|&index| crate::Value::EnumNumber(enum_ty.values[index].number))
                         .ok_or(())
                 }
                 field_descriptor_proto::Type::Message | field_descriptor_proto::Type::Group => {
@@ -245,41 +247,38 @@ impl TypeMap {
             syntax,
         }: EnumProto,
     ) -> Result<(), DescriptorError> {
-        let value_names = enum_proto
-            .value
-            .iter()
-            .map(|value| (value.name().to_owned(), value.number()))
-            .collect();
-
         let package_name = parse_namespace(&full_name);
-        let values: BTreeMap<_, _> = enum_proto
+        let mut values: Vec<_> = enum_proto
             .value
             .iter()
-            .map(|value_proto| {
-                (
-                    value_proto.number(),
-                    EnumValueDescriptorInner {
-                        name: value_proto.name().into(),
-                        full_name: make_full_name(package_name, value_proto.name()),
-                    },
-                )
+            .map(|value_proto| EnumValueDescriptorInner {
+                name: value_proto.name().into(),
+                number: value_proto.number(),
+                full_name: make_full_name(package_name, value_proto.name()),
             })
+            .collect();
+        values.sort_by_key(|v| v.number);
+
+        let value_names: HashMap<Box<str>, usize> = values
+            .iter()
+            .enumerate()
+            .map(|(index, value)| (value.name.clone(), index))
             .collect();
 
         let parent = parent.map(|p| self.try_get_by_name(&p)).transpose()?;
 
         let default_value = if syntax == Syntax::Proto2 {
-            enum_proto
+            let name = enum_proto
                 .value
                 .get(0)
-                .map(|v| v.number())
                 .ok_or_else(DescriptorError::empty_enum)?
+                .name();
+            value_names[name]
         } else {
-            if !values.contains_key(&0) {
-                return Err(DescriptorError::empty_enum());
-            }
-
-            0
+            values
+                .iter()
+                .position(|v| v.number == 0)
+                .ok_or_else(DescriptorError::empty_enum)?
         };
 
         debug_assert_eq!(

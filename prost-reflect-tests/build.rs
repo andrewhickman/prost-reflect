@@ -33,6 +33,10 @@ fn main() -> io::Result<()> {
             "#[prost_reflect(file_descriptor = \"TEST_FILE_DESCRIPTOR\", message_name = \"test.MessageWithOneof\")]",
         )
         .type_attribute(
+            ".test.MessageWithAliasedEnum",
+            "#[prost_reflect(file_descriptor = \"TEST_FILE_DESCRIPTOR\", message_name = \"test.MessageWithAliasedEnum\")]",
+        )
+        .type_attribute(
             ".test.Point",
             "#[prost_reflect(file_descriptor = \"TEST_FILE_DESCRIPTOR\", message_name = \"test.Point\")]",
         )

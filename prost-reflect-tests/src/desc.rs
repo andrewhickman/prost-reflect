@@ -274,3 +274,35 @@ fn test_raw_getters() {
         assert_eq!(extension.field_descriptor_proto().name(), extension.name());
     }
 }
+
+#[test]
+fn test_enum_alias() {
+    let enum_desc = test_file_descriptor()
+        .get_enum_by_name("test.EnumWithAlias")
+        .unwrap();
+    assert_eq!(enum_desc.name(), "EnumWithAlias");
+    assert_eq!(enum_desc.full_name(), "test.EnumWithAlias");
+    assert_eq!(enum_desc.parent_message(), None);
+    assert_eq!(enum_desc.package_name(), "test");
+
+    assert_eq!(enum_desc.get_value_by_name("FOO").unwrap().number(), 0);
+    assert_eq!(enum_desc.get_value_by_name("BAR").unwrap().number(), 0);
+    assert_eq!(enum_desc.get_value_by_name("A").unwrap().number(), 1);
+    assert_eq!(enum_desc.get_value_by_name("B").unwrap().number(), 1);
+    assert_eq!(enum_desc.get_value_by_name("C").unwrap().number(), 1);
+    assert_eq!(enum_desc.get_value_by_name("TWO").unwrap().number(), 2);
+
+    assert_eq!(enum_desc.get_value(0).unwrap().number(), 0);
+    assert!(matches!(
+        enum_desc.get_value(0).unwrap().name(),
+        "FOO" | "BAR"
+    ));
+    assert_eq!(enum_desc.get_value(1).unwrap().number(), 1);
+    assert!(matches!(
+        enum_desc.get_value(1).unwrap().name(),
+        "A" | "B" | "C"
+    ));
+    assert_eq!(enum_desc.get_value(2).unwrap().number(), 2);
+    assert_eq!(enum_desc.get_value(2).unwrap().name(), "TWO");
+    assert_eq!(enum_desc.get_value(3), None);
+}

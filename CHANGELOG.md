@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed handling of enums with the `allow_alias` option (see [#9]).
+
 ## [0.5.5] - 2022-02-01
 
 ### Added
@@ -167,3 +171,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [@benesch]: https://github.com/benesch
 
 [#4]: https://github.com/andrewhickman/prost-reflect/pull/4
+[#9]: https://github.com/andrewhickman/prost-reflect/issues/9

@@ -11,8 +11,8 @@ use serde::Serialize;
 use serde_json::json;
 
 use crate::{
-    arbitrary, message_with_oneof, test_file_descriptor, ComplexType, MessageWithOneof, Point,
-    ScalarArrays, Scalars, WellKnownTypes,
+    arbitrary, message_with_oneof, test_file_descriptor, ComplexType, MessageWithAliasedEnum,
+    MessageWithOneof, Point, ScalarArrays, Scalars, WellKnownTypes,
 };
 
 #[test]
@@ -619,6 +619,25 @@ fn deserialize_scalars_alt() {
             bytes: b"i\xa6\xbem\xb6\xffX".to_vec(),
         },
     );
+}
+
+#[test]
+fn deserialize_aliased_enum() {
+    let value1: MessageWithAliasedEnum = from_json(
+        json!({
+            "aliased": "A"
+        }),
+        "test.MessageWithAliasedEnum",
+    );
+    let value2: MessageWithAliasedEnum = from_json(
+        json!({
+            "aliased": "B"
+        }),
+        "test.MessageWithAliasedEnum",
+    );
+
+    assert_eq!(value1, MessageWithAliasedEnum { aliased: 1 },);
+    assert_eq!(value2, MessageWithAliasedEnum { aliased: 1 },);
 }
 
 #[test]
