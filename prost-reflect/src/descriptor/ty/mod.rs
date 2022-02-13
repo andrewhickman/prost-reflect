@@ -48,14 +48,14 @@ struct MessageDescriptorInner {
     field_names: HashMap<Box<str>, u32>,
     field_json_names: HashMap<Box<str>, u32>,
     oneof_decls: Box<[OneofDescriptorInner]>,
-    extensions: Vec<usize>,
+    extensions: Vec<u32>,
 }
 
 /// A oneof field in a protobuf message.
 #[derive(Clone, PartialEq, Eq)]
 pub struct OneofDescriptor {
     message: MessageDescriptor,
-    index: usize,
+    index: u32,
 }
 
 struct OneofDescriptorInner {
@@ -88,7 +88,7 @@ struct FieldDescriptorInner {
 #[derive(Clone, PartialEq, Eq)]
 pub struct ExtensionDescriptor {
     file_set: FileDescriptor,
-    index: usize,
+    index: u32,
 }
 
 pub struct ExtensionDescriptorInner {
@@ -109,16 +109,16 @@ pub struct EnumDescriptor {
 struct EnumDescriptorInner {
     full_name: Box<str>,
     parent: Option<TypeId>,
-    value_names: HashMap<Box<str>, usize>,
+    value_names: HashMap<Box<str>, u32>,
     values: Vec<EnumValueDescriptorInner>,
-    default_value: usize,
+    default_value: u32,
 }
 
 /// A value in a protobuf enum type.
 #[derive(Clone, PartialEq, Eq)]
 pub struct EnumValueDescriptor {
     parent: EnumDescriptor,
-    index: usize,
+    index: u32,
 }
 
 struct EnumValueDescriptorInner {
@@ -255,10 +255,8 @@ impl MessageDescriptor {
 
     /// Gets an iterator yielding a [`OneofDescriptor`] for each oneof field defined in this message.
     pub fn oneofs(&self) -> impl ExactSizeIterator<Item = OneofDescriptor> + '_ {
-        (0..self.message_ty().oneof_decls.len()).map(move |index| OneofDescriptor {
-            message: self.clone(),
-            index,
-        })
+        (0..self.message_ty().oneof_decls.len())
+            .map(move |index| OneofDescriptor::new(self.clone(), index))
     }
 
     /// Gets a [`FieldDescriptor`] with the given number, or `None` if no such field exists.
@@ -507,10 +505,7 @@ impl FieldDescriptor {
     pub fn containing_oneof(&self) -> Option<OneofDescriptor> {
         self.message_field_ty()
             .oneof_index
-            .map(|index| OneofDescriptor {
-                message: self.message.clone(),
-                index,
-            })
+            .map(|index| OneofDescriptor::new(self.message.clone(), index))
     }
 
     pub(crate) fn default_value(&self) -> Option<&crate::Value> {
@@ -559,7 +554,7 @@ impl ExtensionDescriptor {
             .extensions()
             .map(move |index| ExtensionDescriptor {
                 file_set: file_set.clone(),
-                index,
+                index: index.try_into().expect("index too large"),
             })
     }
 
@@ -916,20 +911,15 @@ impl EnumDescriptor {
             .values
             .binary_search_by_key(&number, |v| v.number)
         {
-            Ok(index) => Some(EnumValueDescriptor {
-                parent: self.clone(),
-                index,
-            }),
+            Ok(index) => Some(EnumValueDescriptor::new(self.clone(), index)),
             Err(_) => None,
         }
     }
 
     /// Gets an iterator yielding a [`EnumValueDescriptor`] for each value in this enum.
     pub fn values(&self) -> impl ExactSizeIterator<Item = EnumValueDescriptor> + '_ {
-        (0..self.enum_ty().values.len()).map(move |index| EnumValueDescriptor {
-            parent: self.clone(),
-            index,
-        })
+        (0..self.enum_ty().values.len())
+            .map(move |index| EnumValueDescriptor::new(self.clone(), index))
     }
 
     /// Gets an iterator over reserved value number ranges in this enum.
@@ -980,6 +970,13 @@ impl fmt::Debug for EnumDescriptor {
 }
 
 impl EnumValueDescriptor {
+    fn new(parent: EnumDescriptor, index: usize) -> EnumValueDescriptor {
+        EnumValueDescriptor {
+            parent,
+            index: index.try_into().expect("index too large"),
+        }
+    }
+
     /// Gets a reference to the [`FileDescriptor`] this enum value is defined in.
     pub fn parent_file(&self) -> &FileDescriptor {
         self.parent.parent_file()
@@ -1016,7 +1013,7 @@ impl EnumValueDescriptor {
     }
 
     fn enum_value_ty(&self) -> &EnumValueDescriptorInner {
-        &self.parent.enum_ty().values[self.index]
+        &self.parent.enum_ty().values[self.index as usize]
     }
 }
 
@@ -1031,6 +1028,13 @@ impl fmt::Debug for EnumValueDescriptor {
 }
 
 impl OneofDescriptor {
+    fn new(message: MessageDescriptor, index: usize) -> Self {
+        OneofDescriptor {
+            message,
+            index: index.try_into().expect("index too large"),
+        }
+    }
+
     /// Gets a reference to the [`FileDescriptor`] this oneof is defined in.
     pub fn parent_file(&self) -> &FileDescriptor {
         self.message.parent_file()
@@ -1053,7 +1057,7 @@ impl OneofDescriptor {
 
     /// Gets a reference to the raw [`OneofDescriptorProto`] wrapped by this [`OneofDescriptor`].
     pub fn oneof_descriptor_proto(&self) -> &OneofDescriptorProto {
-        &self.parent_message().descriptor_proto().oneof_decl[self.index]
+        &self.parent_message().descriptor_proto().oneof_decl[self.index as usize]
     }
 
     /// Gets an iterator yielding a [`FieldDescriptor`] for each field of the parent message this oneof contains.
@@ -1068,7 +1072,7 @@ impl OneofDescriptor {
     }
 
     fn oneof_ty(&self) -> &OneofDescriptorInner {
-        &self.message.message_ty().oneof_decls[self.index]
+        &self.message.message_ty().oneof_decls[self.index as usize]
     }
 }
 
@@ -1158,8 +1162,8 @@ impl TypeMap {
         &self.enums[index as usize]
     }
 
-    fn get_extension(&self, index: usize) -> &ExtensionDescriptorInner {
-        &self.extensions[index]
+    fn get_extension(&self, index: u32) -> &ExtensionDescriptorInner {
+        &self.extensions[index as usize]
     }
 
     fn messages(&self) -> impl ExactSizeIterator<Item = TypeId> {

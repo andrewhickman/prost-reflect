@@ -1,5 +1,6 @@
 use std::{
     collections::{BTreeMap, HashMap},
+    convert::{TryFrom, TryInto},
     rc::Rc,
 };
 
@@ -176,7 +177,9 @@ impl TypeMap {
                     enum_ty
                         .value_names
                         .get(value.as_str())
-                        .map(|&index| crate::Value::EnumNumber(enum_ty.values[index].number))
+                        .map(|&index| {
+                            crate::Value::EnumNumber(enum_ty.values[index as usize].number)
+                        })
                         .ok_or(())
                 }
                 field_descriptor_proto::Type::Message | field_descriptor_proto::Type::Group => {
@@ -259,10 +262,15 @@ impl TypeMap {
             .collect();
         values.sort_by_key(|v| v.number);
 
-        let value_names: HashMap<Box<str>, usize> = values
+        let value_names: HashMap<Box<str>, u32> = values
             .iter()
             .enumerate()
-            .map(|(index, value)| (value.name.clone(), index))
+            .map(|(index, value)| {
+                (
+                    value.name.clone(),
+                    u32::try_from(index).expect("index too large"),
+                )
+            })
             .collect();
 
         let parent = parent.map(|p| self.try_get_by_name(&p)).transpose()?;
@@ -279,6 +287,8 @@ impl TypeMap {
                 .iter()
                 .position(|v| v.number == 0)
                 .ok_or_else(DescriptorError::empty_enum)?
+                .try_into()
+                .expect("index too large")
         };
 
         debug_assert_eq!(
@@ -316,7 +326,7 @@ impl TypeMap {
 
         let parent = parent.map(|p| self.try_get_by_name(&p)).transpose()?;
 
-        let index = self.extensions.len();
+        let index = self.extensions.len().try_into().expect("index too large");
         self.get_message_mut(extendee).extensions.push(index);
         self.extensions.push(ExtensionDescriptorInner {
             field,

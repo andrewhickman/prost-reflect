@@ -1,4 +1,4 @@
-use std::fmt;
+use std::{convert::TryInto, fmt};
 
 use prost_types::{FileDescriptorProto, MethodDescriptorProto, ServiceDescriptorProto};
 
@@ -13,7 +13,7 @@ use super::{
 #[derive(Clone, PartialEq, Eq)]
 pub struct ServiceDescriptor {
     file_descriptor: FileDescriptor,
-    index: usize,
+    index: u32,
 }
 
 pub(super) struct ServiceDescriptorInner {
@@ -25,7 +25,7 @@ pub(super) struct ServiceDescriptorInner {
 #[derive(Clone, PartialEq, Eq)]
 pub struct MethodDescriptor {
     service: ServiceDescriptor,
-    index: usize,
+    index: u32,
 }
 
 struct MethodDescriptorInner {
@@ -46,13 +46,13 @@ impl ServiceDescriptor {
         debug_assert!(index < file_descriptor.services().len());
         ServiceDescriptor {
             file_descriptor,
-            index,
+            index: index.try_into().expect("index too large"),
         }
     }
 
     /// Returns the index of this [`ServiceDescriptor`] within the parent [`FileDescriptor`].
     pub fn index(&self) -> usize {
-        self.index
+        self.index as usize
     }
 
     /// Gets a reference to the [`FileDescriptor`] this service is defined in.
@@ -93,14 +93,11 @@ impl ServiceDescriptor {
 
     /// Gets an iterator yielding a [`MethodDescriptor`] for each method defined in this service.
     pub fn methods(&self) -> impl ExactSizeIterator<Item = MethodDescriptor> + '_ {
-        (0..self.inner().methods.len()).map(move |index| MethodDescriptor {
-            service: self.clone(),
-            index,
-        })
+        (0..self.inner().methods.len()).map(move |index| MethodDescriptor::new(self.clone(), index))
     }
 
     fn inner(&self) -> &ServiceDescriptorInner {
-        &self.parent_file().inner.services[self.index]
+        &self.parent_file().inner.services[self.index as usize]
     }
 }
 
@@ -147,12 +144,15 @@ impl MethodDescriptor {
     /// Panics if `index` is out-of-bounds.
     pub fn new(service: ServiceDescriptor, index: usize) -> Self {
         debug_assert!(index < service.methods().len());
-        MethodDescriptor { service, index }
+        MethodDescriptor {
+            service,
+            index: index.try_into().expect("index too large"),
+        }
     }
 
     /// Gets the index of the method within the parent [`ServiceDescriptor`].
     pub fn index(&self) -> usize {
-        self.index
+        self.index as usize
     }
 
     /// Gets a reference to the [`ServiceDescriptor`] this method is defined in.
@@ -177,7 +177,7 @@ impl MethodDescriptor {
 
     /// Gets a reference to the raw [`MethodDescriptorProto`] wrapped by this [`MethodDescriptor`].
     pub fn method_descriptor_proto(&self) -> &MethodDescriptorProto {
-        &self.parent_service().service_descriptor_proto().method[self.index]
+        &self.parent_service().service_descriptor_proto().method[self.index as usize]
     }
 
     /// Gets the [`MessageDescriptor`] for the input type of this method.
@@ -201,7 +201,7 @@ impl MethodDescriptor {
     }
 
     fn inner(&self) -> &MethodDescriptorInner {
-        &self.service.inner().methods[self.index]
+        &self.service.inner().methods[self.index as usize]
     }
 }
 
