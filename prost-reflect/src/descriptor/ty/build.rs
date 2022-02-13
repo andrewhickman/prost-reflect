@@ -172,7 +172,7 @@ impl TypeMap {
                     unescape_c_escape_string(value).map(crate::Value::Bytes)
                 }
                 field_descriptor_proto::Type::Enum => {
-                    let enum_ty = self.get_enum(ty);
+                    let enum_ty = self.get_enum(ty.1);
                     enum_ty
                         .value_names
                         .get(value.as_str())
