@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.7] - 2022-02-14
+
 ### Added
 
 - Added `file_descriptor_proto` methods to descriptor types to access raw details about the file the object is defined in.
@@ -157,7 +159,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial release, including support for inspecting message types at runtime.
 
-[Unreleased]: https://github.com/andrewhickman/prost-reflect/compare/0.5.6...HEAD
+[Unreleased]: https://github.com/andrewhickman/prost-reflect/compare/0.5.7...HEAD
+[0.5.7]: https://github.com/andrewhickman/prost-reflect/compare/0.5.6...0.5.7
 [0.5.6]: https://github.com/andrewhickman/prost-reflect/compare/0.5.5...0.5.6
 [0.5.5]: https://github.com/andrewhickman/prost-reflect/compare/0.5.4...0.5.5
 [0.5.4]: https://github.com/andrewhickman/prost-reflect/compare/0.5.3...0.5.4
