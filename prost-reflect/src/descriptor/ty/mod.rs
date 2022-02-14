@@ -15,7 +15,7 @@ use std::{
 use prost::encoding::WireType;
 use prost_types::{
     field_descriptor_proto, DescriptorProto, EnumDescriptorProto, EnumValueDescriptorProto,
-    FieldDescriptorProto, OneofDescriptorProto,
+    FieldDescriptorProto, FileDescriptorProto, OneofDescriptorProto,
 };
 
 use crate::descriptor::{
@@ -42,7 +42,7 @@ pub struct MessageDescriptor {
 
 struct MessageDescriptorInner {
     full_name: Box<str>,
-    parent: Option<TypeId>,
+    parent: ParentKind,
     is_map_entry: bool,
     fields: BTreeMap<u32, FieldDescriptorInner>,
     field_names: HashMap<Box<str>, u32>,
@@ -94,7 +94,7 @@ pub struct ExtensionDescriptor {
 pub struct ExtensionDescriptorInner {
     field: FieldDescriptorInner,
     number: u32,
-    parent: Option<TypeId>,
+    parent: ParentKind,
     extendee: TypeId,
     json_name: Box<str>,
 }
@@ -108,7 +108,7 @@ pub struct EnumDescriptor {
 
 struct EnumDescriptorInner {
     full_name: Box<str>,
-    parent: Option<TypeId>,
+    parent: ParentKind,
     value_names: HashMap<Box<str>, u32>,
     values: Vec<EnumValueDescriptorInner>,
     default_value: u32,
@@ -177,6 +177,12 @@ pub enum Cardinality {
     Repeated,
 }
 
+#[derive(Copy, Clone, Debug)]
+enum ParentKind {
+    File { index: u32 },
+    Message { index: u32 },
+}
+
 impl MessageDescriptor {
     pub(in crate::descriptor) fn new(file_set: FileDescriptor, ty: TypeId) -> Self {
         debug_assert_eq!(ty.0, field_descriptor_proto::Type::Message);
@@ -216,6 +222,7 @@ impl MessageDescriptor {
     pub fn parent_message(&self) -> Option<MessageDescriptor> {
         self.message_ty()
             .parent
+            .as_message()
             .map(|ty| MessageDescriptor::new(self.file_set.clone(), ty))
     }
 
@@ -233,13 +240,19 @@ impl MessageDescriptor {
     ///
     /// If no package name is set, an empty string is returned.
     pub fn package_name(&self) -> &str {
-        parse_namespace(&self.root_message_ty().full_name)
+        self.parent_file_descriptor_proto().package()
+    }
+
+    /// Gets a reference to the [`FileDescriptorProto`] in which this message is defined.
+    pub fn parent_file_descriptor_proto(&self) -> &FileDescriptorProto {
+        self.message_ty()
+            .parent
+            .resolve_parent_file_proto(&self.file_set)
     }
 
     /// Gets a reference to the raw [`DescriptorProto`] wrapped by this [`MessageDescriptor`].
     pub fn descriptor_proto(&self) -> &DescriptorProto {
-        self.parent_file()
-            .find_message_descriptor_proto(self.package_name(), self.full_name())
+        find_message_descriptor_proto(self.parent_file(), self.index)
     }
 
     /// Gets an iterator yielding a [`FieldDescriptor`] for each field defined in this message.
@@ -381,15 +394,6 @@ impl MessageDescriptor {
 
     fn message_ty(&self) -> &MessageDescriptorInner {
         self.file_set.inner.type_map.get_message(self.index)
-    }
-
-    fn root_message_ty(&self) -> &MessageDescriptorInner {
-        let mut curr = self.message_ty();
-        while let Some(parent) = curr.parent {
-            debug_assert_eq!(parent.0, field_descriptor_proto::Type::Message);
-            curr = self.file_set.inner.type_map.get_message(parent.1);
-        }
-        curr
     }
 }
 
@@ -570,6 +574,7 @@ impl ExtensionDescriptor {
     pub fn parent_message(&self) -> Option<MessageDescriptor> {
         self.extension_ty()
             .parent
+            .as_message()
             .map(|ty| MessageDescriptor::new(self.file_set.clone(), ty))
     }
 
@@ -589,27 +594,29 @@ impl ExtensionDescriptor {
     ///
     /// If no package name is set, an empty string is returned.
     pub fn package_name(&self) -> &str {
-        match self.root_message_ty() {
-            Some(message) => parse_namespace(&message.full_name),
-            None => parse_namespace(self.full_name()),
-        }
+        self.parent_file_descriptor_proto().package()
+    }
+
+    /// Gets a reference to the [`FileDescriptorProto`] in which this extension is defined.
+    pub fn parent_file_descriptor_proto(&self) -> &FileDescriptorProto {
+        self.extension_ty()
+            .parent
+            .resolve_parent_file_proto(&self.file_set)
     }
 
     /// Gets a reference to the raw [`FieldDescriptorProto`] wrapped by this [`ExtensionDescriptor`].
     pub fn field_descriptor_proto(&self) -> &FieldDescriptorProto {
         let name = self.name();
-        let package = self.package_name();
-        let namespace = parse_namespace(self.full_name());
-
-        if namespace == package {
-            self.parent_file()
-                .filter_file_descriptor_protos_by_package(package)
-                .flat_map(|file| file.extension.iter())
+        let parent = self.extension_ty().parent;
+        if let Some(parent_message) = parent.resolve_parent_message_proto(self.parent_file()) {
+            parent_message
+                .extension
+                .iter()
                 .find(|extension| extension.name() == name)
                 .expect("extension not found")
         } else {
-            self.parent_file()
-                .find_message_descriptor_proto(package, namespace)
+            parent
+                .resolve_parent_file_proto(self.parent_file())
                 .extension
                 .iter()
                 .find(|extension| extension.name() == name)
@@ -697,21 +704,6 @@ impl ExtensionDescriptor {
 
     fn extension_ty(&self) -> &ExtensionDescriptorInner {
         self.file_set.inner.type_map.get_extension(self.index)
-    }
-
-    fn root_message_ty(&self) -> Option<&MessageDescriptorInner> {
-        match self.extension_ty().parent {
-            Some(mut curr) => loop {
-                debug_assert_eq!(curr.0, field_descriptor_proto::Type::Message);
-                let message = self.file_set.inner.type_map.get_message(curr.1);
-                if let Some(parent) = message.parent {
-                    curr = parent;
-                } else {
-                    return Some(message);
-                }
-            },
-            None => None,
-        }
     }
 }
 
@@ -837,6 +829,7 @@ impl EnumDescriptor {
     pub fn parent_message(&self) -> Option<MessageDescriptor> {
         self.enum_ty()
             .parent
+            .as_message()
             .map(|ty| MessageDescriptor::new(self.file_set.clone(), ty))
     }
 
@@ -854,31 +847,33 @@ impl EnumDescriptor {
     ///
     /// If no package name is set, an empty string is returned.
     pub fn package_name(&self) -> &str {
-        match self.root_message_ty() {
-            Some(message) => parse_namespace(&message.full_name),
-            None => parse_namespace(self.full_name()),
-        }
+        self.parent_file_descriptor_proto().package()
+    }
+
+    /// Gets a reference to the [`FileDescriptorProto`] in which this enum is defined.
+    pub fn parent_file_descriptor_proto(&self) -> &FileDescriptorProto {
+        self.enum_ty()
+            .parent
+            .resolve_parent_file_proto(&self.file_set)
     }
 
     /// Gets a reference to the raw [`EnumDescriptorProto`] wrapped by this [`EnumDescriptor`].
     pub fn enum_descriptor_proto(&self) -> &EnumDescriptorProto {
         let name = self.name();
-        let package = self.package_name();
-        let namespace = parse_namespace(self.full_name());
-
-        if namespace == package {
-            self.parent_file()
-                .filter_file_descriptor_protos_by_package(package)
-                .flat_map(|file| file.enum_type.iter())
-                .find(|extension| extension.name() == name)
-                .expect("enum not found")
-        } else {
-            self.parent_file()
-                .find_message_descriptor_proto(package, namespace)
+        let parent = self.enum_ty().parent;
+        if let Some(parent_message) = parent.resolve_parent_message_proto(self.parent_file()) {
+            parent_message
                 .enum_type
                 .iter()
-                .find(|enum_ty| enum_ty.name() == name)
-                .expect("enum not found")
+                .find(|extension| extension.name() == name)
+                .expect("extension not found")
+        } else {
+            parent
+                .resolve_parent_file_proto(self.parent_file())
+                .enum_type
+                .iter()
+                .find(|extension| extension.name() == name)
+                .expect("extension not found")
         }
     }
 
@@ -940,21 +935,6 @@ impl EnumDescriptor {
 
     fn enum_ty(&self) -> &EnumDescriptorInner {
         self.file_set.inner.type_map.get_enum(self.index)
-    }
-
-    fn root_message_ty(&self) -> Option<&MessageDescriptorInner> {
-        match self.enum_ty().parent {
-            Some(mut curr) => loop {
-                debug_assert_eq!(curr.0, field_descriptor_proto::Type::Message);
-                let message = self.file_set.inner.type_map.get_message(curr.1);
-                if let Some(parent) = message.parent {
-                    curr = parent;
-                } else {
-                    return Some(message);
-                }
-            },
-            None => None,
-        }
     }
 }
 
@@ -1258,5 +1238,62 @@ impl TypeId {
                 Kind::Message(MessageDescriptor::new(file_set.clone(), self))
             }
         }
+    }
+}
+
+impl ParentKind {
+    fn as_message(&self) -> Option<TypeId> {
+        match *self {
+            ParentKind::File { .. } => None,
+            ParentKind::Message { index } => {
+                Some(TypeId(field_descriptor_proto::Type::Message, index))
+            }
+        }
+    }
+
+    fn resolve_parent_file_proto<'a>(
+        &self,
+        file_set: &'a FileDescriptor,
+    ) -> &'a FileDescriptorProto {
+        let mut curr = *self;
+        loop {
+            match curr {
+                ParentKind::File { index } => {
+                    return &file_set.file_descriptor_set().file[index as usize]
+                }
+                ParentKind::Message { index } => {
+                    curr = file_set.inner.type_map.get_message(index).parent;
+                }
+            }
+        }
+    }
+
+    fn resolve_parent_message_proto<'a>(
+        &self,
+        file_set: &'a FileDescriptor,
+    ) -> Option<&'a DescriptorProto> {
+        match *self {
+            ParentKind::File { .. } => None,
+            ParentKind::Message { index } => Some(find_message_descriptor_proto(file_set, index)),
+        }
+    }
+}
+
+fn find_message_descriptor_proto(file_set: &FileDescriptor, index: u32) -> &DescriptorProto {
+    let message = file_set.inner.type_map.get_message(index);
+    match message.parent {
+        ParentKind::File { index: file_index } => file_set.file_descriptor_set().file
+            [file_index as usize]
+            .message_type
+            .iter()
+            .find(|ty| ty.name() == parse_name(&message.full_name))
+            .expect("message not found"),
+        ParentKind::Message {
+            index: parent_index,
+        } => find_message_descriptor_proto(file_set, parent_index)
+            .nested_type
+            .iter()
+            .find(|ty| ty.name() == parse_name(&message.full_name))
+            .expect("message not found"),
     }
 }

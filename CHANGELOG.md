@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added `file_descriptor_proto` methods to descriptor types to access raw details about the file the object is defined in.
+
 ## [0.5.6] - 2022-02-03
 
 ### Fixed

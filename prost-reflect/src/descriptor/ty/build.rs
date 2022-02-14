@@ -15,7 +15,8 @@ use crate::{
         make_full_name, parse_namespace,
         ty::{
             Cardinality, EnumDescriptorInner, EnumValueDescriptorInner, ExtensionDescriptorInner,
-            FieldDescriptorInner, MessageDescriptorInner, OneofDescriptorInner, TypeId, TypeMap,
+            FieldDescriptorInner, MessageDescriptorInner, OneofDescriptorInner, ParentKind, TypeId,
+            TypeMap,
         },
         MAP_ENTRY_KEY_NUMBER, MAP_ENTRY_VALUE_NUMBER,
     },
@@ -48,6 +49,7 @@ impl TypeMap {
     fn build_message(
         &mut self,
         MessageProto {
+            file,
             full_name,
             message_proto,
             parent,
@@ -97,7 +99,12 @@ impl TypeMap {
             return Err(DescriptorError::invalid_map_entry(full_name));
         }
 
-        let parent = parent.map(|p| self.try_get_by_name(&p)).transpose()?;
+        let parent = match parent {
+            None => ParentKind::File { index: file },
+            Some(parent_name) => ParentKind::Message {
+                index: self.try_get_by_name(&parent_name)?.1,
+            },
+        };
 
         debug_assert_eq!(
             self.get_by_name(&full_name),
@@ -244,6 +251,7 @@ impl TypeMap {
     fn build_enum(
         &mut self,
         EnumProto {
+            file,
             full_name,
             enum_proto,
             parent,
@@ -273,7 +281,12 @@ impl TypeMap {
             })
             .collect();
 
-        let parent = parent.map(|p| self.try_get_by_name(&p)).transpose()?;
+        let parent = match parent {
+            None => ParentKind::File { index: file },
+            Some(parent_name) => ParentKind::Message {
+                index: self.try_get_by_name(&parent_name)?.1,
+            },
+        };
 
         let default_value = if syntax == Syntax::Proto2 {
             let name = enum_proto
@@ -308,6 +321,7 @@ impl TypeMap {
     fn build_extension(
         &mut self,
         ExtensionProto {
+            file,
             namespace,
             field_proto,
             parent,
@@ -324,7 +338,12 @@ impl TypeMap {
         json_name.push(']');
         let json_name = json_name.into_boxed_str();
 
-        let parent = parent.map(|p| self.try_get_by_name(&p)).transpose()?;
+        let parent = match parent {
+            None => ParentKind::File { index: file },
+            Some(parent_name) => ParentKind::Message {
+                index: self.try_get_by_name(&parent_name)?.1,
+            },
+        };
 
         let index = self.extensions.len().try_into().expect("index too large");
         self.get_message_mut(extendee).extensions.push(index);
@@ -346,7 +365,8 @@ impl TypeMap {
         enums: &mut Vec<EnumProto<'a>>,
         extensions: &mut Vec<ExtensionProto<'a>>,
     ) -> Result<(), DescriptorError> {
-        for file in &raw.file {
+        for (file_index, file) in raw.file.iter().enumerate() {
+            let file_index = file_index.try_into().expect("index too large");
             let syntax = match file.syntax.as_deref() {
                 None | Some("proto2") => Syntax::Proto2,
                 Some("proto3") => Syntax::Proto3,
@@ -358,6 +378,7 @@ impl TypeMap {
             for message_proto in &file.message_type {
                 let full_name = make_full_name(namespace, message_proto.name());
                 self.iter_message(
+                    file_index,
                     &full_name,
                     messages,
                     enums,
@@ -371,6 +392,7 @@ impl TypeMap {
                     TypeId::new_message(self.messages.len() + messages.len()),
                 )?;
                 messages.push(MessageProto {
+                    file: file_index,
                     full_name,
                     message_proto,
                     parent: None,
@@ -386,6 +408,7 @@ impl TypeMap {
                     TypeId::new_enum(self.enums.len() + enums.len()),
                 )?;
                 enums.push(EnumProto {
+                    file: file_index,
                     full_name,
                     enum_proto,
                     parent: None,
@@ -395,6 +418,7 @@ impl TypeMap {
 
             for field_proto in &file.extension {
                 extensions.push(ExtensionProto {
+                    file: file_index,
                     namespace: namespace.into(),
                     field_proto,
                     parent: None,
@@ -406,8 +430,10 @@ impl TypeMap {
         Ok(())
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn iter_message<'a>(
         &mut self,
+        file_index: u32,
         namespace: &str,
         messages: &mut Vec<MessageProto<'a>>,
         enums: &mut Vec<EnumProto<'a>>,
@@ -418,6 +444,7 @@ impl TypeMap {
         for message_proto in &raw.nested_type {
             let full_name = make_full_name(namespace, message_proto.name());
             self.iter_message(
+                file_index,
                 &full_name,
                 messages,
                 enums,
@@ -431,6 +458,7 @@ impl TypeMap {
                 TypeId::new_message(self.messages.len() + messages.len()),
             )?;
             messages.push(MessageProto {
+                file: file_index,
                 full_name,
                 message_proto,
                 parent: Some(namespace.into()),
@@ -446,6 +474,7 @@ impl TypeMap {
                 TypeId::new_enum(self.enums.len() + enums.len()),
             )?;
             enums.push(EnumProto {
+                file: file_index,
                 full_name,
                 enum_proto,
                 parent: Some(namespace.into()),
@@ -455,6 +484,7 @@ impl TypeMap {
 
         for field_proto in &raw.extension {
             extensions.push(ExtensionProto {
+                file: file_index,
                 namespace: namespace.into(),
                 field_proto,
                 parent: Some(namespace.into()),
@@ -474,6 +504,7 @@ enum Syntax {
 
 #[derive(Clone)]
 struct MessageProto<'a> {
+    file: u32,
     full_name: Box<str>,
     message_proto: &'a DescriptorProto,
     parent: Option<Box<str>>,
@@ -482,6 +513,7 @@ struct MessageProto<'a> {
 
 #[derive(Clone)]
 struct EnumProto<'a> {
+    file: u32,
     full_name: Box<str>,
     enum_proto: &'a EnumDescriptorProto,
     parent: Option<Box<str>>,
@@ -490,6 +522,7 @@ struct EnumProto<'a> {
 
 #[derive(Clone)]
 struct ExtensionProto<'a> {
+    file: u32,
     namespace: Box<str>,
     field_proto: &'a FieldDescriptorProto,
     parent: Option<Rc<str>>,
