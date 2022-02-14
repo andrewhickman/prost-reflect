@@ -607,20 +607,21 @@ impl ExtensionDescriptor {
     /// Gets a reference to the raw [`FieldDescriptorProto`] wrapped by this [`ExtensionDescriptor`].
     pub fn field_descriptor_proto(&self) -> &FieldDescriptorProto {
         let name = self.name();
-        let parent = self.extension_ty().parent;
-        if let Some(parent_message) = parent.resolve_parent_message_proto(self.parent_file()) {
-            parent_message
+        match self.extension_ty().parent {
+            ParentKind::File { index: file_index } => {
+                get_file_descriptor_proto(&self.file_set, file_index)
+                    .extension
+                    .iter()
+                    .find(|extension| extension.name() == name)
+                    .expect("extension not found")
+            }
+            ParentKind::Message {
+                index: message_index,
+            } => find_message_descriptor_proto(&self.file_set, message_index)
                 .extension
                 .iter()
                 .find(|extension| extension.name() == name)
-                .expect("extension not found")
-        } else {
-            parent
-                .resolve_parent_file_proto(self.parent_file())
-                .extension
-                .iter()
-                .find(|extension| extension.name() == name)
-                .expect("extension not found")
+                .expect("extension not found"),
         }
     }
 
@@ -860,20 +861,21 @@ impl EnumDescriptor {
     /// Gets a reference to the raw [`EnumDescriptorProto`] wrapped by this [`EnumDescriptor`].
     pub fn enum_descriptor_proto(&self) -> &EnumDescriptorProto {
         let name = self.name();
-        let parent = self.enum_ty().parent;
-        if let Some(parent_message) = parent.resolve_parent_message_proto(self.parent_file()) {
-            parent_message
+        match self.enum_ty().parent {
+            ParentKind::File { index: file_index } => {
+                get_file_descriptor_proto(&self.file_set, file_index)
+                    .enum_type
+                    .iter()
+                    .find(|extension| extension.name() == name)
+                    .expect("extension not found")
+            }
+            ParentKind::Message {
+                index: message_index,
+            } => find_message_descriptor_proto(&self.file_set, message_index)
                 .enum_type
                 .iter()
                 .find(|extension| extension.name() == name)
-                .expect("extension not found")
-        } else {
-            parent
-                .resolve_parent_file_proto(self.parent_file())
-                .enum_type
-                .iter()
-                .find(|extension| extension.name() == name)
-                .expect("extension not found")
+                .expect("extension not found"),
         }
     }
 
@@ -1258,32 +1260,23 @@ impl ParentKind {
         let mut curr = *self;
         loop {
             match curr {
-                ParentKind::File { index } => {
-                    return &file_set.file_descriptor_set().file[index as usize]
-                }
+                ParentKind::File { index } => return get_file_descriptor_proto(file_set, index),
                 ParentKind::Message { index } => {
                     curr = file_set.inner.type_map.get_message(index).parent;
                 }
             }
         }
     }
+}
 
-    fn resolve_parent_message_proto<'a>(
-        &self,
-        file_set: &'a FileDescriptor,
-    ) -> Option<&'a DescriptorProto> {
-        match *self {
-            ParentKind::File { .. } => None,
-            ParentKind::Message { index } => Some(find_message_descriptor_proto(file_set, index)),
-        }
-    }
+fn get_file_descriptor_proto(file_set: &FileDescriptor, index: u32) -> &FileDescriptorProto {
+    &file_set.file_descriptor_set().file[index as usize]
 }
 
 fn find_message_descriptor_proto(file_set: &FileDescriptor, index: u32) -> &DescriptorProto {
     let message = file_set.inner.type_map.get_message(index);
     match message.parent {
-        ParentKind::File { index: file_index } => file_set.file_descriptor_set().file
-            [file_index as usize]
+        ParentKind::File { index: file_index } => get_file_descriptor_proto(file_set, file_index)
             .message_type
             .iter()
             .find(|ty| ty.name() == parse_name(&message.full_name))
