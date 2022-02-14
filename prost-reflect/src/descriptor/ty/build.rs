@@ -606,7 +606,7 @@ fn unescape_c_escape_string(s: &str) -> Result<Bytes, ()> {
                     dst.push(octal);
                 }
                 b'x' | b'X' => {
-                    if p + 2 > len {
+                    if p + 3 > len {
                         return Err(());
                     }
                     match u8::from_str_radix(&s[p + 1..p + 3], 16) {
@@ -620,4 +620,43 @@ fn unescape_c_escape_string(s: &str) -> Result<Bytes, ()> {
         }
     }
     Ok(dst.into())
+}
+
+#[test]
+fn test_unescape_c_escape_string() {
+    assert_eq!(Ok(Bytes::default()), unescape_c_escape_string(""));
+    assert_eq!(
+        Ok(Bytes::from_static(b"hello world")),
+        unescape_c_escape_string("hello world"),
+    );
+    assert_eq!(
+        Ok(Bytes::from_static(b"\0")),
+        unescape_c_escape_string(r#"\0"#),
+    );
+    assert_eq!(
+        Ok(Bytes::from_static(&[0o012, 0o156])),
+        unescape_c_escape_string(r#"\012\156"#),
+    );
+    assert_eq!(
+        Ok(Bytes::from_static(&[0x01, 0x02])),
+        unescape_c_escape_string(r#"\x01\x02"#)
+    );
+    assert_eq!(
+        Ok(Bytes::from_static(
+            b"\0\x01\x07\x08\x0C\n\r\t\x0B\\\'\"\xFE?"
+        )),
+        unescape_c_escape_string(r#"\0\001\a\b\f\n\r\t\v\\\'\"\xfe\?"#),
+    );
+    assert_eq!(Err(()), unescape_c_escape_string(r#"\x"#));
+    assert_eq!(Err(()), unescape_c_escape_string(r#"\x1"#));
+    assert_eq!(
+        Ok(Bytes::from_static(b"\x11")),
+        unescape_c_escape_string(r#"\x11"#),
+    );
+    assert_eq!(
+        Ok(Bytes::from_static(b"\x111")),
+        unescape_c_escape_string(r#"\x111"#),
+    );
+    assert_eq!(Err(()), unescape_c_escape_string(r#"\w"#));
+    assert_eq!(Err(()), unescape_c_escape_string(r#"\x__"#));
 }
