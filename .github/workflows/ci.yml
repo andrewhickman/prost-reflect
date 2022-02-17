@@ -41,8 +41,8 @@ jobs:
         with:
           profile: minimal
           toolchain: ${{ matrix.rust }}
+          components: rustfmt
           override: true
-      - run: rustup component add rustfmt
       - uses: actions-rs/cargo@v1
         with:
           command: fmt
@@ -61,10 +61,10 @@ jobs:
         with:
           profile: minimal
           toolchain: ${{ matrix.rust }}
+          components: clippy
           override: true
       - name: install ninja
         uses: seanmiddleditch/gha-setup-ninja@v3
-      - run: rustup component add clippy
       - uses: actions-rs/cargo@v1
         with:
           command: clippy
