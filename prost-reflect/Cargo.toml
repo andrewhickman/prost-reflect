@@ -43,9 +43,27 @@ sign-tag = true
 
 [[package.metadata.release.pre-release-replacements]]
 file = "../README.md"
-search = "https://deps.rs/crate/prost-reflect/.*?/status.svg"
+search = "https://deps\\.rs/crate/prost-reflect/.*?/status.svg"
 replace = "https://deps.rs/crate/prost-reflect/{{version}}/status.svg"
 exactly = 1
+
+[[package.metadata.release.pre-release-replacements]]
+file = "../README.tpl"
+search = "https://deps\\.rs/crate/prost-reflect/.*?/status.svg"
+replace = "https://deps.rs/crate/prost-reflect/{{version}}/status.svg"
+exactly = 1
+
+[[package.metadata.release.pre-release-replacements]]
+file = "../README.md"
+search = "https://docs\\.rs/prost-reflect/.*?/prost_reflect"
+replace = "https://docs.rs/prost-reflect/{{version}}/prost_reflect"
+min = 1
+
+[[package.metadata.release.pre-release-replacements]]
+file = "../README.tpl"
+search = "https://docs\\.rs/prost-reflect/.*?/prost_reflect"
+replace = "https://docs.rs/prost-reflect/{{version}}/prost_reflect"
+min = 1
 
 [[package.metadata.release.pre-release-replacements]]
 file = "src/lib.rs"
