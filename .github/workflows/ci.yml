@@ -28,47 +28,34 @@ jobs:
         with:
           command: test
 
-  fmt:
-    name: Rustfmt
+  lints:
+    name: Lints
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        rust:
-          - stable
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: ${{ matrix.rust }}
-          components: rustfmt
-          override: true
-      - uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --package prost-reflect --package prost-reflect-derive --package prost-reflect-tests -- --check
-
-  clippy:
-    name: Clippy
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        rust:
-          - stable
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: ${{ matrix.rust }}
-          components: clippy
+          toolchain: stable
+          components: clippy, rustfmt
           override: true
       - name: install ninja
         uses: seanmiddleditch/gha-setup-ninja@v3
       - uses: actions-rs/cargo@v1
         with:
+          command: fmt
+          args: --package prost-reflect --package prost-reflect-derive --package prost-reflect-tests -- --check
+      - uses: actions-rs/cargo@v1
+        with:
           command: clippy
           args: --package prost-reflect --package prost-reflect-derive --package prost-reflect-tests -- -D warnings
+      - name: Check README.md is up-to-date
+        shell: pwsh
+        run: |
+          ./generate-readme.ps1
+          if (git diff README.md) {
+            Write-Error "README.md is out-of-date, run generate-readme.ps1 to regenerate it." -ErrorAction Stop
+          }
 
   coverage:
     name: Coverage
