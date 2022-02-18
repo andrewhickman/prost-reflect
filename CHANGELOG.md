@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added implementations of [`ReflectMessage`] for the google well-known types in [`prost-types`](https://docs.rs/prost-types/0.9.0/prost_types), behind a feature flag `reflect-well-known-types`.
 
+### Changed
+
+- The minimum supported rust version is now **1.54.0**.
+
 ## [0.5.7] - 2022-02-14
 
 ### Added
