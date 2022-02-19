@@ -117,7 +117,7 @@ impl FileDescriptor {
 
     /// Gets an iterator over all extension fields defined in these protobuf files.
     ///
-    /// The iterator includes nested extensions fields defined in another message.
+    /// The iterator includes nested extension fields defined in another message.
     pub fn all_extensions(&self) -> impl ExactSizeIterator<Item = ExtensionDescriptor> + '_ {
         ExtensionDescriptor::iter(self)
     }
