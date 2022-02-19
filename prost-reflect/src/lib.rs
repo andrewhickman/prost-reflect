@@ -100,6 +100,7 @@ Config::new()
 )]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![warn(missing_debug_implementations, missing_docs)]
+#![deny(unsafe_code)]
 #![doc(html_root_url = "https://docs.rs/prost-reflect/0.5.7/")]
 
 #[cfg(feature = "serde1")]
