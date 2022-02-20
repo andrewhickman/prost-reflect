@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2022-02-20
+
 ### Added
 
 - Added implementations of [`ReflectMessage`] for the google well-known types in [`prost-types`](https://docs.rs/prost-types/0.9.0/prost_types), behind a feature flag `reflect-well-known-types`.
@@ -167,7 +169,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial release, including support for inspecting message types at runtime.
 
-[Unreleased]: https://github.com/andrewhickman/prost-reflect/compare/0.5.7...HEAD
+[Unreleased]: https://github.com/andrewhickman/prost-reflect/compare/0.6.0...HEAD
+[0.6.0]: https://github.com/andrewhickman/prost-reflect/compare/0.5.7...0.6.0
 [0.5.7]: https://github.com/andrewhickman/prost-reflect/compare/0.5.6...0.5.7
 [0.5.6]: https://github.com/andrewhickman/prost-reflect/compare/0.5.5...0.5.6
 [0.5.5]: https://github.com/andrewhickman/prost-reflect/compare/0.5.4...0.5.5
