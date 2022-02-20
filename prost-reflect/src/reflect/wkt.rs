@@ -2,19 +2,19 @@ use once_cell::sync::Lazy;
 
 use crate::{FileDescriptor, MessageDescriptor, ReflectMessage};
 
-static GOOGLE_PROTOBUF: Lazy<FileDescriptor> =
-    Lazy::new(|| FileDescriptor::decode(include_bytes!("google_protobuf.bin").as_ref()).unwrap());
+static WELL_KNOWN_TYPES_BYTES: &[u8] =
+    include_bytes!(concat!(env!("OUT_DIR"), "/well_known_types.bin"));
+static WELL_KNOWN_TYPES: Lazy<FileDescriptor> =
+    Lazy::new(|| FileDescriptor::decode(WELL_KNOWN_TYPES_BYTES).unwrap());
 
 macro_rules! impl_reflect_message {
     ($($ty:ty => $name:literal;)*) => {
         $(
             #[cfg_attr(docsrs, doc(cfg(feature = "reflect-well-known-types")))]
             impl ReflectMessage for $ty {
-                #[doc = "Returns a descriptor for the `"]
-                #[doc = $name]
-                #[doc = "` message type."]
+                #[doc = concat!("Returns a descriptor for the `", $name, "` message type.")]
                 fn descriptor(&self) -> MessageDescriptor {
-                    match GOOGLE_PROTOBUF.get_message_by_name($name) {
+                    match WELL_KNOWN_TYPES.get_message_by_name($name) {
                         Some(desc) => desc,
                         None => panic!("descriptor for well-known type `{}` not found", $name),
                     }
