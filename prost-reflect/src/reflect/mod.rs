@@ -1,3 +1,6 @@
+#[cfg(feature = "reflect-well-known-types")]
+mod wkt;
+
 use prost::Message;
 
 use crate::{DynamicMessage, MessageDescriptor};
