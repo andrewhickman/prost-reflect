@@ -58,4 +58,5 @@ dual licensed as above, without any additional terms or conditions.
 [`ReflectMessage`]: https://docs.rs/prost-reflect/0.6.0/prost_reflect/trait.ReflectMessage.html
 
 [`Default`]: https://doc.rust-lang.org/stable/core/default/trait.Default.html
+[prost::Message]: https://docs.rs/prost/latest/prost/trait.Message.html
 [prost_types::FileDescriptorSet]: https://docs.rs/prost-types/latest/prost_types/struct.FileDescriptorSet.html
