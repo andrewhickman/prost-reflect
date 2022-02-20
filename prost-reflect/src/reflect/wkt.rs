@@ -10,6 +10,9 @@ macro_rules! impl_reflect_message {
         $(
             #[cfg_attr(docsrs, doc(cfg(feature = "reflect-well-known-types")))]
             impl ReflectMessage for $ty {
+                #[doc = "Returns a descriptor for the `"]
+                #[doc = $name]
+                #[doc = "` message type."]
                 fn descriptor(&self) -> MessageDescriptor {
                     match GOOGLE_PROTOBUF.get_message_by_name($name) {
                         Some(desc) => desc,
