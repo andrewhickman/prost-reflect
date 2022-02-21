@@ -45,7 +45,7 @@ fn reflect_message_impl(input: syn::DeriveInput) -> Result<proc_macro2::TokenStr
             fn descriptor(&self) -> ::prost_reflect::MessageDescriptor {
                 #file_descriptor_set
                     .get_message_by_name(#message_name)
-                    .expect("no message found")
+                    .expect(concat!("descriptor for message type `", #message_name, "` not found"))
             }
         }
     })
