@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- The public dependencies `prost`, `prost-types` and `bytes` are now re-exported from the crate root.
+
 ## [0.6.0] - 2022-02-20
 
 ### Added

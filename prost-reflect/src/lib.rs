@@ -17,6 +17,8 @@ mod descriptor;
 mod dynamic;
 mod reflect;
 
+pub use {prost, prost::bytes, prost_types};
+
 pub use self::descriptor::{
     Cardinality, DescriptorError, EnumDescriptor, EnumValueDescriptor, ExtensionDescriptor,
     FieldDescriptor, FileDescriptor, Kind, MessageDescriptor, MethodDescriptor, OneofDescriptor,
