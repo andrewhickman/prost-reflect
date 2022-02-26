@@ -23,6 +23,8 @@ use crate::descriptor::{
     MAP_ENTRY_KEY_NUMBER, MAP_ENTRY_VALUE_NUMBER,
 };
 
+use super::{EnumIndex, EnumValueIndex, ExtensionIndex, FileIndex, MessageIndex, OneofIndex};
+
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub(super) struct TypeId(field_descriptor_proto::Type, u32);
 
@@ -37,7 +39,7 @@ pub(super) struct TypeMap {
 #[derive(Clone, PartialEq, Eq)]
 pub struct MessageDescriptor {
     file_set: FileDescriptor,
-    index: u32,
+    index: MessageIndex,
 }
 
 struct MessageDescriptorInner {
@@ -48,14 +50,14 @@ struct MessageDescriptorInner {
     field_names: HashMap<Box<str>, u32>,
     field_json_names: HashMap<Box<str>, u32>,
     oneof_decls: Box<[OneofDescriptorInner]>,
-    extensions: Vec<u32>,
+    extensions: Vec<ExtensionIndex>,
 }
 
 /// A oneof field in a protobuf message.
 #[derive(Clone, PartialEq, Eq)]
 pub struct OneofDescriptor {
     message: MessageDescriptor,
-    index: u32,
+    index: OneofIndex,
 }
 
 struct OneofDescriptorInner {
@@ -88,7 +90,7 @@ struct FieldDescriptorInner {
 #[derive(Clone, PartialEq, Eq)]
 pub struct ExtensionDescriptor {
     file_set: FileDescriptor,
-    index: u32,
+    index: ExtensionIndex,
 }
 
 pub struct ExtensionDescriptorInner {
@@ -103,22 +105,22 @@ pub struct ExtensionDescriptorInner {
 #[derive(Clone, PartialEq, Eq)]
 pub struct EnumDescriptor {
     file_set: FileDescriptor,
-    index: u32,
+    index: EnumIndex,
 }
 
 struct EnumDescriptorInner {
     full_name: Box<str>,
     parent: ParentKind,
-    value_names: HashMap<Box<str>, u32>,
+    value_names: HashMap<Box<str>, EnumValueIndex>,
     values: Vec<EnumValueDescriptorInner>,
-    default_value: u32,
+    default_value: EnumValueIndex,
 }
 
 /// A value in a protobuf enum type.
 #[derive(Clone, PartialEq, Eq)]
 pub struct EnumValueDescriptor {
     parent: EnumDescriptor,
-    index: u32,
+    index: EnumValueIndex,
 }
 
 struct EnumValueDescriptorInner {
@@ -179,8 +181,8 @@ pub enum Cardinality {
 
 #[derive(Copy, Clone, Debug)]
 enum ParentKind {
-    File { index: u32 },
-    Message { index: u32 },
+    File { index: FileIndex },
+    Message { index: MessageIndex },
 }
 
 impl MessageDescriptor {
@@ -1131,7 +1133,7 @@ impl TypeMap {
         }
     }
 
-    fn get_message(&self, index: u32) -> &MessageDescriptorInner {
+    fn get_message(&self, index: MessageIndex) -> &MessageDescriptorInner {
         &self.messages[index as usize]
     }
 
@@ -1140,11 +1142,11 @@ impl TypeMap {
         &mut self.messages[ty.1 as usize]
     }
 
-    fn get_enum(&self, index: u32) -> &EnumDescriptorInner {
+    fn get_enum(&self, index: EnumIndex) -> &EnumDescriptorInner {
         &self.enums[index as usize]
     }
 
-    fn get_extension(&self, index: u32) -> &ExtensionDescriptorInner {
+    fn get_extension(&self, index: ExtensionIndex) -> &ExtensionDescriptorInner {
         &self.extensions[index as usize]
     }
 
@@ -1269,11 +1271,11 @@ impl ParentKind {
     }
 }
 
-fn get_file_descriptor_proto(file_set: &FileDescriptor, index: u32) -> &FileDescriptorProto {
+fn get_file_descriptor_proto(file_set: &FileDescriptor, index: FileIndex) -> &FileDescriptorProto {
     &file_set.file_descriptor_set().file[index as usize]
 }
 
-fn find_message_descriptor_proto(file_set: &FileDescriptor, index: u32) -> &DescriptorProto {
+fn find_message_descriptor_proto(file_set: &FileDescriptor, index: FileIndex) -> &DescriptorProto {
     let message = file_set.inner.type_map.get_message(index);
     match message.parent {
         ParentKind::File { index: file_index } => get_file_descriptor_proto(file_set, file_index)

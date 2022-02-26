@@ -37,6 +37,15 @@ struct FileDescriptorInner {
     services: Box<[ServiceDescriptorInner]>,
 }
 
+type FileIndex = u32;
+type ServiceIndex = u32;
+type MethodIndex = u32;
+type MessageIndex = u32;
+type OneofIndex = u32;
+type ExtensionIndex = u32;
+type EnumIndex = u32;
+type EnumValueIndex = u32;
+
 impl FileDescriptor {
     /// Create a [`FileDescriptor`] from a [`FileDescriptorSet`].
     ///

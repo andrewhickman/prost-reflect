@@ -18,7 +18,7 @@ use crate::{
             FieldDescriptorInner, MessageDescriptorInner, OneofDescriptorInner, ParentKind, TypeId,
             TypeMap,
         },
-        MAP_ENTRY_KEY_NUMBER, MAP_ENTRY_VALUE_NUMBER,
+        EnumValueIndex, FileIndex, MAP_ENTRY_KEY_NUMBER, MAP_ENTRY_VALUE_NUMBER,
     },
     DescriptorError,
 };
@@ -270,13 +270,13 @@ impl TypeMap {
             .collect();
         values.sort_by_key(|v| v.number);
 
-        let value_names: HashMap<Box<str>, u32> = values
+        let value_names: HashMap<Box<str>, EnumValueIndex> = values
             .iter()
             .enumerate()
             .map(|(index, value)| {
                 (
                     value.name.clone(),
-                    u32::try_from(index).expect("index too large"),
+                    EnumValueIndex::try_from(index).expect("index too large"),
                 )
             })
             .collect();
@@ -433,7 +433,7 @@ impl TypeMap {
     #[allow(clippy::too_many_arguments)]
     fn iter_message<'a>(
         &mut self,
-        file_index: u32,
+        file_index: FileIndex,
         namespace: &str,
         messages: &mut Vec<MessageProto<'a>>,
         enums: &mut Vec<EnumProto<'a>>,
@@ -504,7 +504,7 @@ enum Syntax {
 
 #[derive(Clone)]
 struct MessageProto<'a> {
-    file: u32,
+    file: FileIndex,
     full_name: Box<str>,
     message_proto: &'a DescriptorProto,
     parent: Option<Box<str>>,
@@ -513,7 +513,7 @@ struct MessageProto<'a> {
 
 #[derive(Clone)]
 struct EnumProto<'a> {
-    file: u32,
+    file: FileIndex,
     full_name: Box<str>,
     enum_proto: &'a EnumDescriptorProto,
     parent: Option<Box<str>>,
@@ -522,7 +522,7 @@ struct EnumProto<'a> {
 
 #[derive(Clone)]
 struct ExtensionProto<'a> {
-    file: u32,
+    file: FileIndex,
     namespace: Box<str>,
     field_proto: &'a FieldDescriptorProto,
     parent: Option<Rc<str>>,

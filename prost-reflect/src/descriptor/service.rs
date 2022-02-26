@@ -6,14 +6,14 @@ use crate::descriptor::debug_fmt_iter;
 
 use super::{
     make_full_name, parse_name, parse_namespace, ty, DescriptorError, FileDescriptor,
-    MessageDescriptor,
+    MessageDescriptor, MethodIndex, ServiceIndex,
 };
 
 /// A protobuf service definition.
 #[derive(Clone, PartialEq, Eq)]
 pub struct ServiceDescriptor {
     file_descriptor: FileDescriptor,
-    index: u32,
+    index: ServiceIndex,
 }
 
 pub(super) struct ServiceDescriptorInner {
@@ -25,7 +25,7 @@ pub(super) struct ServiceDescriptorInner {
 #[derive(Clone, PartialEq, Eq)]
 pub struct MethodDescriptor {
     service: ServiceDescriptor,
-    index: u32,
+    index: MethodIndex,
 }
 
 struct MethodDescriptorInner {
