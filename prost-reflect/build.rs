@@ -1,5 +1,5 @@
 #[cfg(feature = "reflect-well-known-types")]
-fn main() {
+fn main() -> std::io::Result<()> {
     use std::{env, path::PathBuf};
 
     let mut wkt_path =
@@ -24,7 +24,6 @@ fn main() {
     prost_build::Config::new()
         .file_descriptor_set_path(&wkt_path)
         .compile_protos(protos, includes)
-        .unwrap()
 }
 
 #[cfg(not(feature = "reflect-well-known-types"))]
