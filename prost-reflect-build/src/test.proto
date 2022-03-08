@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package my.test;
+
+message TestMessage {
+    int32 int32_value = 1;
+    message NestedMessage {
+        int64 int64_value = 1;
+    }
+
+    NestedMessage nested_message = 2;
+    AnotherMessage another_message = 3;
+}
+
+message AnotherMessage {
+    string string_value = 1;
+}
