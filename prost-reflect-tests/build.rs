@@ -1,49 +1,12 @@
-use std::{env, io, path::PathBuf};
+use std::io;
 
 fn main() -> io::Result<()> {
-    let file_descriptor_set_path =
-        PathBuf::from(env::var("OUT_DIR").expect("OUT_DIR environment variable not set"))
-            .join("file_descriptor_set.bin");
-
-    prost_build::Config::new()
+    let mut config = prost_build::Config::new();
+    config
         .type_attribute(".test.Scalars", "#[cfg_attr(test, derive(::proptest_derive::Arbitrary))]")
         .type_attribute(".test.ScalarArrays", "#[cfg_attr(test, derive(::proptest_derive::Arbitrary))]")
         .type_attribute(".test.ComplexType", "#[cfg_attr(test, derive(::proptest_derive::Arbitrary))]")
         .type_attribute(".test.WellKnownTypes", "#[cfg_attr(test, derive(::proptest_derive::Arbitrary))]")
-        .type_attribute(".test", "#[derive(::prost_reflect::ReflectMessage)]")
-        .type_attribute(".test2.ContainsGroup", "#[derive(::prost_reflect::ReflectMessage)]")
-        .type_attribute(
-            ".test.Scalars",
-            "#[prost_reflect(file_descriptor = \"TEST_FILE_DESCRIPTOR\", message_name = \"test.Scalars\")]",
-        )
-        .type_attribute(
-            ".test.ScalarArrays",
-            "#[prost_reflect(file_descriptor = \"TEST_FILE_DESCRIPTOR\", message_name = \"test.ScalarArrays\")]",
-        )
-        .type_attribute(
-            ".test.ComplexType",
-            "#[prost_reflect(file_descriptor = \"TEST_FILE_DESCRIPTOR\", message_name = \"test.ComplexType\")]",
-        )
-        .type_attribute(
-            ".test.WellKnownTypes",
-            "#[prost_reflect(file_descriptor = \"TEST_FILE_DESCRIPTOR\", message_name = \"test.WellKnownTypes\")]",
-        )
-        .type_attribute(
-            ".test.MessageWithOneof",
-            "#[prost_reflect(file_descriptor = \"TEST_FILE_DESCRIPTOR\", message_name = \"test.MessageWithOneof\")]",
-        )
-        .type_attribute(
-            ".test.MessageWithAliasedEnum",
-            "#[prost_reflect(file_descriptor = \"TEST_FILE_DESCRIPTOR\", message_name = \"test.MessageWithAliasedEnum\")]",
-        )
-        .type_attribute(
-            ".test.Point",
-            "#[prost_reflect(file_descriptor = \"TEST_FILE_DESCRIPTOR\", message_name = \"test.Point\")]",
-        )
-        .type_attribute(
-            ".test2.ContainsGroup",
-            "#[prost_reflect(file_descriptor = \"crate::TEST_FILE_DESCRIPTOR\", message_name = \"test2.ContainsGroup\")]",
-        )
         .field_attribute(
             ".test.WellKnownTypes.timestamp",
             "#[cfg_attr(test, proptest(strategy = \"::proptest::option::of(crate::arbitrary::timestamp())\"))]",
@@ -68,9 +31,12 @@ fn main() -> io::Result<()> {
             ".test.WellKnownTypes.empty",
             "#[cfg_attr(test, proptest(strategy = \"::proptest::option::of(::proptest::strategy::Just(()))\"))]",
         )
-        .field_attribute(".test.WellKnownTypes.null", "#[cfg_attr(test, proptest(value= \"0\"))]")
-        .file_descriptor_set_path(file_descriptor_set_path)
-        .compile_protos(
+        .field_attribute(".test.WellKnownTypes.null", "#[cfg_attr(test, proptest(value= \"0\"))]");
+
+    prost_reflect_build::Builder::new()
+        .file_descriptor_expr("crate::TEST_FILE_DESCRIPTOR")
+        .compile_protos_with_config(
+            config,
             &[
                 "src/test.proto",
                 "src/test2.proto",

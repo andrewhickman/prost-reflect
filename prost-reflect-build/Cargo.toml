@@ -1,0 +1,10 @@
+[package]
+name = "prost-reflect-build"
+version = "0.1.0"
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+prost-reflect = { path = "../prost-reflect" }
+prost-build = "0.9.0"

@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "prost-reflect",
+    "prost-reflect-build",
     "prost-reflect-derive",
     "prost-reflect-tests",
     "prost-reflect-conformance-tests"

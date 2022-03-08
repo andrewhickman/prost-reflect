@@ -29,6 +29,7 @@ serde = "1.0.132"
 criterion = "0.3.5"
 
 [build-dependencies]
+prost-reflect-build = { path = "../prost-reflect-build" }
 prost-build = "0.9.0"
 
 [package.metadata.release]
