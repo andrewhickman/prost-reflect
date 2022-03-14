@@ -1,7 +1,7 @@
 //! `prost-reflect-build` contains [`Builder`] to configure [`prost_build::Config`]
 //! to derive [`prost_reflect::ReflectMessage`] for all messages in protocol buffers.
 //!
-//! The simplest way to generate procotol buffer API:
+//! The simplest way to generate protocol buffer API:
 //!
 //! ```no_run
 //! // build.rs
@@ -20,8 +20,7 @@
 //! ).unwrap());
 //!
 //! // `include!` generated code may appear anywhere in the crate.
-//! include!(conca!(env!("OUT_DIR"), "protobuf.rs"));
-//!
+//! include!(concat!(env!("OUT_DIR"), "protobuf.rs"));
 //! ```
 
 use std::{
@@ -50,7 +49,7 @@ pub struct Builder {
 impl Default for Builder {
     fn default() -> Self {
         let file_descriptor_set_path =
-            PathBuf::from(std::env::var("OUT_DIR").unwrap_or_else(|_| String::from(".")))
+            std::env::var_os("OUT_DIR").map(PathBuf::from).unwrap_or_else(|| PathBuf::from("."))
                 .join("file_descriptor_set.bin");
 
         Self {
@@ -180,7 +179,7 @@ mod tests {
         config.out_dir(tmpdir.clone());
 
         builder
-            .file_descriptor_set_path(tmpdir.join("file_descriptor_est.bin"))
+            .file_descriptor_set_path(tmpdir.join("file_descriptor_set.bin"))
             .compile_protos_with_config(config, &["src/test.proto"], &["src"])
             .unwrap();
 
