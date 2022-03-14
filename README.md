@@ -94,16 +94,10 @@ let message = MyMessage {};
 assert_eq!(message.descriptor().full_name(), "package.MyMessage");
 ```
 
-If you are using `prost-build`, it can be configured to generate [`ReflectMessage`] implementations
-for messages:
+If you are using `prost-build`, the [`prost-reflect-build`] crate provides helpers to generate `ReflectMessage` implementations:
 
 ```rust,no_run
-use prost_build::Config;
-
-Config::new()
-    .file_descriptor_set_path("file_descriptor_set.bin")
-    .type_attribute(".package.MyMessage", "#[derive(::prost_reflect::ReflectMessage)]")
-    .type_attribute(".package.MyMessage", "#[prost_reflect(file_descriptor = \"FILE_DESCRIPTOR\", message_name = \"package.MyMessage\")]")
+prost_reflect_build::Builder::new()
     .compile_protos(&["src/package.proto"], &["src"])
     .unwrap();
 ```
