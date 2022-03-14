@@ -1,6 +1,6 @@
 [package]
 name = "prost-reflect-derive"
-description = "An derive macro for prost-reflect to generate ReflectMessage implementations"
+description = "A derive macro for prost-reflect to generate ReflectMessage implementations"
 keywords = ["protobuf", "serialization", "json"]
 categories = ["encoding"]
 version = "0.6.1"

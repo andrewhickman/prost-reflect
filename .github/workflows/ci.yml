@@ -44,11 +44,11 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: fmt
-          args: --package prost-reflect --package prost-reflect-derive --package prost-reflect-tests -- --check
+          args: --all -- --check
       - uses: actions-rs/cargo@v1
         with:
           command: clippy
-          args: --package prost-reflect --package prost-reflect-derive --package prost-reflect-tests -- -D warnings
+          args: --all -- -D warnings
       - name: Check README.md is up-to-date
         shell: pwsh
         run: |

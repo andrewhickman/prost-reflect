@@ -1,10 +1,27 @@
 [package]
 name = "prost-reflect-build"
-version = "0.1.0"
+description = "A utility function for use with prost-build and prost-reflect to generate ReflectMessage implementations"
+keywords = ["protobuf", "serialization", "json"]
+categories = ["encoding"]
+version = "0.6.0-pre"
+authors = ["Andrew Hickman <andrew.hickman1@sky.com>"]
+repository = "https://github.com/andrewhickman/prost-reflect"
+documentation = "https://docs.rs/prost-reflect-build"
+license = "MIT OR Apache-2.0"
+readme = "../README.md"
 edition = "2018"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+rust-version = "1.54.0"
+exclude = ["test.proto"]
 
 [dependencies]
-prost-reflect = { path = "../prost-reflect" }
+prost-reflect = { path = "../prost-reflect", version = "0.6.1" }
 prost-build = "0.9.0"
+
+[[package.metadata.release.pre-release-replacements]]
+file = "src/lib.rs"
+search = "html_root_url = \"https://docs.rs/prost-reflect-build/.*?/\""
+replace = "html_root_url = \"https://docs.rs/prost-reflect-build/{{version}}/\""
+exactly = 1
+
+[package.metadata.release]
+tag = false

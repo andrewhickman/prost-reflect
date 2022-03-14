@@ -22,9 +22,11 @@
 //! // `include!` generated code may appear anywhere in the crate.
 //! include!(concat!(env!("OUT_DIR"), "protobuf.rs"));
 //! ```
+#![warn(missing_debug_implementations, missing_docs)]
+#![doc(html_root_url = "https://docs.rs/prost-reflect-build/0.6.0/")]
 
 use std::{
-    io::Read,
+    env, fs, io,
     path::{Path, PathBuf},
 };
 
@@ -48,9 +50,10 @@ pub struct Builder {
 
 impl Default for Builder {
     fn default() -> Self {
-        let file_descriptor_set_path =
-            std::env::var_os("OUT_DIR").map(PathBuf::from).unwrap_or_else(|| PathBuf::from("."))
-                .join("file_descriptor_set.bin");
+        let file_descriptor_set_path = env::var_os("OUT_DIR")
+            .map(PathBuf::from)
+            .unwrap_or_else(|| PathBuf::from("."))
+            .join("file_descriptor_set.bin");
 
         Self {
             file_descriptor_set_path,
@@ -120,13 +123,12 @@ impl Builder {
         config: &mut prost_build::Config,
         protos: &[impl AsRef<Path>],
         includes: &[impl AsRef<Path>],
-    ) -> std::io::Result<()> {
+    ) -> io::Result<()> {
         config
             .file_descriptor_set_path(&self.file_descriptor_set_path)
             .compile_protos(protos, includes)?;
 
-        let mut buf = vec![];
-        std::fs::File::open(&self.file_descriptor_set_path)?.read_to_end(&mut buf)?;
+        let buf = fs::read(&self.file_descriptor_set_path)?;
         let descriptor = FileDescriptor::decode(buf.as_ref()).expect("Invalid file descriptor");
 
         for message in descriptor.all_messages() {
@@ -151,7 +153,7 @@ impl Builder {
         mut config: prost_build::Config,
         protos: &[impl AsRef<Path>],
         includes: &[impl AsRef<Path>],
-    ) -> std::io::Result<()> {
+    ) -> io::Result<()> {
         self.configure(&mut config, protos, includes)?;
 
         config.skip_protoc_run().compile_protos(protos, includes)
@@ -162,7 +164,7 @@ impl Builder {
         &mut self,
         protos: &[impl AsRef<Path>],
         includes: &[impl AsRef<Path>],
-    ) -> std::io::Result<()> {
+    ) -> io::Result<()> {
         self.compile_protos_with_config(prost_build::Config::new(), protos, includes)
     }
 }
@@ -185,12 +187,7 @@ mod tests {
 
         assert!(tmpdir.join("my.test.rs").exists());
 
-        let mut buf = String::new();
-        std::fs::File::open(tmpdir.join("my.test.rs"))
-            .unwrap()
-            .read_to_string(&mut buf)
-            .unwrap();
-
+        let buf = fs::read_to_string(tmpdir.join("my.test.rs")).unwrap();
         let num_derive = buf
             .lines()
             .filter(|line| line.trim_start() == "#[derive(::prost_reflect::ReflectMessage)]")
