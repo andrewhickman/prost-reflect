@@ -15,7 +15,7 @@ exclude = ["test.proto"]
 
 [dependencies]
 prost-reflect = { path = "../prost-reflect", version = "0.6.1" }
-prost-build = "0.9.0"
+prost-build = "0.10.0"
 
 [[package.metadata.release.pre-release-replacements]]
 file = "src/lib.rs"
