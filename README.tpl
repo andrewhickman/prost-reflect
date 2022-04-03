@@ -1,6 +1,6 @@
 [![crates.io](https://img.shields.io/crates/v/prost-reflect.svg)](https://crates.io/crates/prost-reflect/)
 [![docs.rs](https://docs.rs/prost-reflect/badge.svg)](https://docs.rs/prost-reflect/)
-[![deps.rs](https://deps.rs/crate/prost-reflect/0.6.1/status.svg)](https://deps.rs/crate/prost-reflect)
+[![deps.rs](https://deps.rs/crate/prost-reflect/0.7.0/status.svg)](https://deps.rs/crate/prost-reflect)
 ![MSRV](https://img.shields.io/badge/rustc-1.54+-blue.svg)
 [![Continuous integration](https://github.com/andrewhickman/prost-reflect/actions/workflows/ci.yml/badge.svg)](https://github.com/andrewhickman/prost-reflect/actions/workflows/ci.yml)
 [![codecov.io](https://codecov.io/gh/andrewhickman/prost-reflect/branch/main/graph/badge.svg?token=E2OITYXO7M)](https://codecov.io/gh/andrewhickman/prost-reflect)
@@ -50,12 +50,12 @@ Unless you explicitly state otherwise, any contribution intentionally submitted
 for inclusion in the work by you, as defined in the Apache-2.0 license, shall be
 dual licensed as above, without any additional terms or conditions.
 
-[`FileDescriptor`]: https://docs.rs/prost-reflect/0.6.1/prost_reflect/struct.FileDescriptor.html
-[`DynamicMessage`]: https://docs.rs/prost-reflect/0.6.1/prost_reflect/struct.DynamicMessage.html
-[`MessageDescriptor`]: https://docs.rs/prost-reflect/0.6.1/prost_reflect/struct.MessageDescriptor.html
-[`MessageDescriptor`]: https://docs.rs/prost-reflect/0.6.1/prost_reflect/struct.MessageDescriptor.html
-[`DynamicMessage::decode`]: https://docs.rs/prost-reflect/0.6.1/prost_reflect/struct.DynamicMessage.html#method.decode
-[`ReflectMessage`]: https://docs.rs/prost-reflect/0.6.1/prost_reflect/trait.ReflectMessage.html
+[`FileDescriptor`]: https://docs.rs/prost-reflect/0.7.0/prost_reflect/struct.FileDescriptor.html
+[`DynamicMessage`]: https://docs.rs/prost-reflect/0.7.0/prost_reflect/struct.DynamicMessage.html
+[`MessageDescriptor`]: https://docs.rs/prost-reflect/0.7.0/prost_reflect/struct.MessageDescriptor.html
+[`MessageDescriptor`]: https://docs.rs/prost-reflect/0.7.0/prost_reflect/struct.MessageDescriptor.html
+[`DynamicMessage::decode`]: https://docs.rs/prost-reflect/0.7.0/prost_reflect/struct.DynamicMessage.html#method.decode
+[`ReflectMessage`]: https://docs.rs/prost-reflect/0.7.0/prost_reflect/trait.ReflectMessage.html
 
 [`Default`]: https://doc.rust-lang.org/stable/core/default/trait.Default.html
 [prost::Message]: https://docs.rs/prost/latest/prost/trait.Message.html

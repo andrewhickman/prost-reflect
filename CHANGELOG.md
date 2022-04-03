@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2022-04-03
+
 ## Changed
 
 Update to version [`0.10.0`](https://crates.io/crates/prost) of prost.
@@ -179,7 +181,8 @@ Update to version [`0.10.0`](https://crates.io/crates/prost) of prost.
 
 - Initial release, including support for inspecting message types at runtime.
 
-[Unreleased]: https://github.com/andrewhickman/prost-reflect/compare/0.6.1...HEAD
+[Unreleased]: https://github.com/andrewhickman/prost-reflect/compare/0.7.0...HEAD
+[0.7.0]: https://github.com/andrewhickman/prost-reflect/compare/0.6.1...0.7.0
 [0.6.1]: https://github.com/andrewhickman/prost-reflect/compare/0.6.0...0.6.1
 [0.6.0]: https://github.com/andrewhickman/prost-reflect/compare/0.5.7...0.6.0
 [0.5.7]: https://github.com/andrewhickman/prost-reflect/compare/0.5.6...0.5.7
