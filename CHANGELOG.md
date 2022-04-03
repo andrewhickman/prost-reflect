@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Changed
 
-Update to version [`0.10.0`](https://crates.io/crates/prost) of prost.
+- Updated to version [`0.10.0`](https://crates.io/crates/prost) of prost.
 
 ## [0.6.1] - 2022-02-27
 
