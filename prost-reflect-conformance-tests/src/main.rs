@@ -5,7 +5,7 @@ use prost::{
     bytes::{Buf, BufMut},
     Message,
 };
-use prost_reflect::{DeserializeOptions, DynamicMessage, FileDescriptor};
+use prost_reflect::{DescriptorPool, DeserializeOptions, DynamicMessage};
 
 use prost_reflect_conformance_tests::conformance::{
     conformance_request, conformance_response, ConformanceRequest, ConformanceResponse,
@@ -15,8 +15,8 @@ use prost_reflect_conformance_tests::conformance::{
 const TEST_MESSAGES_FILE_DESCRIPTOR_SET_BYTES: &[u8] =
     include_bytes!(concat!(env!("OUT_DIR"), "/test_messages.bin"));
 
-static TEST_MESSAGES_FILE_DESCRIPTOR: Lazy<FileDescriptor> =
-    Lazy::new(|| FileDescriptor::decode(TEST_MESSAGES_FILE_DESCRIPTOR_SET_BYTES).unwrap());
+static TEST_MESSAGES_FILE_DESCRIPTOR: Lazy<DescriptorPool> =
+    Lazy::new(|| DescriptorPool::decode(TEST_MESSAGES_FILE_DESCRIPTOR_SET_BYTES).unwrap());
 
 fn main() -> io::Result<()> {
     env_logger::init();

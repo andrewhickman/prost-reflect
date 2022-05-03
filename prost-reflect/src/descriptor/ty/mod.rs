@@ -19,7 +19,7 @@ use prost_types::{
 };
 
 use crate::descriptor::{
-    debug_fmt_iter, make_full_name, parse_name, parse_namespace, DescriptorError, FileDescriptor,
+    debug_fmt_iter, make_full_name, parse_name, parse_namespace, DescriptorError, DescriptorPool,
     MAP_ENTRY_KEY_NUMBER, MAP_ENTRY_VALUE_NUMBER,
 };
 
@@ -38,7 +38,7 @@ pub(super) struct TypeMap {
 /// A protobuf message definition.
 #[derive(Clone, PartialEq, Eq)]
 pub struct MessageDescriptor {
-    file_set: FileDescriptor,
+    file_set: DescriptorPool,
     index: MessageIndex,
 }
 
@@ -89,7 +89,7 @@ struct FieldDescriptorInner {
 /// A protobuf extension field definition.
 #[derive(Clone, PartialEq, Eq)]
 pub struct ExtensionDescriptor {
-    file_set: FileDescriptor,
+    file_set: DescriptorPool,
     index: ExtensionIndex,
 }
 
@@ -104,7 +104,7 @@ pub struct ExtensionDescriptorInner {
 /// A protobuf enum type.
 #[derive(Clone, PartialEq, Eq)]
 pub struct EnumDescriptor {
-    file_set: FileDescriptor,
+    file_set: DescriptorPool,
     index: EnumIndex,
 }
 
@@ -186,7 +186,7 @@ enum ParentKind {
 }
 
 impl MessageDescriptor {
-    pub(in crate::descriptor) fn new(file_set: FileDescriptor, ty: TypeId) -> Self {
+    pub(in crate::descriptor) fn new(file_set: DescriptorPool, ty: TypeId) -> Self {
         debug_assert_eq!(ty.0, field_descriptor_proto::Type::Message);
         MessageDescriptor {
             file_set,
@@ -195,7 +195,7 @@ impl MessageDescriptor {
     }
 
     pub(in crate::descriptor) fn iter(
-        file_set: &FileDescriptor,
+        file_set: &DescriptorPool,
     ) -> impl ExactSizeIterator<Item = Self> + '_ {
         file_set
             .inner
@@ -205,7 +205,7 @@ impl MessageDescriptor {
     }
 
     pub(in crate::descriptor) fn try_get_by_name(
-        file_set: &FileDescriptor,
+        file_set: &DescriptorPool,
         name: &str,
     ) -> Option<Self> {
         let ty = file_set.inner.type_map.get_by_name(name)?;
@@ -215,8 +215,8 @@ impl MessageDescriptor {
         Some(MessageDescriptor::new(file_set.clone(), ty))
     }
 
-    /// Gets a reference to the [`FileDescriptor`] this message is defined in.
-    pub fn parent_file(&self) -> &FileDescriptor {
+    /// Gets a reference to the [`DescriptorPool`] this message is defined in.
+    pub fn parent_file(&self) -> &DescriptorPool {
         &self.file_set
     }
 
@@ -412,8 +412,8 @@ impl fmt::Debug for MessageDescriptor {
 }
 
 impl FieldDescriptor {
-    /// Gets a reference to the [`FileDescriptor`] this field is defined in.
-    pub fn parent_file(&self) -> &FileDescriptor {
+    /// Gets a reference to the [`DescriptorPool`] this field is defined in.
+    pub fn parent_file(&self) -> &DescriptorPool {
         self.message.parent_file()
     }
 
@@ -552,7 +552,7 @@ impl fmt::Debug for FieldDescriptor {
 
 impl ExtensionDescriptor {
     pub(in crate::descriptor) fn iter(
-        file_set: &FileDescriptor,
+        file_set: &DescriptorPool,
     ) -> impl ExactSizeIterator<Item = Self> + '_ {
         file_set
             .inner
@@ -564,8 +564,8 @@ impl ExtensionDescriptor {
             })
     }
 
-    /// Gets a reference to the [`FileDescriptor`] this extension field is defined in.
-    pub fn parent_file(&self) -> &FileDescriptor {
+    /// Gets a reference to the [`DescriptorPool`] this extension field is defined in.
+    pub fn parent_file(&self) -> &DescriptorPool {
         &self.file_set
     }
 
@@ -794,7 +794,7 @@ impl fmt::Debug for Kind {
 }
 
 impl EnumDescriptor {
-    pub(in crate::descriptor) fn new(file_set: FileDescriptor, ty: TypeId) -> Self {
+    pub(in crate::descriptor) fn new(file_set: DescriptorPool, ty: TypeId) -> Self {
         debug_assert_eq!(ty.0, field_descriptor_proto::Type::Enum);
         EnumDescriptor {
             file_set,
@@ -803,7 +803,7 @@ impl EnumDescriptor {
     }
 
     pub(in crate::descriptor) fn iter(
-        file_set: &FileDescriptor,
+        file_set: &DescriptorPool,
     ) -> impl ExactSizeIterator<Item = Self> + '_ {
         file_set
             .inner
@@ -813,7 +813,7 @@ impl EnumDescriptor {
     }
 
     pub(in crate::descriptor) fn try_get_by_name(
-        file_set: &FileDescriptor,
+        file_set: &DescriptorPool,
         name: &str,
     ) -> Option<Self> {
         let ty = file_set.inner.type_map.get_by_name(name)?;
@@ -823,8 +823,8 @@ impl EnumDescriptor {
         Some(EnumDescriptor::new(file_set.clone(), ty))
     }
 
-    /// Gets a reference to the [`FileDescriptor`] this enum type is defined in.
-    pub fn parent_file(&self) -> &FileDescriptor {
+    /// Gets a reference to the [`DescriptorPool`] this enum type is defined in.
+    pub fn parent_file(&self) -> &DescriptorPool {
         &self.file_set
     }
 
@@ -961,8 +961,8 @@ impl EnumValueDescriptor {
         }
     }
 
-    /// Gets a reference to the [`FileDescriptor`] this enum value is defined in.
-    pub fn parent_file(&self) -> &FileDescriptor {
+    /// Gets a reference to the [`DescriptorPool`] this enum value is defined in.
+    pub fn parent_file(&self) -> &DescriptorPool {
         self.parent.parent_file()
     }
 
@@ -1019,8 +1019,8 @@ impl OneofDescriptor {
         }
     }
 
-    /// Gets a reference to the [`FileDescriptor`] this oneof is defined in.
-    pub fn parent_file(&self) -> &FileDescriptor {
+    /// Gets a reference to the [`DescriptorPool`] this oneof is defined in.
+    pub fn parent_file(&self) -> &DescriptorPool {
         self.message.parent_file()
     }
 
@@ -1218,7 +1218,7 @@ impl TypeId {
         }
     }
 
-    fn to_kind(self, file_set: &FileDescriptor) -> Kind {
+    fn to_kind(self, file_set: &DescriptorPool) -> Kind {
         match self.0 {
             field_descriptor_proto::Type::Double => Kind::Double,
             field_descriptor_proto::Type::Float => Kind::Float,
@@ -1257,7 +1257,7 @@ impl ParentKind {
 
     fn resolve_parent_file_proto<'a>(
         &self,
-        file_set: &'a FileDescriptor,
+        file_set: &'a DescriptorPool,
     ) -> &'a FileDescriptorProto {
         let mut curr = *self;
         loop {
@@ -1271,11 +1271,11 @@ impl ParentKind {
     }
 }
 
-fn get_file_descriptor_proto(file_set: &FileDescriptor, index: FileIndex) -> &FileDescriptorProto {
+fn get_file_descriptor_proto(file_set: &DescriptorPool, index: FileIndex) -> &FileDescriptorProto {
     &file_set.file_descriptor_set().file[index as usize]
 }
 
-fn find_message_descriptor_proto(file_set: &FileDescriptor, index: FileIndex) -> &DescriptorProto {
+fn find_message_descriptor_proto(file_set: &DescriptorPool, index: FileIndex) -> &DescriptorProto {
     let message = file_set.inner.type_map.get_message(index);
     match message.parent {
         ParentKind::File { index: file_index } => get_file_descriptor_proto(file_set, file_index)

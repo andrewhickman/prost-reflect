@@ -4,10 +4,10 @@ defined for protobuf messages.
 
 ```rust
 use prost::Message;
-use prost_reflect::{DynamicMessage, FileDescriptor, Value};
+use prost_reflect::{DynamicMessage, DescriptorPool, Value};
 use serde_json::de::Deserializer;
 
-let file_descriptor = FileDescriptor::decode(include_bytes!("file_descriptor_set.bin").as_ref()).unwrap();
+let file_descriptor = DescriptorPool::decode(include_bytes!("file_descriptor_set.bin").as_ref()).unwrap();
 let message_descriptor = file_descriptor.get_message_by_name("package.MyMessage").unwrap();
 
 let json = r#"{ "foo": 150 }"#;

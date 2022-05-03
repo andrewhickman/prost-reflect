@@ -17,7 +17,7 @@ protobuf type definition is not known ahead of time.
 
 The main entry points into the API of this crate are:
 
-- [`FileDescriptor`] wraps a [`FileDescriptorSet`][prost_types::FileDescriptorSet] output by 
+- [`DescriptorPool`] wraps a [`FileDescriptorSet`][prost_types::FileDescriptorSet] output by 
   the protobuf compiler to provide an API for inspecting type definitions.
 - [`DynamicMessage`] provides encoding, decoding and reflection of an arbitrary protobuf 
   message definition described by a [`MessageDescriptor`].
@@ -31,10 +31,10 @@ to create a default value for the `MessageDescriptor` instance and merge into it
 ```rust
 use prost::Message;
 use prost_types::FileDescriptorSet;
-use prost_reflect::{DynamicMessage, FileDescriptor, Value};
+use prost_reflect::{DynamicMessage, DescriptorPool, Value};
 
 let file_descriptor_set = FileDescriptorSet::decode(include_bytes!("file_descriptor_set.bin").as_ref()).unwrap();
-let file_descriptor = FileDescriptor::new(file_descriptor_set).unwrap();
+let file_descriptor = DescriptorPool::new(file_descriptor_set).unwrap();
 let message_descriptor = file_descriptor.get_message_by_name("package.MyMessage").unwrap();
 
 let dynamic_message = DynamicMessage::decode(message_descriptor, b"\x08\x96\x01".as_ref()).unwrap();
@@ -50,10 +50,10 @@ defined for protobuf messages.
 
 ```rust
 use prost::Message;
-use prost_reflect::{DynamicMessage, FileDescriptor, Value};
+use prost_reflect::{DynamicMessage, DescriptorPool, Value};
 use serde_json::de::Deserializer;
 
-let file_descriptor = FileDescriptor::decode(include_bytes!("file_descriptor_set.bin").as_ref()).unwrap();
+let file_descriptor = DescriptorPool::decode(include_bytes!("file_descriptor_set.bin").as_ref()).unwrap();
 let message_descriptor = file_descriptor.get_message_by_name("package.MyMessage").unwrap();
 
 let json = r#"{ "foo": 150 }"#;
@@ -75,16 +75,16 @@ derive macro takes the following parameters:
 
 | Name            | Value |
 |-----------------|-------|
-| file_descriptor | An expression that resolves to a [`FileDescriptor`] containing the message type. The descriptor should be cached to avoid re-building it. |
-| message_name    | The full name of the message, used to look it up within [`FileDescriptor`]. |
+| file_descriptor | An expression that resolves to a [`DescriptorPool`] containing the message type. The descriptor should be cached to avoid re-building it. |
+| message_name    | The full name of the message, used to look it up within [`DescriptorPool`]. |
 
 ```rust
 use prost::Message;
-use prost_reflect::{FileDescriptor, ReflectMessage};
+use prost_reflect::{DescriptorPool, ReflectMessage};
 use once_cell::sync::Lazy;
 
-static FILE_DESCRIPTOR: Lazy<FileDescriptor>
-    = Lazy::new(|| FileDescriptor::decode(include_bytes!("file_descriptor_set.bin").as_ref()).unwrap());
+static FILE_DESCRIPTOR: Lazy<DescriptorPool>
+    = Lazy::new(|| DescriptorPool::decode(include_bytes!("file_descriptor_set.bin").as_ref()).unwrap());
 
 #[derive(Message, ReflectMessage)]
 #[prost_reflect(file_descriptor = "FILE_DESCRIPTOR", message_name = "package.MyMessage")]
@@ -126,7 +126,7 @@ Unless you explicitly state otherwise, any contribution intentionally submitted
 for inclusion in the work by you, as defined in the Apache-2.0 license, shall be
 dual licensed as above, without any additional terms or conditions.
 
-[`FileDescriptor`]: https://docs.rs/prost-reflect/0.7.0/prost_reflect/struct.FileDescriptor.html
+[`DescriptorPool`]: https://docs.rs/prost-reflect/0.7.0/prost_reflect/struct.DescriptorPool.html
 [`DynamicMessage`]: https://docs.rs/prost-reflect/0.7.0/prost_reflect/struct.DynamicMessage.html
 [`MessageDescriptor`]: https://docs.rs/prost-reflect/0.7.0/prost_reflect/struct.MessageDescriptor.html
 [`MessageDescriptor`]: https://docs.rs/prost-reflect/0.7.0/prost_reflect/struct.MessageDescriptor.html

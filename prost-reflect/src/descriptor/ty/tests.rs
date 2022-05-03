@@ -4,7 +4,7 @@ use prost_types::{
     MethodDescriptorProto, ServiceDescriptorProto,
 };
 
-use crate::FileDescriptor;
+use crate::DescriptorPool;
 
 #[test]
 fn resolve_service_name() {
@@ -30,7 +30,7 @@ fn resolve_service_name() {
         }],
     };
 
-    let file_descriptor = FileDescriptor::new(file_descriptor_set).unwrap();
+    let file_descriptor = DescriptorPool::new(file_descriptor_set).unwrap();
     let service = file_descriptor.services().next().unwrap();
     let method = service.methods().next().unwrap();
     assert_eq!(method.input().full_name(), "my.package.MyMessage");
@@ -68,7 +68,7 @@ fn resolve_service_name_other_package() {
         ],
     };
 
-    let file_descriptor = FileDescriptor::new(file_descriptor_set).unwrap();
+    let file_descriptor = DescriptorPool::new(file_descriptor_set).unwrap();
     let service = file_descriptor.services().next().unwrap();
     let method = service.methods().next().unwrap();
     assert_eq!(method.input().full_name(), "other.package.MyMessage");
@@ -104,7 +104,7 @@ fn resolve_message_name() {
         }],
     };
 
-    let file_descriptor = FileDescriptor::new(file_descriptor_set).unwrap();
+    let file_descriptor = DescriptorPool::new(file_descriptor_set).unwrap();
     let message = file_descriptor
         .get_message_by_name("my.package.MyMessage")
         .unwrap();
@@ -142,7 +142,7 @@ fn resolve_message_name_nested() {
         }],
     };
 
-    let file_descriptor = FileDescriptor::new(file_descriptor_set).unwrap();
+    let file_descriptor = DescriptorPool::new(file_descriptor_set).unwrap();
     let message = file_descriptor
         .get_message_by_name("my.package.MyMessage")
         .unwrap();
@@ -182,7 +182,7 @@ fn message_field_type_not_set() {
         }],
     };
 
-    let file_descriptor = FileDescriptor::new(file_descriptor_set).unwrap();
+    let file_descriptor = DescriptorPool::new(file_descriptor_set).unwrap();
     let message = file_descriptor
         .get_message_by_name("my.package.MyMessage")
         .unwrap();

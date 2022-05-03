@@ -1,6 +1,6 @@
 use std::fmt;
 
-/// An error that may occur while creating a [`FileDescriptor`][crate::FileDescriptor].
+/// An error that may occur while creating a [`DescriptorPool`][crate::DescriptorPool].
 #[derive(Debug)]
 pub struct DescriptorError {
     kind: DescriptorErrorKind,

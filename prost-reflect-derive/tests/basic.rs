@@ -1,9 +1,9 @@
 use once_cell::sync::Lazy;
 use prost::Message;
-use prost_reflect::{FileDescriptor, ReflectMessage};
+use prost_reflect::{DescriptorPool, ReflectMessage};
 
-static FILE_DESCRIPTOR: Lazy<FileDescriptor> = Lazy::new(|| {
-    FileDescriptor::decode(include_bytes!("file_descriptor_set.bin").as_ref()).unwrap()
+static FILE_DESCRIPTOR: Lazy<DescriptorPool> = Lazy::new(|| {
+    DescriptorPool::decode(include_bytes!("file_descriptor_set.bin").as_ref()).unwrap()
 });
 
 #[derive(Message, ReflectMessage)]

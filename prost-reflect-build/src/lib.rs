@@ -15,7 +15,7 @@
 //! With default configuration, `lib.rs` must include the following lines for reflection.
 //!
 //! ```ignore
-//! static FILE_DESCRIPTOR: Lazy<FileDescriptor> = Lazy::new(|| FileDescriptor::decode(
+//! static FILE_DESCRIPTOR: Lazy<DescriptorPool> = Lazy::new(|| DescriptorPool::decode(
 //!     include_bytes!(concat!(env!("OUT_DIR"), "file_descriptor_set.bin")).as_ref()
 //! ).unwrap());
 //!
@@ -30,7 +30,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use prost_reflect::FileDescriptor;
+use prost_reflect::DescriptorPool;
 
 /// Configuration builder for prost-reflect code generation.
 ///
@@ -86,8 +86,8 @@ impl Builder {
     /// In that case, `lib.rs` should contain the following lines,
     ///
     /// ```ignore
-    /// static FILE_DESCRIPTOR: Lazy<FileDescriptor> = Lazy::new(||
-    ///     FileDescriptor::decode(include_bytes!(
+    /// static FILE_DESCRIPTOR: Lazy<DescriptorPool> = Lazy::new(||
+    ///     DescriptorPool::decode(include_bytes!(
     ///         concat!(env!("OUT_DIR"), "file_descriptor_set.bin")
     ///     ).as_ref()).unwrap()
     /// );
@@ -129,7 +129,7 @@ impl Builder {
             .compile_protos(protos, includes)?;
 
         let buf = fs::read(&self.file_descriptor_set_path)?;
-        let descriptor = FileDescriptor::decode(buf.as_ref()).expect("Invalid file descriptor");
+        let descriptor = DescriptorPool::decode(buf.as_ref()).expect("Invalid file descriptor");
 
         for message in descriptor.all_messages() {
             let full_name = message.full_name();

@@ -5,14 +5,14 @@ use prost_types::{FileDescriptorProto, MethodDescriptorProto, ServiceDescriptorP
 use crate::descriptor::debug_fmt_iter;
 
 use super::{
-    make_full_name, parse_name, parse_namespace, ty, DescriptorError, FileDescriptor,
+    make_full_name, parse_name, parse_namespace, ty, DescriptorError, DescriptorPool,
     MessageDescriptor, MethodIndex, ServiceIndex,
 };
 
 /// A protobuf service definition.
 #[derive(Clone, PartialEq, Eq)]
 pub struct ServiceDescriptor {
-    file_descriptor: FileDescriptor,
+    file_descriptor: DescriptorPool,
     index: ServiceIndex,
 }
 
@@ -37,12 +37,12 @@ struct MethodDescriptorInner {
 }
 
 impl ServiceDescriptor {
-    /// Create a new [`ServiceDescriptor`] referencing the service at `index` within the given [`FileDescriptor`].
+    /// Create a new [`ServiceDescriptor`] referencing the service at `index` within the given [`DescriptorPool`].
     ///
     /// # Panics
     ///
     /// Panics if `index` is out-of-bounds.
-    pub fn new(file_descriptor: FileDescriptor, index: usize) -> Self {
+    pub fn new(file_descriptor: DescriptorPool, index: usize) -> Self {
         debug_assert!(index < file_descriptor.services().len());
         ServiceDescriptor {
             file_descriptor,
@@ -50,13 +50,13 @@ impl ServiceDescriptor {
         }
     }
 
-    /// Returns the index of this [`ServiceDescriptor`] within the parent [`FileDescriptor`].
+    /// Returns the index of this [`ServiceDescriptor`] within the parent [`DescriptorPool`].
     pub fn index(&self) -> usize {
         self.index as usize
     }
 
-    /// Gets a reference to the [`FileDescriptor`] this service is defined in.
-    pub fn parent_file(&self) -> &FileDescriptor {
+    /// Gets a reference to the [`DescriptorPool`] this service is defined in.
+    pub fn parent_file(&self) -> &DescriptorPool {
         &self.file_descriptor
     }
 
@@ -160,8 +160,8 @@ impl MethodDescriptor {
         &self.service
     }
 
-    /// Gets a reference to the [`FileDescriptor`] this method is defined in.
-    pub fn parent_file(&self) -> &FileDescriptor {
+    /// Gets a reference to the [`DescriptorPool`] this method is defined in.
+    pub fn parent_file(&self) -> &DescriptorPool {
         self.service.parent_file()
     }
 
