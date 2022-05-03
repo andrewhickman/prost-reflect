@@ -9,6 +9,7 @@ use std::{
 use proptest::{prelude::*, test_runner::TestCaseError};
 use prost::{bytes::Bytes, Message};
 use prost_reflect::{DynamicMessage, MapKey, ReflectMessage, Value};
+use prost_types::FileDescriptorSet;
 
 use crate::{
     contains_group, message_with_oneof, test_file_descriptor, ComplexType, ContainsGroup,
@@ -818,7 +819,11 @@ fn roundtrip_extension() {
 
 #[test]
 fn roundtrip_file_descriptor_set() {
-    roundtrip(test_file_descriptor().file_descriptor_set()).unwrap();
+    let file: Vec<_> = test_file_descriptor()
+        .file_descriptor_protos()
+        .cloned()
+        .collect();
+    roundtrip(&FileDescriptorSet { file }).unwrap();
 }
 
 #[test]

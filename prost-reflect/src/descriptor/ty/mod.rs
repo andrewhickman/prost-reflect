@@ -1272,7 +1272,10 @@ impl ParentKind {
 }
 
 fn get_file_descriptor_proto(file_set: &DescriptorPool, index: FileIndex) -> &FileDescriptorProto {
-    &file_set.file_descriptor_set().file[index as usize]
+    file_set
+        .file_descriptor_protos()
+        .nth(index as usize)
+        .unwrap()
 }
 
 fn find_message_descriptor_proto(file_set: &DescriptorPool, index: FileIndex) -> &DescriptorProto {

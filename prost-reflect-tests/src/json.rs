@@ -7,6 +7,7 @@ use std::{
 use proptest::{prelude::*, test_runner::TestCaseError};
 use prost::Message;
 use prost_reflect::{DeserializeOptions, DynamicMessage, ReflectMessage, SerializeOptions};
+use prost_types::FileDescriptorSet;
 use serde_json::json;
 
 use crate::{
@@ -1321,13 +1322,21 @@ proptest! {
 
 #[test]
 fn roundtrip_file_descriptor_set() {
-    roundtrip_json(test_file_descriptor().file_descriptor_set()).unwrap();
+    let file: Vec<_> = test_file_descriptor()
+        .file_descriptor_protos()
+        .cloned()
+        .collect();
+    roundtrip_json(&FileDescriptorSet { file }).unwrap();
 }
 
 #[test]
 fn roundtrip_file_descriptor_set_with_options() {
+    let file: Vec<_> = test_file_descriptor()
+        .file_descriptor_protos()
+        .cloned()
+        .collect();
     roundtrip_json_with_options(
-        test_file_descriptor().file_descriptor_set(),
+        &FileDescriptorSet { file },
         &SerializeOptions::new()
             .stringify_64_bit_integers(false)
             .use_enum_numbers(true)

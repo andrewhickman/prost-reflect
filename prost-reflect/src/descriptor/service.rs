@@ -82,9 +82,7 @@ impl ServiceDescriptor {
         let name = self.name();
         let package = self.package_name();
         self.parent_pool()
-            .file_descriptor_set()
-            .file
-            .iter()
+            .file_descriptor_protos()
             .filter(|file| file.package() == package)
             .flat_map(|file| file.service.iter())
             .find(|service| service.name() == name)
