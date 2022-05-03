@@ -21,7 +21,7 @@ where
 {
     match desc.full_name() {
         "google.protobuf.Any" => deserializer
-            .deserialize_any(wkt::GoogleProtobufAnyVisitor(desc.parent_file(), options))
+            .deserialize_any(wkt::GoogleProtobufAnyVisitor(desc.parent_pool(), options))
             .and_then(|timestamp| make_message(desc, timestamp)),
         "google.protobuf.Timestamp" => deserializer
             .deserialize_str(wkt::GoogleProtobufTimestampVisitor)

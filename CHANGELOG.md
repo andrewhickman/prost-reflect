@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - **Breaking**: `FileDescriptor` has been renamed to `DescriptorPool`. (The name `FileDescriptor` may be used in a future release to provide an API for inspecting individual source files)
+- **Breaking**: the `parent_file` method on all descriptor types has been renamed to `parent_pool`.
 
 ## [0.7.0] - 2022-04-03
 

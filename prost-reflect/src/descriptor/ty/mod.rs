@@ -216,7 +216,7 @@ impl MessageDescriptor {
     }
 
     /// Gets a reference to the [`DescriptorPool`] this message is defined in.
-    pub fn parent_file(&self) -> &DescriptorPool {
+    pub fn parent_pool(&self) -> &DescriptorPool {
         &self.file_set
     }
 
@@ -254,7 +254,7 @@ impl MessageDescriptor {
 
     /// Gets a reference to the raw [`DescriptorProto`] wrapped by this [`MessageDescriptor`].
     pub fn descriptor_proto(&self) -> &DescriptorProto {
-        find_message_descriptor_proto(self.parent_file(), self.index)
+        find_message_descriptor_proto(self.parent_pool(), self.index)
     }
 
     /// Gets an iterator yielding a [`FieldDescriptor`] for each field defined in this message.
@@ -413,8 +413,8 @@ impl fmt::Debug for MessageDescriptor {
 
 impl FieldDescriptor {
     /// Gets a reference to the [`DescriptorPool`] this field is defined in.
-    pub fn parent_file(&self) -> &DescriptorPool {
-        self.message.parent_file()
+    pub fn parent_pool(&self) -> &DescriptorPool {
+        self.message.parent_pool()
     }
 
     /// Gets a reference to the [`MessageDescriptor`] this field is defined in.
@@ -565,7 +565,7 @@ impl ExtensionDescriptor {
     }
 
     /// Gets a reference to the [`DescriptorPool`] this extension field is defined in.
-    pub fn parent_file(&self) -> &DescriptorPool {
+    pub fn parent_pool(&self) -> &DescriptorPool {
         &self.file_set
     }
 
@@ -824,7 +824,7 @@ impl EnumDescriptor {
     }
 
     /// Gets a reference to the [`DescriptorPool`] this enum type is defined in.
-    pub fn parent_file(&self) -> &DescriptorPool {
+    pub fn parent_pool(&self) -> &DescriptorPool {
         &self.file_set
     }
 
@@ -962,8 +962,8 @@ impl EnumValueDescriptor {
     }
 
     /// Gets a reference to the [`DescriptorPool`] this enum value is defined in.
-    pub fn parent_file(&self) -> &DescriptorPool {
-        self.parent.parent_file()
+    pub fn parent_pool(&self) -> &DescriptorPool {
+        self.parent.parent_pool()
     }
 
     /// Gets a reference to the [`EnumDescriptor`] this enum value is defined in.
@@ -1020,8 +1020,8 @@ impl OneofDescriptor {
     }
 
     /// Gets a reference to the [`DescriptorPool`] this oneof is defined in.
-    pub fn parent_file(&self) -> &DescriptorPool {
-        self.message.parent_file()
+    pub fn parent_pool(&self) -> &DescriptorPool {
+        self.message.parent_pool()
     }
 
     /// Gets a reference to the [`MessageDescriptor`] this oneof is defined in.

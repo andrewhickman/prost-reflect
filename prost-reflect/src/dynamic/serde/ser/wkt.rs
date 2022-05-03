@@ -64,7 +64,7 @@ where
     if let Some(message_name) = raw.type_url.strip_prefix("type.googleapis.com/") {
         let message_desc = msg
             .descriptor()
-            .parent_file()
+            .parent_pool()
             .get_message_by_name(message_name)
             .ok_or_else(|| Error::custom(format!("message '{}' not found", message_name)))?;
 

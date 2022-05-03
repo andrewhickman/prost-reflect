@@ -56,7 +56,7 @@ impl ServiceDescriptor {
     }
 
     /// Gets a reference to the [`DescriptorPool`] this service is defined in.
-    pub fn parent_file(&self) -> &DescriptorPool {
+    pub fn parent_pool(&self) -> &DescriptorPool {
         &self.file_descriptor
     }
 
@@ -81,7 +81,7 @@ impl ServiceDescriptor {
     pub fn service_descriptor_proto(&self) -> &ServiceDescriptorProto {
         let name = self.name();
         let package = self.package_name();
-        self.parent_file()
+        self.parent_pool()
             .file_descriptor_set()
             .file
             .iter()
@@ -97,7 +97,7 @@ impl ServiceDescriptor {
     }
 
     fn inner(&self) -> &ServiceDescriptorInner {
-        &self.parent_file().inner.services[self.index as usize]
+        &self.parent_pool().inner.services[self.index as usize]
     }
 }
 
@@ -161,8 +161,8 @@ impl MethodDescriptor {
     }
 
     /// Gets a reference to the [`DescriptorPool`] this method is defined in.
-    pub fn parent_file(&self) -> &DescriptorPool {
-        self.service.parent_file()
+    pub fn parent_pool(&self) -> &DescriptorPool {
+        self.service.parent_pool()
     }
 
     /// Gets the short name of the method, e.g. `method`.
@@ -182,12 +182,12 @@ impl MethodDescriptor {
 
     /// Gets the [`MessageDescriptor`] for the input type of this method.
     pub fn input(&self) -> MessageDescriptor {
-        MessageDescriptor::new(self.parent_file().clone(), self.inner().request_ty)
+        MessageDescriptor::new(self.parent_pool().clone(), self.inner().request_ty)
     }
 
     /// Gets the [`MessageDescriptor`] for the output type of this method.
     pub fn output(&self) -> MessageDescriptor {
-        MessageDescriptor::new(self.parent_file().clone(), self.inner().response_ty)
+        MessageDescriptor::new(self.parent_pool().clone(), self.inner().response_ty)
     }
 
     /// Returns `true` if the client streams multiple messages.
