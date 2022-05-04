@@ -28,6 +28,7 @@ use super::{EnumIndex, EnumValueIndex, ExtensionIndex, FileIndex, MessageIndex, 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub(super) struct TypeId(field_descriptor_proto::Type, u32);
 
+#[derive(Default)]
 pub(super) struct TypeMap {
     named_types: HashMap<Box<str>, TypeId>,
     messages: Vec<MessageDescriptorInner>,
