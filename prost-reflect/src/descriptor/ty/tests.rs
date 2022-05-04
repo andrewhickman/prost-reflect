@@ -192,3 +192,49 @@ fn message_field_type_not_set() {
         "my.package.MyFieldMessage"
     );
 }
+
+#[test]
+fn reference_type_in_previously_added_file() {
+    let file_descriptor_set1 = FileDescriptorSet {
+        file: vec![FileDescriptorProto {
+            package: Some("my.package1".to_owned()),
+            syntax: Some("proto3".to_owned()),
+            message_type: vec![DescriptorProto {
+                name: Some("MyFieldMessage".to_owned()),
+                ..Default::default()
+            }],
+            ..Default::default()
+        }],
+    };
+    let file_descriptor_set2 = FileDescriptorSet {
+        file: vec![FileDescriptorProto {
+            package: Some("my.package2".to_owned()),
+            syntax: Some("proto3".to_owned()),
+            message_type: vec![DescriptorProto {
+                name: Some("MyMessage".to_owned()),
+                field: vec![FieldDescriptorProto {
+                    name: Some("my_field".to_owned()),
+                    number: Some(1),
+                    label: Some(Label::Optional as i32),
+                    r#type: None,
+                    type_name: Some(".my.package1.MyFieldMessage".to_owned()),
+                    json_name: Some("myfield".to_owned()),
+                    ..Default::default()
+                }],
+                ..Default::default()
+            }],
+            ..Default::default()
+        }],
+    };
+
+    let mut pool = DescriptorPool::new();
+    pool.add_file_descriptor_set(file_descriptor_set1).unwrap();
+    pool.add_file_descriptor_set(file_descriptor_set2).unwrap();
+
+    let message = pool.get_message_by_name("my.package2.MyMessage").unwrap();
+    let field = message.get_field_by_name("my_field").unwrap();
+    assert_eq!(
+        field.kind().as_message().unwrap().full_name(),
+        "my.package1.MyFieldMessage"
+    );
+}
