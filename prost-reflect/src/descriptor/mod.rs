@@ -32,7 +32,7 @@ pub struct DescriptorPool {
 }
 
 struct FileDescriptorInner {
-    raw: FileDescriptorSet,
+    raw: Vec<FileDescriptorProto>,
     type_map: ty::TypeMap,
     services: Box<[ServiceDescriptorInner]>,
 }
@@ -94,7 +94,7 @@ impl DescriptorPool {
             .collect::<Result<_, _>>()?;
 
         Ok(FileDescriptorInner {
-            raw,
+            raw: raw.file,
             type_map,
             services,
         })
@@ -104,7 +104,7 @@ impl DescriptorPool {
     pub fn file_descriptor_protos(
         &self,
     ) -> impl ExactSizeIterator<Item = &FileDescriptorProto> + '_ {
-        self.inner.raw.file.iter()
+        self.inner.raw.iter()
     }
 
     /// Gets an iterator over the services defined in these protobuf files.
