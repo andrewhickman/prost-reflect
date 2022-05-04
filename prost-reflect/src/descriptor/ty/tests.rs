@@ -10,6 +10,7 @@ use crate::DescriptorPool;
 fn resolve_service_name() {
     let file_descriptor_set = FileDescriptorSet {
         file: vec![FileDescriptorProto {
+            name: Some("myfile.proto".to_owned()),
             package: Some("my.package".to_owned()),
             syntax: Some("proto3".to_owned()),
             service: vec![ServiceDescriptorProto {
@@ -42,6 +43,7 @@ fn resolve_service_name_other_package() {
     let file_descriptor_set = FileDescriptorSet {
         file: vec![
             FileDescriptorProto {
+                name: Some("myfile.proto".to_owned()),
                 package: Some("my.package".to_owned()),
                 syntax: Some("proto3".to_owned()),
                 service: vec![ServiceDescriptorProto {
@@ -79,6 +81,7 @@ fn resolve_service_name_other_package() {
 fn resolve_message_name() {
     let file_descriptor_set = FileDescriptorSet {
         file: vec![FileDescriptorProto {
+            name: Some("myfile.proto".to_owned()),
             package: Some("my.package".to_owned()),
             syntax: Some("proto3".to_owned()),
             message_type: vec![
@@ -119,6 +122,7 @@ fn resolve_message_name() {
 fn resolve_message_name_nested() {
     let file_descriptor_set = FileDescriptorSet {
         file: vec![FileDescriptorProto {
+            name: Some("myfile.proto".to_owned()),
             package: Some("my.package".to_owned()),
             syntax: Some("proto3".to_owned()),
             message_type: vec![DescriptorProto {
@@ -157,6 +161,7 @@ fn resolve_message_name_nested() {
 fn message_field_type_not_set() {
     let file_descriptor_set = FileDescriptorSet {
         file: vec![FileDescriptorProto {
+            name: Some("myfile.proto".to_owned()),
             package: Some("my.package".to_owned()),
             syntax: Some("proto3".to_owned()),
             message_type: vec![
@@ -197,6 +202,7 @@ fn message_field_type_not_set() {
 fn reference_type_in_previously_added_file() {
     let file_descriptor_set1 = FileDescriptorSet {
         file: vec![FileDescriptorProto {
+            name: Some("myfile.proto".to_owned()),
             package: Some("my.package1".to_owned()),
             syntax: Some("proto3".to_owned()),
             message_type: vec![DescriptorProto {
@@ -208,6 +214,7 @@ fn reference_type_in_previously_added_file() {
     };
     let file_descriptor_set2 = FileDescriptorSet {
         file: vec![FileDescriptorProto {
+            name: Some("myfile2.proto".to_owned()),
             package: Some("my.package2".to_owned()),
             syntax: Some("proto3".to_owned()),
             message_type: vec![DescriptorProto {
@@ -237,4 +244,64 @@ fn reference_type_in_previously_added_file() {
         field.kind().as_message().unwrap().full_name(),
         "my.package1.MyFieldMessage"
     );
+}
+
+#[test]
+fn add_duplicate_file() {
+    let file_descriptor_set = FileDescriptorSet {
+        file: vec![FileDescriptorProto {
+            name: Some("myfile.proto".to_owned()),
+            package: Some("my.package".to_owned()),
+            syntax: Some("proto3".to_owned()),
+            message_type: vec![DescriptorProto {
+                name: Some("MyMessage".to_owned()),
+                ..Default::default()
+            }],
+            ..Default::default()
+        }],
+    };
+
+    let mut pool = DescriptorPool::new();
+    pool.add_file_descriptor_set(file_descriptor_set.clone())
+        .unwrap();
+    pool.add_file_descriptor_set(file_descriptor_set).unwrap();
+
+    assert_eq!(pool.file_descriptor_protos().len(), 1);
+}
+
+#[test]
+fn add_conflicting_duplicate_file() {
+    let file_descriptor_set1 = FileDescriptorSet {
+        file: vec![FileDescriptorProto {
+            name: Some("myfile.proto".to_owned()),
+            package: Some("my.package".to_owned()),
+            syntax: Some("proto3".to_owned()),
+            message_type: vec![DescriptorProto {
+                name: Some("MyMessage1".to_owned()),
+                ..Default::default()
+            }],
+            ..Default::default()
+        }],
+    };
+    let file_descriptor_set2 = FileDescriptorSet {
+        file: vec![FileDescriptorProto {
+            name: Some("myfile.proto".to_owned()),
+            package: Some("my.package".to_owned()),
+            syntax: Some("proto3".to_owned()),
+            message_type: vec![DescriptorProto {
+                name: Some("MyMessage2".to_owned()),
+                ..Default::default()
+            }],
+            ..Default::default()
+        }],
+    };
+
+    let mut pool = DescriptorPool::new();
+    pool.add_file_descriptor_set(file_descriptor_set1).unwrap();
+    let err = pool
+        .add_file_descriptor_set(file_descriptor_set2)
+        .unwrap_err();
+    assert!(err
+        .to_string()
+        .contains("file named 'myfile.proto' is already added"));
 }

@@ -109,7 +109,14 @@ impl DescriptorPool {
         let inner = Arc::make_mut(&mut self.inner);
 
         let start = inner.raw.len();
-        inner.raw.extend(files);
+        for file in files {
+            match inner.raw.iter().find(|f| f.name() == file.name()) {
+                None => inner.raw.push(file),
+                // Skip duplicate files only if they match exactly
+                Some(existing_file) if *existing_file == file => continue,
+                Some(_) => return Err(DescriptorError::file_already_exists(file.name())),
+            }
+        }
         let files = &inner.raw[start..];
 
         inner.type_map.add_files(files)?;

@@ -33,6 +33,9 @@ enum DescriptorErrorKind {
         name: String,
         field: String,
     },
+    FileAlreadyExists {
+        name: String,
+    },
 }
 
 impl DescriptorError {
@@ -102,6 +105,14 @@ impl DescriptorError {
             },
         }
     }
+
+    pub(crate) fn file_already_exists(name: impl ToString) -> Self {
+        DescriptorError {
+            kind: DescriptorErrorKind::FileAlreadyExists {
+                name: name.to_string(),
+            },
+        }
+    }
 }
 
 impl std::error::Error for DescriptorError {
@@ -150,6 +161,7 @@ impl fmt::Display for DescriptorError {
                     field, name
                 )
             }
+            DescriptorErrorKind::FileAlreadyExists { name } => write!(f, "a conflicting file named '{}' is already added. Duplicate files must match exactly.", name),
         }
     }
 }
