@@ -28,7 +28,7 @@ use super::{EnumIndex, EnumValueIndex, ExtensionIndex, FileIndex, MessageIndex, 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub(super) struct TypeId(field_descriptor_proto::Type, u32);
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub(super) struct TypeMap {
     named_types: HashMap<Box<str>, TypeId>,
     messages: Vec<MessageDescriptorInner>,
@@ -43,6 +43,7 @@ pub struct MessageDescriptor {
     index: MessageIndex,
 }
 
+#[derive(Clone)]
 struct MessageDescriptorInner {
     full_name: Box<str>,
     parent: ParentKind,
@@ -61,6 +62,7 @@ pub struct OneofDescriptor {
     index: OneofIndex,
 }
 
+#[derive(Clone)]
 struct OneofDescriptorInner {
     name: Box<str>,
     full_name: Box<str>,
@@ -74,6 +76,7 @@ pub struct FieldDescriptor {
     field: u32,
 }
 
+#[derive(Clone)]
 struct FieldDescriptorInner {
     name: Box<str>,
     full_name: Box<str>,
@@ -94,6 +97,7 @@ pub struct ExtensionDescriptor {
     index: ExtensionIndex,
 }
 
+#[derive(Clone)]
 pub struct ExtensionDescriptorInner {
     field: FieldDescriptorInner,
     number: u32,
@@ -109,6 +113,7 @@ pub struct EnumDescriptor {
     index: EnumIndex,
 }
 
+#[derive(Clone)]
 struct EnumDescriptorInner {
     full_name: Box<str>,
     parent: ParentKind,
@@ -124,6 +129,7 @@ pub struct EnumValueDescriptor {
     index: EnumValueIndex,
 }
 
+#[derive(Clone)]
 struct EnumValueDescriptorInner {
     name: Box<str>,
     number: i32,
@@ -1072,15 +1078,6 @@ impl fmt::Debug for OneofDescriptor {
 }
 
 impl TypeMap {
-    pub fn new() -> Self {
-        TypeMap {
-            named_types: HashMap::new(),
-            messages: Vec::new(),
-            enums: Vec::new(),
-            extensions: Vec::new(),
-        }
-    }
-
     pub fn shrink_to_fit(&mut self) {
         self.named_types.shrink_to_fit();
         self.messages.shrink_to_fit();

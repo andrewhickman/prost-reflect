@@ -16,6 +16,7 @@ pub struct ServiceDescriptor {
     index: ServiceIndex,
 }
 
+#[derive(Clone)]
 pub(super) struct ServiceDescriptorInner {
     full_name: Box<str>,
     methods: Box<[MethodDescriptorInner]>,
@@ -28,6 +29,7 @@ pub struct MethodDescriptor {
     index: MethodIndex,
 }
 
+#[derive(Clone)]
 struct MethodDescriptorInner {
     full_name: Box<str>,
     request_ty: ty::TypeId,
