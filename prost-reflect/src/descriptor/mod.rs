@@ -28,10 +28,10 @@ pub(crate) const MAP_ENTRY_VALUE_NUMBER: u32 = 2;
 /// cheap to clone.
 #[derive(Clone)]
 pub struct DescriptorPool {
-    inner: Arc<FileDescriptorInner>,
+    inner: Arc<DescriptorPoolInner>,
 }
 
-struct FileDescriptorInner {
+struct DescriptorPoolInner {
     raw: Vec<FileDescriptorProto>,
     type_map: ty::TypeMap,
     services: Box<[ServiceDescriptorInner]>,
@@ -77,7 +77,7 @@ impl DescriptorPool {
         )
     }
 
-    fn from_raw(raw: FileDescriptorSet) -> Result<FileDescriptorInner, DescriptorError> {
+    fn from_raw(raw: FileDescriptorSet) -> Result<DescriptorPoolInner, DescriptorError> {
         let mut type_map = ty::TypeMap::new();
         type_map.add_files(&raw)?;
         type_map.shrink_to_fit();
@@ -93,7 +93,7 @@ impl DescriptorPool {
             })
             .collect::<Result<_, _>>()?;
 
-        Ok(FileDescriptorInner {
+        Ok(DescriptorPoolInner {
             raw: raw.file,
             type_map,
             services,
