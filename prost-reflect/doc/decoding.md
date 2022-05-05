@@ -7,8 +7,8 @@ use prost::Message;
 use prost_types::FileDescriptorSet;
 use prost_reflect::{DynamicMessage, DescriptorPool, Value};
 
-let file_descriptor = DescriptorPool::decode(include_bytes!("file_descriptor_set.bin").as_ref()).unwrap();
-let message_descriptor = file_descriptor.get_message_by_name("package.MyMessage").unwrap();
+let pool = DescriptorPool::decode(include_bytes!("file_descriptor_set.bin").as_ref()).unwrap();
+let message_descriptor = pool.get_message_by_name("package.MyMessage").unwrap();
 
 let dynamic_message = DynamicMessage::decode(message_descriptor, b"\x08\x96\x01".as_ref()).unwrap();
 

@@ -7,8 +7,8 @@ use prost::Message;
 use prost_reflect::{DynamicMessage, DescriptorPool, Value};
 use serde_json::de::Deserializer;
 
-let file_descriptor = DescriptorPool::decode(include_bytes!("file_descriptor_set.bin").as_ref()).unwrap();
-let message_descriptor = file_descriptor.get_message_by_name("package.MyMessage").unwrap();
+let pool = DescriptorPool::decode(include_bytes!("file_descriptor_set.bin").as_ref()).unwrap();
+let message_descriptor = pool.get_message_by_name("package.MyMessage").unwrap();
 
 let json = r#"{ "foo": 150 }"#;
 let mut deserializer = Deserializer::from_str(json);
