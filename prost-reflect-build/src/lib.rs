@@ -138,7 +138,7 @@ impl Builder {
                 .type_attribute(
                     full_name,
                     &format!(
-                        r#"#[prost_reflect(file_descriptor = "{}", message_name = "{}")]"#,
+                        r#"#[prost_reflect(descriptor_pool = "{}", message_name = "{}")]"#,
                         self.file_descriptor_expr, full_name,
                     ),
                 );

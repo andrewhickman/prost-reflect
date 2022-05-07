@@ -1,7 +1,7 @@
 use prost_reflect_derive::ReflectMessage;
 
 #[derive(ReflectMessage)]
-#[prost_reflect(file_descriptor = "FILE_DESCRIPTOR")]
+#[prost_reflect(descriptor_pool = "FILE_DESCRIPTOR")]
 pub struct MyMessage {}
 
 fn main() {}

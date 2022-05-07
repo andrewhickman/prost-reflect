@@ -31,8 +31,8 @@ fn resolve_service_name() {
         }],
     };
 
-    let file_descriptor = DescriptorPool::from_file_descriptor_set(file_descriptor_set).unwrap();
-    let service = file_descriptor.services().next().unwrap();
+    let descriptor_pool = DescriptorPool::from_file_descriptor_set(file_descriptor_set).unwrap();
+    let service = descriptor_pool.services().next().unwrap();
     let method = service.methods().next().unwrap();
     assert_eq!(method.input().full_name(), "my.package.MyMessage");
     assert_eq!(method.output().full_name(), "my.package.MyMessage");
@@ -70,8 +70,8 @@ fn resolve_service_name_other_package() {
         ],
     };
 
-    let file_descriptor = DescriptorPool::from_file_descriptor_set(file_descriptor_set).unwrap();
-    let service = file_descriptor.services().next().unwrap();
+    let descriptor_pool = DescriptorPool::from_file_descriptor_set(file_descriptor_set).unwrap();
+    let service = descriptor_pool.services().next().unwrap();
     let method = service.methods().next().unwrap();
     assert_eq!(method.input().full_name(), "other.package.MyMessage");
     assert_eq!(method.output().full_name(), "other.package.MyMessage");
@@ -107,8 +107,8 @@ fn resolve_message_name() {
         }],
     };
 
-    let file_descriptor = DescriptorPool::from_file_descriptor_set(file_descriptor_set).unwrap();
-    let message = file_descriptor
+    let descriptor_pool = DescriptorPool::from_file_descriptor_set(file_descriptor_set).unwrap();
+    let message = descriptor_pool
         .get_message_by_name("my.package.MyMessage")
         .unwrap();
     let field = message.get_field_by_name("my_field").unwrap();
@@ -146,8 +146,8 @@ fn resolve_message_name_nested() {
         }],
     };
 
-    let file_descriptor = DescriptorPool::from_file_descriptor_set(file_descriptor_set).unwrap();
-    let message = file_descriptor
+    let descriptor_pool = DescriptorPool::from_file_descriptor_set(file_descriptor_set).unwrap();
+    let message = descriptor_pool
         .get_message_by_name("my.package.MyMessage")
         .unwrap();
     let field = message.get_field_by_name("my_field").unwrap();
@@ -187,8 +187,8 @@ fn message_field_type_not_set() {
         }],
     };
 
-    let file_descriptor = DescriptorPool::from_file_descriptor_set(file_descriptor_set).unwrap();
-    let message = file_descriptor
+    let descriptor_pool = DescriptorPool::from_file_descriptor_set(file_descriptor_set).unwrap();
+    let message = descriptor_pool
         .get_message_by_name("my.package.MyMessage")
         .unwrap();
     let field = message.get_field_by_name("my_field").unwrap();

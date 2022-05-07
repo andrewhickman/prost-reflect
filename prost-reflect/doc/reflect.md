@@ -7,7 +7,7 @@ derive macro takes the following parameters:
 
 | Name            | Value |
 |-----------------|-------|
-| file_descriptor | An expression that resolves to a [`DescriptorPool`] containing the message type. The descriptor should be cached to avoid re-building it. |
+| descriptor_pool | An expression that resolves to a [`DescriptorPool`] containing the message type. The descriptor should be cached to avoid re-building it. |
 | message_name    | The full name of the message, used to look it up within [`DescriptorPool`]. |
 
 ```rust
@@ -19,7 +19,7 @@ static FILE_DESCRIPTOR: Lazy<DescriptorPool>
     = Lazy::new(|| DescriptorPool::decode(include_bytes!("file_descriptor_set.bin").as_ref()).unwrap());
 
 #[derive(Message, ReflectMessage)]
-#[prost_reflect(file_descriptor = "FILE_DESCRIPTOR", message_name = "package.MyMessage")]
+#[prost_reflect(descriptor_pool = "FILE_DESCRIPTOR", message_name = "package.MyMessage")]
 pub struct MyMessage {}
 
 let message = MyMessage {};

@@ -24,7 +24,7 @@ pub fn reflect_message(input: TokenStream) -> TokenStream {
 struct Args {
     args_span: Span,
     message_name: Option<syn::Lit>,
-    file_descriptor: Option<syn::Lit>,
+    descriptor_pool: Option<syn::Lit>,
 }
 
 fn reflect_message_impl(input: syn::DeriveInput) -> Result<proc_macro2::TokenStream, syn::Error> {
@@ -37,13 +37,13 @@ fn reflect_message_impl(input: syn::DeriveInput) -> Result<proc_macro2::TokenStr
     let args = Args::parse(input.ident.span(), &input.attrs)?;
 
     let name = &input.ident;
-    let file_descriptor_set = args.file_descriptor()?;
+    let descriptor_pool = args.descriptor_pool()?;
     let message_name = args.message_name()?;
 
     Ok(quote! {
         impl ::prost_reflect::ReflectMessage for #name {
             fn descriptor(&self) -> ::prost_reflect::MessageDescriptor {
-                #file_descriptor_set
+                #descriptor_pool
                     .get_message_by_name(#message_name)
                     .expect(concat!("descriptor for message type `", #message_name, "` not found"))
             }
@@ -84,20 +84,20 @@ impl Args {
 
         let mut args = Args {
             args_span: span.unwrap_or_else(Span::call_site),
-            file_descriptor: None,
+            descriptor_pool: None,
             message_name: None,
         };
         for item in nested {
             match item {
                 syn::NestedMeta::Meta(syn::Meta::NameValue(value)) => {
-                    if value.path.is_ident("file_descriptor") {
-                        args.file_descriptor = Some(value.lit);
+                    if value.path.is_ident("descriptor_pool") {
+                        args.descriptor_pool = Some(value.lit);
                     } else if value.path.is_ident("message_name") {
                         args.message_name = Some(value.lit);
                     } else {
                         return Err(syn::Error::new(
                             value.span(),
-                            "unknown argument (expected 'file_descriptor' or 'message_name')",
+                            "unknown argument (expected 'descriptor_pool' or 'message_name')",
                         ));
                     }
                 }
@@ -108,8 +108,8 @@ impl Args {
         Ok(args)
     }
 
-    fn file_descriptor(&self) -> Result<proc_macro2::TokenStream, syn::Error> {
-        if let Some(file_descriptor_set) = &self.file_descriptor {
+    fn descriptor_pool(&self) -> Result<proc_macro2::TokenStream, syn::Error> {
+        if let Some(file_descriptor_set) = &self.descriptor_pool {
             match file_descriptor_set {
                 syn::Lit::Str(expr_str) => {
                     let expr: syn::Expr = syn::parse_str(&expr_str.value())?;
@@ -123,7 +123,7 @@ impl Args {
         } else {
             Err(syn::Error::new(
                 self.args_span,
-                "missing required argument 'file_descriptor'",
+                "missing required argument 'descriptor_pool'",
             ))
         }
     }

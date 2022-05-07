@@ -12,7 +12,7 @@ use super::{
 /// A protobuf service definition.
 #[derive(Clone, PartialEq, Eq)]
 pub struct ServiceDescriptor {
-    file_descriptor: DescriptorPool,
+    descriptor_pool: DescriptorPool,
     index: ServiceIndex,
 }
 
@@ -44,10 +44,10 @@ impl ServiceDescriptor {
     /// # Panics
     ///
     /// Panics if `index` is out-of-bounds.
-    pub fn new(file_descriptor: DescriptorPool, index: usize) -> Self {
-        debug_assert!(index < file_descriptor.services().len());
+    pub fn new(descriptor_pool: DescriptorPool, index: usize) -> Self {
+        debug_assert!(index < descriptor_pool.services().len());
         ServiceDescriptor {
-            file_descriptor,
+            descriptor_pool,
             index: index.try_into().expect("index too large"),
         }
     }
@@ -59,7 +59,7 @@ impl ServiceDescriptor {
 
     /// Gets a reference to the [`DescriptorPool`] this service is defined in.
     pub fn parent_pool(&self) -> &DescriptorPool {
-        &self.file_descriptor
+        &self.descriptor_pool
     }
 
     /// Gets the short name of the service, e.g. `MyService`.

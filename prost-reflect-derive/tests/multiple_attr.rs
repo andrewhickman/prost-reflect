@@ -7,7 +7,7 @@ static FILE_DESCRIPTOR: Lazy<DescriptorPool> = Lazy::new(|| {
 });
 
 #[derive(Message, ReflectMessage)]
-#[prost_reflect(file_descriptor = "FILE_DESCRIPTOR")]
+#[prost_reflect(descriptor_pool = "FILE_DESCRIPTOR")]
 #[prost_reflect(message_name = "package.MyMessage")]
 pub struct MyNestedMessage {}
 
