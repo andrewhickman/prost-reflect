@@ -14,7 +14,9 @@ rust-version = "1.54.0"
 exclude = ["test.proto"]
 
 [dependencies]
-prost-reflect = { path = "../prost-reflect", version = "^0.7.0"}
+prost-reflect = { path = "../prost-reflect", version = "0.7.0", features = [
+    "derive"
+] }
 prost-build = "0.10.0"
 
 [[package.metadata.release.pre-release-replacements]]
