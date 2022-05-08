@@ -21,8 +21,12 @@ use self::service::ServiceDescriptorInner;
 pub(crate) const MAP_ENTRY_KEY_NUMBER: u32 = 1;
 pub(crate) const MAP_ENTRY_VALUE_NUMBER: u32 = 2;
 
-/// A wrapper around a [`FileDescriptorSet`], which provides convenient APIs for the
-/// protobuf message definitions.
+/// A `DescriptorPool` is a collection of related descriptors. Typically it will be created from
+/// a `FileDescriptorSet` output by the protobuf compiler (see `DescriptorPool::from_file_descriptor_set`)
+/// but it may also be built up manually by adding individual files.
+///
+/// Methods like [`MessageDescriptor::extensions`] will be scoped to just the files contained within the parent
+/// `DescriptorPool`.
 ///
 /// This type is uses reference counting internally so it is cheap to clone. Modifying an instance of a
 /// pool will not update any existing clones of the instance.
