@@ -88,7 +88,7 @@ impl Builder {
     /// ```ignore
     /// static FILE_DESCRIPTOR: Lazy<DescriptorPool> = Lazy::new(||
     ///     DescriptorPool::decode(include_bytes!(
-    ///         concat!(env!("OUT_DIR"), "file_descriptor_set.bin")
+    ///         concat!(env!("OUT_DIR"), "/file_descriptor_set.bin")
     ///     ).as_ref()).unwrap()
     /// );
     /// ```
