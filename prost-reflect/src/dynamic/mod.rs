@@ -301,7 +301,7 @@ impl DynamicMessage {
     /// Convert this dynamic message into a strongly typed value.
     ///
     /// The message should be compatible with the type specified by
-    /// [`descriptor`][Self::descriptor], or the merge will likely fail with
+    /// [`descriptor`][Self::descriptor], or the conversion will likely fail with
     /// a [`DecodeError`].
     pub fn transcode_to<T>(&self) -> Result<T, DecodeError>
     where
