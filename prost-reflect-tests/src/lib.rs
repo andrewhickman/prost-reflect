@@ -13,12 +13,12 @@ mod json;
 include!(concat!(env!("OUT_DIR"), "/test.rs"));
 include!(concat!(env!("OUT_DIR"), "/test2.rs"));
 
-const FILE_DESCRIPTOR_SET_BYTES: &[u8] =
+const DESCRIPTOR_POOL_SET_BYTES: &[u8] =
     include_bytes!(concat!(env!("OUT_DIR"), "/file_descriptor_set.bin"));
 
-static TEST_FILE_DESCRIPTOR: Lazy<DescriptorPool> =
-    Lazy::new(|| DescriptorPool::decode(FILE_DESCRIPTOR_SET_BYTES).unwrap());
+static TEST_DESCRIPTOR_POOL: Lazy<DescriptorPool> =
+    Lazy::new(|| DescriptorPool::decode(DESCRIPTOR_POOL_SET_BYTES).unwrap());
 
 pub fn test_file_descriptor() -> DescriptorPool {
-    TEST_FILE_DESCRIPTOR.clone()
+    TEST_DESCRIPTOR_POOL.clone()
 }

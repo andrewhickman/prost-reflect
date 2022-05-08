@@ -15,7 +15,7 @@
 //! With default configuration, `lib.rs` must include the following lines for reflection.
 //!
 //! ```ignore
-//! static FILE_DESCRIPTOR: Lazy<DescriptorPool> = Lazy::new(|| DescriptorPool::decode(
+//! static DESCRIPTOR_POOL: Lazy<DescriptorPool> = Lazy::new(|| DescriptorPool::decode(
 //!     include_bytes!(concat!(env!("OUT_DIR"), "file_descriptor_set.bin")).as_ref()
 //! ).unwrap());
 //!
@@ -57,7 +57,7 @@ impl Default for Builder {
 
         Self {
             file_descriptor_set_path,
-            file_descriptor_expr: "crate::FILE_DESCRIPTOR".into(),
+            file_descriptor_expr: "crate::DESCRIPTOR_POOL".into(),
         }
     }
 }
@@ -82,11 +82,11 @@ impl Builder {
     }
 
     /// Set the file descriptor expression for reflection.
-    /// By default, `crate::FILE_DESCRIPTOR` is used as the expression.
+    /// By default, `crate::DESCRIPTOR_POOL` is used as the expression.
     /// In that case, `lib.rs` should contain the following lines,
     ///
     /// ```ignore
-    /// static FILE_DESCRIPTOR: Lazy<DescriptorPool> = Lazy::new(||
+    /// static DESCRIPTOR_POOL: Lazy<DescriptorPool> = Lazy::new(||
     ///     DescriptorPool::decode(include_bytes!(
     ///         concat!(env!("OUT_DIR"), "/file_descriptor_set.bin")
     ///     ).as_ref()).unwrap()

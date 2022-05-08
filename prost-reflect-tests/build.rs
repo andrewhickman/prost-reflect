@@ -34,7 +34,7 @@ fn main() -> io::Result<()> {
         .field_attribute(".test.WellKnownTypes.null", "#[cfg_attr(test, proptest(value= \"0\"))]");
 
     prost_reflect_build::Builder::new()
-        .file_descriptor_expr("crate::TEST_FILE_DESCRIPTOR")
+        .file_descriptor_expr("crate::TEST_DESCRIPTOR_POOL")
         .compile_protos_with_config(
             config,
             &[

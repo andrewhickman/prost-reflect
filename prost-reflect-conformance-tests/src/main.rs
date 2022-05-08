@@ -12,11 +12,11 @@ use prost_reflect_conformance_tests::conformance::{
     TestCategory, WireFormat,
 };
 
-const TEST_MESSAGES_FILE_DESCRIPTOR_SET_BYTES: &[u8] =
+const TEST_MESSAGES_DESCRIPTOR_POOL_SET_BYTES: &[u8] =
     include_bytes!(concat!(env!("OUT_DIR"), "/test_messages.bin"));
 
-static TEST_MESSAGES_FILE_DESCRIPTOR: Lazy<DescriptorPool> =
-    Lazy::new(|| DescriptorPool::decode(TEST_MESSAGES_FILE_DESCRIPTOR_SET_BYTES).unwrap());
+static TEST_MESSAGES_DESCRIPTOR_POOL: Lazy<DescriptorPool> =
+    Lazy::new(|| DescriptorPool::decode(TEST_MESSAGES_DESCRIPTOR_POOL_SET_BYTES).unwrap());
 
 fn main() -> io::Result<()> {
     env_logger::init();
@@ -58,7 +58,7 @@ fn main() -> io::Result<()> {
 
 fn handle_request(request: ConformanceRequest) -> conformance_response::Result {
     let message_desc =
-        match TEST_MESSAGES_FILE_DESCRIPTOR.get_message_by_name(&request.message_type) {
+        match TEST_MESSAGES_DESCRIPTOR_POOL.get_message_by_name(&request.message_type) {
             Some(message_desc) => message_desc,
             None => {
                 return conformance_response::Result::ParseError(format!(

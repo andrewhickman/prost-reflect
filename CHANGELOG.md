@@ -11,10 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - **Breaking**: `FileDescriptor` has been renamed to `DescriptorPool`. (The name `FileDescriptor` may be used in a future release to provide an API for inspecting individual source files)
-- **Breaking**: `FileDescriptor::new` has been renamed to `DescriptorPool::from_file_descriptor_set`.
-- **Breaking**: `FileDescriptor::file_descriptor_set` has been replaced by `DescriptorPool::file_descriptor_protos` to allow for it containing multiple sets of descriptors.
-- **Breaking**: the `parent_file` method on all descriptor types has been renamed to `parent_pool`.
-- **Breaking**: the `file_descriptor` parameter of the `ReflectMessage` derive macro has been renamed to `descriptor_pool`.
+  - `FileDescriptor::new` has been renamed to `DescriptorPool::from_file_descriptor_set`.
+  - `FileDescriptor::file_descriptor_set` has been replaced by `DescriptorPool::file_descriptor_protos` to allow for it containing multiple sets of descriptors.
+  - The `parent_file` method on all descriptor types has been renamed to `parent_pool`.
+  - The `file_descriptor` parameter of the `ReflectMessage` derive macro has been renamed to `descriptor_pool`.
+  - The default value of the descriptor pool expression for `prost-reflect-build` is changed from `crate::FILE_DESCRIPTOR` to `crate::DESCRIPTOR_POOL`.
 
 ## [0.7.0] - 2022-04-03
 

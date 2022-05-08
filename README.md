@@ -82,11 +82,11 @@ use prost::Message;
 use prost_reflect::{DescriptorPool, ReflectMessage};
 use once_cell::sync::Lazy;
 
-static FILE_DESCRIPTOR: Lazy<DescriptorPool>
+static DESCRIPTOR_POOL: Lazy<DescriptorPool>
     = Lazy::new(|| DescriptorPool::decode(include_bytes!("file_descriptor_set.bin").as_ref()).unwrap());
 
 #[derive(Message, ReflectMessage)]
-#[prost_reflect(descriptor_pool = "FILE_DESCRIPTOR", message_name = "package.MyMessage")]
+#[prost_reflect(descriptor_pool = "DESCRIPTOR_POOL", message_name = "package.MyMessage")]
 pub struct MyMessage {}
 
 let message = MyMessage {};

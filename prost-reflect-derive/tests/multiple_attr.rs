@@ -2,12 +2,12 @@ use once_cell::sync::Lazy;
 use prost::Message;
 use prost_reflect::{DescriptorPool, ReflectMessage};
 
-static FILE_DESCRIPTOR: Lazy<DescriptorPool> = Lazy::new(|| {
+static DESCRIPTOR_POOL: Lazy<DescriptorPool> = Lazy::new(|| {
     DescriptorPool::decode(include_bytes!("file_descriptor_set.bin").as_ref()).unwrap()
 });
 
 #[derive(Message, ReflectMessage)]
-#[prost_reflect(descriptor_pool = "FILE_DESCRIPTOR")]
+#[prost_reflect(descriptor_pool = "DESCRIPTOR_POOL")]
 #[prost_reflect(message_name = "package.MyMessage")]
 pub struct MyNestedMessage {}
 

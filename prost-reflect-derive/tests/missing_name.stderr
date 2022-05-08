@@ -1,5 +1,5 @@
 error: missing required argument 'message_name'
  --> tests/missing_name.rs:4:1
   |
-4 | #[prost_reflect(descriptor_pool = "FILE_DESCRIPTOR")]
+4 | #[prost_reflect(descriptor_pool = "DESCRIPTOR_POOL")]
   | ^
