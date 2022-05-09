@@ -1276,7 +1276,10 @@ fn get_file_descriptor_proto(file_set: &DescriptorPool, index: FileIndex) -> &Fi
         .unwrap()
 }
 
-fn find_message_descriptor_proto(file_set: &DescriptorPool, index: FileIndex) -> &DescriptorProto {
+fn find_message_descriptor_proto(
+    file_set: &DescriptorPool,
+    index: MessageIndex,
+) -> &DescriptorProto {
     let message = file_set.inner.type_map.get_message(index);
     match message.parent {
         ParentKind::File { index: file_index } => get_file_descriptor_proto(file_set, file_index)
