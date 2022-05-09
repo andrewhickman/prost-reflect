@@ -93,7 +93,7 @@ let message = MyMessage {};
 assert_eq!(message.descriptor().full_name(), "package.MyMessage");
 ```
 
-If you are using `prost-build`, the [`prost-reflect-build`] crate provides helpers to generate `ReflectMessage` implementations:
+If you are using `prost-build`, the [`prost-reflect-build`](https://crates.io/crates/prost-reflect-build) crate provides helpers to generate `ReflectMessage` implementations:
 
 ```rust,no_run
 prost_reflect_build::Builder::new()
