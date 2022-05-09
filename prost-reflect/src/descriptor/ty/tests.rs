@@ -305,3 +305,39 @@ fn add_conflicting_duplicate_file() {
         .to_string()
         .contains("file named 'myfile.proto' is already added"));
 }
+
+#[test]
+fn add_file_rollback_on_error() {
+    let bad_file_descriptor_set = FileDescriptorSet {
+        file: vec![FileDescriptorProto {
+            name: Some("myfile.proto".to_owned()),
+            package: Some("my.package".to_owned()),
+            syntax: Some("proto3".to_owned()),
+            service: vec![ServiceDescriptorProto {
+                name: Some("MyService".to_owned()),
+                method: vec![MethodDescriptorProto {
+                    name: Some("my_method".to_owned()),
+                    input_type: Some(".my.package.NopeMessage".to_owned()),
+                    output_type: Some(".my.package.NopeMessage".to_owned()),
+                    ..Default::default()
+                }],
+                ..Default::default()
+            }],
+            message_type: vec![DescriptorProto {
+                name: Some("MyMessage".to_owned()),
+                ..Default::default()
+            }],
+            ..Default::default()
+        }],
+    };
+
+    let mut pool = DescriptorPool::new();
+    let err = pool
+        .add_file_descriptor_set(bad_file_descriptor_set)
+        .unwrap_err();
+    assert!(err
+        .to_string()
+        .contains("the message or enum type 'my.package.NopeMessage' was not found"));
+    assert_eq!(pool.file_descriptor_protos().count(), 0);
+    assert_eq!(pool.get_message_by_name(".my.package.MyMessage"), None);
+}

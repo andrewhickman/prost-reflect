@@ -113,7 +113,9 @@ impl DescriptorPool {
     where
         I: IntoIterator<Item = FileDescriptorProto>,
     {
-        let inner = Arc::make_mut(&mut self.inner);
+        // Note we could use `Arc::make_mut` here but by always cloning we
+        // avoid putting the pool into an inconsistent state on error.
+        let mut inner = (*self.inner).clone();
 
         let start = inner.raw.len();
         for file in files {
@@ -139,6 +141,7 @@ impl DescriptorPool {
             }
         }
 
+        self.inner = Arc::new(inner);
         Ok(())
     }
 
