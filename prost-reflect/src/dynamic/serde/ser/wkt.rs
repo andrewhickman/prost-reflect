@@ -1,15 +1,12 @@
-use std::cmp::Ordering;
-
 use base64::display::Base64Display;
 use prost::{DecodeError, Message};
 use serde::ser::{Error, Serialize, SerializeMap, SerializeSeq, Serializer};
-use time::{Duration, OffsetDateTime, UtcOffset};
 
 use crate::{
     dynamic::{
         serde::{
-            case::snake_case_to_camel_case, is_well_known_type, SerializeOptions,
-            MAX_DURATION_NANOS, MAX_DURATION_SECONDS, MAX_TIMESTAMP_SECONDS, MIN_TIMESTAMP_SECONDS,
+            case::snake_case_to_camel_case, check_duration, check_timestamp, is_well_known_type,
+            SerializeOptions,
         },
         DynamicMessage,
     },
@@ -106,18 +103,11 @@ fn serialize_timestamp<S>(
 where
     S: Serializer,
 {
-    let raw: prost_types::Timestamp = msg.transcode_to().map_err(decode_to_ser_err)?;
+    let timestamp: prost_types::Timestamp = msg.transcode_to().map_err(decode_to_ser_err)?;
 
-    if raw.seconds < MIN_TIMESTAMP_SECONDS || MAX_TIMESTAMP_SECONDS < raw.seconds {
-        return Err(Error::custom("timestamp out of range"));
-    }
+    check_timestamp(&timestamp).map_err(Error::custom)?;
 
-    let datetime = OffsetDateTime::from_unix_timestamp(raw.seconds)
-        .map_err(|_| Error::custom("invalid timestamp"))?
-        + Duration::nanoseconds(raw.nanos.into());
-    let rfc3339 = format_rfc3339(&datetime).map_err(|_| Error::custom("invalid timestamp"))?;
-
-    serializer.serialize_str(&rfc3339)
+    serializer.collect_str(&timestamp)
 }
 
 fn serialize_duration<S>(
@@ -128,46 +118,11 @@ fn serialize_duration<S>(
 where
     S: Serializer,
 {
-    let mut raw: prost_types::Duration = msg.transcode_to().map_err(decode_to_ser_err)?;
+    let duration: prost_types::Duration = msg.transcode_to().map_err(decode_to_ser_err)?;
 
-    raw.normalize();
+    check_duration(&duration).map_err(Error::custom)?;
 
-    let abs_seconds = raw.seconds.unsigned_abs();
-    let mut abs_nanos = raw.nanos.unsigned_abs();
-
-    if abs_seconds > MAX_DURATION_SECONDS {
-        return Err(Error::custom("duration out of range"));
-    }
-    debug_assert!(abs_nanos <= MAX_DURATION_NANOS);
-
-    let mut nanos_fract_digits: usize = 9;
-    while nanos_fract_digits != 0 && abs_nanos % 1000 == 0 {
-        abs_nanos /= 1000;
-        nanos_fract_digits -= 3;
-    }
-
-    match (raw.seconds.cmp(&0), raw.nanos.cmp(&0)) {
-        (_, Ordering::Equal) => serializer.collect_str(&format_args!("{}s", raw.seconds)),
-        (Ordering::Less, Ordering::Greater) | (Ordering::Greater, Ordering::Less) => {
-            Err(Error::custom("inconsistent signs for duration"))
-        }
-        (Ordering::Equal | Ordering::Less, Ordering::Less) => {
-            serializer.collect_str(&format_args!(
-                "-{}.{:0>digits$}s",
-                abs_seconds,
-                abs_nanos,
-                digits = nanos_fract_digits,
-            ))
-        }
-        (Ordering::Equal | Ordering::Greater, Ordering::Greater) => {
-            serializer.collect_str(&format_args!(
-                "{}.{:0>digits$}s",
-                abs_seconds,
-                abs_nanos,
-                digits = nanos_fract_digits,
-            ))
-        }
-    }
+    serializer.collect_str(&duration)
 }
 
 fn serialize_float<S>(
@@ -449,66 +404,4 @@ where
     E: Error,
 {
     Error::custom(format!("error decoding: {}", err))
-}
-
-fn format_rfc3339(date_time: &OffsetDateTime) -> Result<String, time::error::Format> {
-    use time::format_description::{modifier::*, Component, FormatItem};
-
-    debug_assert_eq!(date_time.offset(), UtcOffset::UTC);
-
-    static PREFIX: &[FormatItem] = &[
-        FormatItem::Component(Component::Year(Year::default())),
-        FormatItem::Literal(b"-"),
-        FormatItem::Component(Component::Month(Month::default())),
-        FormatItem::Literal(b"-"),
-        FormatItem::Component(Component::Day(Day::default())),
-        FormatItem::Literal(b"T"),
-        FormatItem::Component(Component::Hour(Hour::default())),
-        FormatItem::Literal(b":"),
-        FormatItem::Component(Component::Minute(Minute::default())),
-        FormatItem::Literal(b":"),
-        FormatItem::Component(Component::Second(Second::default())),
-    ];
-
-    let nanos = date_time.nanosecond();
-    if nanos == 0 {
-        let format_desc = [FormatItem::Compound(PREFIX), FormatItem::Literal(b"Z")];
-        date_time.format(format_desc.as_ref())
-    } else if nanos % 1_000_000 == 0 {
-        let format_desc = [
-            FormatItem::Compound(PREFIX),
-            FormatItem::Literal(b"."),
-            FormatItem::Component(Component::Subsecond({
-                let mut subsec = Subsecond::default();
-                subsec.digits = SubsecondDigits::Three;
-                subsec
-            })),
-            FormatItem::Literal(b"Z"),
-        ];
-        date_time.format(format_desc.as_ref())
-    } else if nanos % 1_000 == 0 {
-        let format_desc = [
-            FormatItem::Compound(PREFIX),
-            FormatItem::Literal(b"."),
-            FormatItem::Component(Component::Subsecond({
-                let mut subsec = Subsecond::default();
-                subsec.digits = SubsecondDigits::Six;
-                subsec
-            })),
-            FormatItem::Literal(b"Z"),
-        ];
-        date_time.format(format_desc.as_ref())
-    } else {
-        let format_desc = [
-            FormatItem::Compound(PREFIX),
-            FormatItem::Literal(b"."),
-            FormatItem::Component(Component::Subsecond({
-                let mut subsec = Subsecond::default();
-                subsec.digits = SubsecondDigits::Nine;
-                subsec
-            })),
-            FormatItem::Literal(b"Z"),
-        ];
-        date_time.format(format_desc.as_ref())
-    }
 }

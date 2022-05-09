@@ -23,6 +23,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added the `FileDescriptor` API for inspecting individual protobuf files.
 - Added methods to `MessageDescriptor` to get child messages, enums and extensions.
 
+### Changed
+
+- When the `serde` feature is enabled, the functions in `prost-types` for parsing and formatting time types are now used. This removes the `time` dependency.
+
 ## [0.8.0] - 2022-05-09
 
 ### Added

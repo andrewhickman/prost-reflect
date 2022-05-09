@@ -201,3 +201,21 @@ fn is_well_known_type(full_name: &str) -> bool {
             | "google.protobuf.Empty"
     )
 }
+
+fn check_duration(duration: &prost_types::Duration) -> Result<(), &'static str> {
+    if duration.seconds.unsigned_abs() > MAX_DURATION_SECONDS
+        || duration.nanos.unsigned_abs() > MAX_DURATION_NANOS
+    {
+        Err("duration out of range")
+    } else {
+        Ok(())
+    }
+}
+
+fn check_timestamp(timestamp: &prost_types::Timestamp) -> Result<(), &'static str> {
+    if timestamp.seconds < MIN_TIMESTAMP_SECONDS || MAX_TIMESTAMP_SECONDS < timestamp.seconds {
+        Err("timestamp out of range")
+    } else {
+        Ok(())
+    }
+}

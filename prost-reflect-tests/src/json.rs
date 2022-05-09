@@ -1022,7 +1022,7 @@ fn deserialize_duration_out_of_range() {
 }
 
 #[test]
-#[should_panic(expected = "duration out of range")]
+#[should_panic(expected = "failed to parse duration")]
 fn deserialize_negative_duration() {
     from_json::<prost_types::Duration>(
         json!("-18446744073709551615.000340123s"),

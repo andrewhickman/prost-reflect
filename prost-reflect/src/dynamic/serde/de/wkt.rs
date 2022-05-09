@@ -2,7 +2,6 @@ use std::{
     borrow::Cow,
     collections::{BTreeMap, HashMap},
     fmt,
-    str::FromStr,
 };
 
 use prost::Message;
@@ -10,13 +9,12 @@ use serde::de::{
     DeserializeSeed, Deserializer, Error, IgnoredAny, IntoDeserializer, MapAccess, SeqAccess,
     Visitor,
 };
-use time::{format_description::well_known::Rfc3339, OffsetDateTime};
 
 use crate::{
     dynamic::{
         serde::{
-            case::camel_case_to_snake_case, is_well_known_type, DeserializeOptions,
-            MAX_DURATION_NANOS, MAX_DURATION_SECONDS, MAX_TIMESTAMP_SECONDS, MIN_TIMESTAMP_SECONDS,
+            case::camel_case_to_snake_case, check_duration, check_timestamp, is_well_known_type,
+            DeserializeOptions,
         },
         DynamicMessage,
     },
@@ -172,17 +170,10 @@ impl<'de> Visitor<'de> for GoogleProtobufTimestampVisitor {
             return Err(Error::custom("timestamp contains lowercase character"));
         }
 
-        let datetime = OffsetDateTime::parse(v, &Rfc3339).map_err(Error::custom)?;
-        let mut timestamp = prost_types::Timestamp {
-            seconds: datetime.unix_timestamp(),
-            nanos: datetime.nanosecond() as i32,
-        };
+        let timestamp: prost_types::Timestamp = v.parse().map_err(Error::custom)?;
 
-        if timestamp.seconds < MIN_TIMESTAMP_SECONDS || timestamp.seconds > MAX_TIMESTAMP_SECONDS {
-            return Err(Error::custom("timestamp out of range"));
-        }
+        check_timestamp(&timestamp).map_err(Error::custom)?;
 
-        timestamp.normalize();
         Ok(timestamp)
     }
 }
@@ -198,52 +189,11 @@ impl<'de> Visitor<'de> for GoogleProtobufDurationVisitor {
     where
         E: Error,
     {
-        let v = v
-            .strip_suffix('s')
-            .ok_or_else(|| Error::custom("invalid duration string"))?;
+        let duration: prost_types::Duration = v.parse().map_err(Error::custom)?;
 
-        let (negative, v) = match v.strip_prefix('-') {
-            Some(v) => (true, v),
-            None => (false, v),
-        };
+        check_duration(&duration).map_err(Error::custom)?;
 
-        let (seconds, nanos) = if let Some((seconds_str, nanos_str)) = v.split_once('.') {
-            let seconds = u64::from_str(seconds_str).map_err(Error::custom)?;
-            let nanos = match nanos_str.len() {
-                0 => 0,
-                len @ 1..=9 => {
-                    let mut nanos = u32::from_str(nanos_str).map_err(Error::custom)?;
-                    for _ in 0..9 - len {
-                        nanos *= 10;
-                    }
-                    nanos
-                }
-                _ => return Err(Error::custom("too many fractional digits for duration")),
-            };
-
-            (seconds, nanos)
-        } else {
-            let seconds = u64::from_str(v).map_err(Error::custom)?;
-
-            (seconds, 0)
-        };
-
-        if seconds > MAX_DURATION_SECONDS {
-            return Err(Error::custom("duration out of range"));
-        }
-        debug_assert!(nanos <= MAX_DURATION_NANOS);
-
-        if negative {
-            Ok(prost_types::Duration {
-                seconds: -(seconds as i64),
-                nanos: -(nanos as i32),
-            })
-        } else {
-            Ok(prost_types::Duration {
-                seconds: seconds as i64,
-                nanos: nanos as i32,
-            })
-        }
+        Ok(duration)
     }
 }
 
