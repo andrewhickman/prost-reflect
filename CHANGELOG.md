@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `DescriptorPool` (formerly `FileDescriptor`) now supports adding individual `FileDescriptorProto` instances ([#6](https://github.com/andrewhickman/prost-reflect/issues/6)).
+
 ### Changed
 
 - **Breaking**: `FileDescriptor` has been renamed to `DescriptorPool`. (The name `FileDescriptor` may be used in a future release to provide an API for inspecting individual source files)

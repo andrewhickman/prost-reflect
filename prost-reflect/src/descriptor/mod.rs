@@ -106,6 +106,9 @@ impl DescriptorPool {
     ///
     /// The file descriptors may be provided in any order, however all types referenced must be defined
     /// either in one of the files provided, or in a file previously added to the pool.
+    ///
+    /// Duplicate file descriptors are ignored, however adding two different files with the same name
+    /// will return an error.
     pub fn add_file_descriptor_protos<I>(&mut self, files: I) -> Result<(), DescriptorError>
     where
         I: IntoIterator<Item = FileDescriptorProto>,
