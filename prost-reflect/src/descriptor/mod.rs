@@ -11,7 +11,7 @@ pub use self::{
     },
 };
 
-use std::{fmt, iter, sync::Arc};
+use std::{convert::TryInto, fmt, iter, sync::Arc};
 
 use prost::{bytes::Buf, Message};
 use prost_types::{FileDescriptorProto, FileDescriptorSet};
@@ -40,6 +40,13 @@ struct DescriptorPoolInner {
     files: Vec<FileDescriptorInner>,
     type_map: ty::TypeMap,
     services: Vec<ServiceDescriptorInner>,
+}
+
+/// A single source file containing protobuf messages and services.
+#[derive(Clone, PartialEq, Eq)]
+pub struct FileDescriptor {
+    pool: DescriptorPool,
+    index: FileIndex,
 }
 
 #[derive(Clone)]
@@ -161,6 +168,11 @@ impl DescriptorPool {
         self.add_file_descriptor_protos(iter::once(file))
     }
 
+    /// Gets an iterator over the file descriptors added to this pool.
+    pub fn files(&self) -> impl ExactSizeIterator<Item = FileDescriptor> + '_ {
+        FileDescriptor::iter(self)
+    }
+
     /// Gets a iterator over the raw [`FileDescriptorProto`] instances wrapped by this [`DescriptorPool`].
     pub fn file_descriptor_protos(
         &self,
@@ -223,6 +235,66 @@ impl PartialEq for DescriptorPool {
 }
 
 impl Eq for DescriptorPool {}
+
+impl FileDescriptor {
+    /// Create a new [`FileDescriptor`] referencing the file at `index` within the given [`DescriptorPool`].
+    ///
+    /// # Panics
+    ///
+    /// Panics if `index` is out-of-bounds.
+    pub fn new(descriptor_pool: DescriptorPool, index: usize) -> Self {
+        debug_assert!(index < descriptor_pool.files().len());
+        FileDescriptor {
+            pool: descriptor_pool,
+            index: index.try_into().expect("file index too large"),
+        }
+    }
+
+    fn iter(pool: &DescriptorPool) -> impl ExactSizeIterator<Item = Self> + '_ {
+        (0..pool.inner.files.len()).map(move |index| FileDescriptor::new(pool.clone(), index))
+    }
+
+    /// Gets a reference to the [`DescriptorPool`] this file is included in.
+    pub fn parent_pool(&self) -> &DescriptorPool {
+        &self.pool
+    }
+
+    /// Gets the unique name of this file relative to the root of the source tree,
+    /// e.g. `path/to/my_package.proto`.
+    pub fn name(&self) -> &str {
+        self.file_descriptor_proto().name()
+    }
+
+    /// Gets the name of the package specifier for a file, e.g. `my.package`.
+    ///
+    /// If no package name is set, an empty string is returned.
+    pub fn package_name(&self) -> &str {
+        self.file_descriptor_proto().name()
+    }
+
+    /// Gets the index of this file within the parent [`DescriptorPool`].
+    pub fn index(&self) -> usize {
+        self.index as usize
+    }
+
+    /// Gets a reference to the raw [`FileDescriptorProto`] wrapped by this [`FileDescriptor`].
+    pub fn file_descriptor_proto(&self) -> &FileDescriptorProto {
+        &self.file_inner().raw
+    }
+
+    fn file_inner(&self) -> &FileDescriptorInner {
+        &self.pool.inner.files[self.index as usize]
+    }
+}
+
+impl fmt::Debug for FileDescriptor {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("FileDescriptor")
+            .field("name", &self.name())
+            .field("package_name", &self.package_name())
+            .finish()
+    }
+}
 
 fn make_full_name(namespace: &str, name: &str) -> Box<str> {
     let namespace = namespace.trim_start_matches('.');
