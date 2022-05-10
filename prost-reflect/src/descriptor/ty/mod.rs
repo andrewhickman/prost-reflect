@@ -39,7 +39,7 @@ pub(super) struct TypeMap {
 /// A protobuf message definition.
 #[derive(Clone, PartialEq, Eq)]
 pub struct MessageDescriptor {
-    file_set: DescriptorPool,
+    pool: DescriptorPool,
     index: MessageIndex,
 }
 
@@ -93,7 +93,7 @@ struct FieldDescriptorInner {
 /// A protobuf extension field definition.
 #[derive(Clone, PartialEq, Eq)]
 pub struct ExtensionDescriptor {
-    file_set: DescriptorPool,
+    pool: DescriptorPool,
     index: ExtensionIndex,
 }
 
@@ -109,7 +109,7 @@ pub struct ExtensionDescriptorInner {
 /// A protobuf enum type.
 #[derive(Clone, PartialEq, Eq)]
 pub struct EnumDescriptor {
-    file_set: DescriptorPool,
+    pool: DescriptorPool,
     index: EnumIndex,
 }
 
@@ -193,38 +193,34 @@ enum ParentKind {
 }
 
 impl MessageDescriptor {
-    pub(in crate::descriptor) fn new(file_set: DescriptorPool, ty: TypeId) -> Self {
+    pub(in crate::descriptor) fn new(pool: DescriptorPool, ty: TypeId) -> Self {
         debug_assert_eq!(ty.0, field_descriptor_proto::Type::Message);
-        MessageDescriptor {
-            file_set,
-            index: ty.1,
-        }
+        MessageDescriptor { pool, index: ty.1 }
     }
 
     pub(in crate::descriptor) fn iter(
-        file_set: &DescriptorPool,
+        pool: &DescriptorPool,
     ) -> impl ExactSizeIterator<Item = Self> + '_ {
-        file_set
-            .inner
+        pool.inner
             .type_map
             .messages()
-            .map(move |ty| MessageDescriptor::new(file_set.clone(), ty))
+            .map(move |ty| MessageDescriptor::new(pool.clone(), ty))
     }
 
     pub(in crate::descriptor) fn try_get_by_name(
-        file_set: &DescriptorPool,
+        pool: &DescriptorPool,
         name: &str,
     ) -> Option<Self> {
-        let ty = file_set.inner.type_map.get_by_name(name)?;
+        let ty = pool.inner.type_map.get_by_name(name)?;
         if !ty.is_message() {
             return None;
         }
-        Some(MessageDescriptor::new(file_set.clone(), ty))
+        Some(MessageDescriptor::new(pool.clone(), ty))
     }
 
     /// Gets a reference to the [`DescriptorPool`] this message is defined in.
     pub fn parent_pool(&self) -> &DescriptorPool {
-        &self.file_set
+        &self.pool
     }
 
     /// Gets the parent message type if this message type is nested inside a another message, or `None` otherwise
@@ -232,7 +228,7 @@ impl MessageDescriptor {
         self.message_ty()
             .parent
             .as_message()
-            .map(|ty| MessageDescriptor::new(self.file_set.clone(), ty))
+            .map(|ty| MessageDescriptor::new(self.pool.clone(), ty))
     }
 
     /// Gets the short name of the message type, e.g. `MyMessage`.
@@ -256,7 +252,7 @@ impl MessageDescriptor {
     pub fn parent_file_descriptor_proto(&self) -> &FileDescriptorProto {
         self.message_ty()
             .parent
-            .resolve_parent_file_proto(&self.file_set)
+            .resolve_parent_file_proto(&self.pool)
     }
 
     /// Gets a reference to the raw [`DescriptorProto`] wrapped by this [`MessageDescriptor`].
@@ -386,7 +382,7 @@ impl MessageDescriptor {
             .extensions
             .iter()
             .map(move |&index| ExtensionDescriptor {
-                file_set: self.file_set.clone(),
+                pool: self.pool.clone(),
                 index,
             })
     }
@@ -402,7 +398,7 @@ impl MessageDescriptor {
     }
 
     fn message_ty(&self) -> &MessageDescriptorInner {
-        self.file_set.inner.type_map.get_message(self.index)
+        self.pool.inner.type_map.get_message(self.index)
     }
 }
 
@@ -510,7 +506,7 @@ impl FieldDescriptor {
 
     /// Gets the [`Kind`] of this field.
     pub fn kind(&self) -> Kind {
-        self.message_field_ty().ty.to_kind(&self.message.file_set)
+        self.message_field_ty().ty.to_kind(&self.message.pool)
     }
 
     /// Gets a [`OneofDescriptor`] representing the oneof containing this field,
@@ -559,21 +555,20 @@ impl fmt::Debug for FieldDescriptor {
 
 impl ExtensionDescriptor {
     pub(in crate::descriptor) fn iter(
-        file_set: &DescriptorPool,
+        pool: &DescriptorPool,
     ) -> impl ExactSizeIterator<Item = Self> + '_ {
-        file_set
-            .inner
+        pool.inner
             .type_map
             .extensions()
             .map(move |index| ExtensionDescriptor {
-                file_set: file_set.clone(),
+                pool: pool.clone(),
                 index: index.try_into().expect("index too large"),
             })
     }
 
     /// Gets a reference to the [`DescriptorPool`] this extension field is defined in.
     pub fn parent_pool(&self) -> &DescriptorPool {
-        &self.file_set
+        &self.pool
     }
 
     /// Gets the parent message type if this extension is defined within another message, or `None` otherwise.
@@ -584,7 +579,7 @@ impl ExtensionDescriptor {
         self.extension_ty()
             .parent
             .as_message()
-            .map(|ty| MessageDescriptor::new(self.file_set.clone(), ty))
+            .map(|ty| MessageDescriptor::new(self.pool.clone(), ty))
     }
 
     /// Gets the short name of the extension field type, e.g. `my_extension`.
@@ -610,7 +605,7 @@ impl ExtensionDescriptor {
     pub fn parent_file_descriptor_proto(&self) -> &FileDescriptorProto {
         self.extension_ty()
             .parent
-            .resolve_parent_file_proto(&self.file_set)
+            .resolve_parent_file_proto(&self.pool)
     }
 
     /// Gets a reference to the raw [`FieldDescriptorProto`] wrapped by this [`ExtensionDescriptor`].
@@ -618,7 +613,7 @@ impl ExtensionDescriptor {
         let name = self.name();
         match self.extension_ty().parent {
             ParentKind::File { index: file_index } => {
-                get_file_descriptor_proto(&self.file_set, file_index)
+                get_file_descriptor_proto(&self.pool, file_index)
                     .extension
                     .iter()
                     .find(|extension| extension.name() == name)
@@ -626,7 +621,7 @@ impl ExtensionDescriptor {
             }
             ParentKind::Message {
                 index: message_index,
-            } => find_message_descriptor_proto(&self.file_set, message_index)
+            } => find_message_descriptor_proto(&self.pool, message_index)
                 .extension
                 .iter()
                 .find(|extension| extension.name() == name)
@@ -692,12 +687,12 @@ impl ExtensionDescriptor {
 
     /// Gets the [`Kind`] of this field.
     pub fn kind(&self) -> Kind {
-        self.message_field_ty().ty.to_kind(&self.file_set)
+        self.message_field_ty().ty.to_kind(&self.pool)
     }
 
     /// Gets the containing message that this field extends.
     pub fn containing_message(&self) -> MessageDescriptor {
-        MessageDescriptor::new(self.file_set.clone(), self.extension_ty().extendee)
+        MessageDescriptor::new(self.pool.clone(), self.extension_ty().extendee)
     }
 
     pub(crate) fn default_value(&self) -> Option<&crate::Value> {
@@ -713,7 +708,7 @@ impl ExtensionDescriptor {
     }
 
     fn extension_ty(&self) -> &ExtensionDescriptorInner {
-        self.file_set.inner.type_map.get_extension(self.index)
+        self.pool.inner.type_map.get_extension(self.index)
     }
 }
 
@@ -801,38 +796,34 @@ impl fmt::Debug for Kind {
 }
 
 impl EnumDescriptor {
-    pub(in crate::descriptor) fn new(file_set: DescriptorPool, ty: TypeId) -> Self {
+    pub(in crate::descriptor) fn new(pool: DescriptorPool, ty: TypeId) -> Self {
         debug_assert_eq!(ty.0, field_descriptor_proto::Type::Enum);
-        EnumDescriptor {
-            file_set,
-            index: ty.1,
-        }
+        EnumDescriptor { pool, index: ty.1 }
     }
 
     pub(in crate::descriptor) fn iter(
-        file_set: &DescriptorPool,
+        pool: &DescriptorPool,
     ) -> impl ExactSizeIterator<Item = Self> + '_ {
-        file_set
-            .inner
+        pool.inner
             .type_map
             .enums()
-            .map(move |ty| EnumDescriptor::new(file_set.clone(), ty))
+            .map(move |ty| EnumDescriptor::new(pool.clone(), ty))
     }
 
     pub(in crate::descriptor) fn try_get_by_name(
-        file_set: &DescriptorPool,
+        pool: &DescriptorPool,
         name: &str,
     ) -> Option<Self> {
-        let ty = file_set.inner.type_map.get_by_name(name)?;
+        let ty = pool.inner.type_map.get_by_name(name)?;
         if !ty.is_enum() {
             return None;
         }
-        Some(EnumDescriptor::new(file_set.clone(), ty))
+        Some(EnumDescriptor::new(pool.clone(), ty))
     }
 
     /// Gets a reference to the [`DescriptorPool`] this enum type is defined in.
     pub fn parent_pool(&self) -> &DescriptorPool {
-        &self.file_set
+        &self.pool
     }
 
     /// Gets the parent message type if this enum type is nested inside a another message, or `None` otherwise
@@ -840,7 +831,7 @@ impl EnumDescriptor {
         self.enum_ty()
             .parent
             .as_message()
-            .map(|ty| MessageDescriptor::new(self.file_set.clone(), ty))
+            .map(|ty| MessageDescriptor::new(self.pool.clone(), ty))
     }
 
     /// Gets the short name of the enum type, e.g. `MyEnum`.
@@ -862,9 +853,7 @@ impl EnumDescriptor {
 
     /// Gets a reference to the [`FileDescriptorProto`] in which this enum is defined.
     pub fn parent_file_descriptor_proto(&self) -> &FileDescriptorProto {
-        self.enum_ty()
-            .parent
-            .resolve_parent_file_proto(&self.file_set)
+        self.enum_ty().parent.resolve_parent_file_proto(&self.pool)
     }
 
     /// Gets a reference to the raw [`EnumDescriptorProto`] wrapped by this [`EnumDescriptor`].
@@ -872,7 +861,7 @@ impl EnumDescriptor {
         let name = self.name();
         match self.enum_ty().parent {
             ParentKind::File { index: file_index } => {
-                get_file_descriptor_proto(&self.file_set, file_index)
+                get_file_descriptor_proto(&self.pool, file_index)
                     .enum_type
                     .iter()
                     .find(|extension| extension.name() == name)
@@ -880,7 +869,7 @@ impl EnumDescriptor {
             }
             ParentKind::Message {
                 index: message_index,
-            } => find_message_descriptor_proto(&self.file_set, message_index)
+            } => find_message_descriptor_proto(&self.pool, message_index)
                 .enum_type
                 .iter()
                 .find(|extension| extension.name() == name)
@@ -945,7 +934,7 @@ impl EnumDescriptor {
     }
 
     fn enum_ty(&self) -> &EnumDescriptorInner {
-        self.file_set.inner.type_map.get_enum(self.index)
+        self.pool.inner.type_map.get_enum(self.index)
     }
 }
 
@@ -1216,7 +1205,7 @@ impl TypeId {
         }
     }
 
-    fn to_kind(self, file_set: &DescriptorPool) -> Kind {
+    fn to_kind(self, pool: &DescriptorPool) -> Kind {
         match self.0 {
             field_descriptor_proto::Type::Double => Kind::Double,
             field_descriptor_proto::Type::Float => Kind::Float,
@@ -1234,10 +1223,10 @@ impl TypeId {
             field_descriptor_proto::Type::String => Kind::String,
             field_descriptor_proto::Type::Bytes => Kind::Bytes,
             field_descriptor_proto::Type::Enum => {
-                Kind::Enum(EnumDescriptor::new(file_set.clone(), self))
+                Kind::Enum(EnumDescriptor::new(pool.clone(), self))
             }
             field_descriptor_proto::Type::Group | field_descriptor_proto::Type::Message => {
-                Kind::Message(MessageDescriptor::new(file_set.clone(), self))
+                Kind::Message(MessageDescriptor::new(pool.clone(), self))
             }
         }
     }
@@ -1253,43 +1242,34 @@ impl ParentKind {
         }
     }
 
-    fn resolve_parent_file_proto<'a>(
-        &self,
-        file_set: &'a DescriptorPool,
-    ) -> &'a FileDescriptorProto {
+    fn resolve_parent_file_proto<'a>(&self, pool: &'a DescriptorPool) -> &'a FileDescriptorProto {
         let mut curr = *self;
         loop {
             match curr {
-                ParentKind::File { index } => return get_file_descriptor_proto(file_set, index),
+                ParentKind::File { index } => return get_file_descriptor_proto(pool, index),
                 ParentKind::Message { index } => {
-                    curr = file_set.inner.type_map.get_message(index).parent;
+                    curr = pool.inner.type_map.get_message(index).parent;
                 }
             }
         }
     }
 }
 
-fn get_file_descriptor_proto(file_set: &DescriptorPool, index: FileIndex) -> &FileDescriptorProto {
-    file_set
-        .file_descriptor_protos()
-        .nth(index as usize)
-        .unwrap()
+fn get_file_descriptor_proto(pool: &DescriptorPool, index: FileIndex) -> &FileDescriptorProto {
+    pool.file_descriptor_protos().nth(index as usize).unwrap()
 }
 
-fn find_message_descriptor_proto(
-    file_set: &DescriptorPool,
-    index: MessageIndex,
-) -> &DescriptorProto {
-    let message = file_set.inner.type_map.get_message(index);
+fn find_message_descriptor_proto(pool: &DescriptorPool, index: MessageIndex) -> &DescriptorProto {
+    let message = pool.inner.type_map.get_message(index);
     match message.parent {
-        ParentKind::File { index: file_index } => get_file_descriptor_proto(file_set, file_index)
+        ParentKind::File { index: file_index } => get_file_descriptor_proto(pool, file_index)
             .message_type
             .iter()
             .find(|ty| ty.name() == parse_name(&message.full_name))
             .expect("message not found"),
         ParentKind::Message {
             index: parent_index,
-        } => find_message_descriptor_proto(file_set, parent_index)
+        } => find_message_descriptor_proto(pool, parent_index)
             .nested_type
             .iter()
             .find(|ty| ty.name() == parse_name(&message.full_name))
