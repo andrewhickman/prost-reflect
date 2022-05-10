@@ -26,7 +26,7 @@ use crate::{
 impl TypeMap {
     pub fn add_files<'a>(
         &mut self,
-        raw: impl Iterator<Item = &'a FileDescriptorProto>,
+        raw: impl Iterator<Item = (FileIndex, &'a FileDescriptorProto)>,
     ) -> Result<(), DescriptorError> {
         let mut messages = Vec::new();
         let mut enums = Vec::new();
@@ -363,13 +363,12 @@ impl TypeMap {
 
     fn iter_files<'a>(
         &mut self,
-        raw: impl Iterator<Item = &'a FileDescriptorProto>,
+        raw: impl Iterator<Item = (FileIndex, &'a FileDescriptorProto)>,
         messages: &mut Vec<MessageProto<'a>>,
         enums: &mut Vec<EnumProto<'a>>,
         extensions: &mut Vec<ExtensionProto<'a>>,
     ) -> Result<(), DescriptorError> {
-        for (file_index, file) in raw.enumerate() {
-            let file_index = file_index.try_into().expect("index too large");
+        for (file_index, file) in raw {
             let syntax = match file.syntax.as_deref() {
                 None | Some("proto2") => Syntax::Proto2,
                 Some("proto3") => Syntax::Proto3,

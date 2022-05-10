@@ -219,6 +219,10 @@ fn test_debug_impls() {
         }
     }
 
+    for file in test_file_descriptor().files() {
+        let _ = format!("{:?}", file);
+    }
+
     for message in test_file_descriptor().all_messages() {
         let _ = format!("{:?}", message);
         for field in message.fields() {
@@ -245,6 +249,10 @@ fn test_debug_impls() {
 fn test_raw_getters() {
     // Check none of the debug impls accidentally recurse infinitely
     let _ = format!("{:?}", test_file_descriptor());
+
+    for file in test_file_descriptor().files() {
+        assert_eq!(file.file_descriptor_proto().name(), file.name());
+    }
 
     for service in test_file_descriptor().services() {
         assert_eq!(service.service_descriptor_proto().name(), service.name());

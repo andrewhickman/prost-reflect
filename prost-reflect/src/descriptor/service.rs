@@ -2,11 +2,9 @@ use std::{convert::TryInto, fmt};
 
 use prost_types::{FileDescriptorProto, MethodDescriptorProto, ServiceDescriptorProto};
 
-use crate::descriptor::debug_fmt_iter;
-
 use super::{
-    make_full_name, parse_name, parse_namespace, ty, DescriptorError, DescriptorPool,
-    MessageDescriptor, MethodIndex, ServiceIndex,
+    debug_fmt_iter, make_full_name, parse_name, parse_namespace, ty, DescriptorError,
+    DescriptorPool, FileDescriptor, FileIndex, MessageDescriptor, MethodIndex, ServiceIndex,
 };
 
 /// A protobuf service definition.
@@ -18,6 +16,7 @@ pub struct ServiceDescriptor {
 
 #[derive(Clone)]
 pub(super) struct ServiceDescriptorInner {
+    file: FileIndex,
     full_name: Box<str>,
     methods: Box<[MethodDescriptorInner]>,
 }
@@ -62,6 +61,11 @@ impl ServiceDescriptor {
         &self.descriptor_pool
     }
 
+    /// Gets a reference to the [`FileDescriptor`] this service is defined in.
+    pub fn parent_file(&self) -> FileDescriptor {
+        FileDescriptor::new(self.descriptor_pool.clone(), self.inner().file as _)
+    }
+
     /// Gets the short name of the service, e.g. `MyService`.
     pub fn name(&self) -> &str {
         parse_name(self.full_name())
@@ -104,6 +108,7 @@ impl ServiceDescriptor {
 impl ServiceDescriptorInner {
     pub(super) fn from_raw(
         raw_file: &FileDescriptorProto,
+        file_index: FileIndex,
         raw_service: &ServiceDescriptorProto,
         type_map: &ty::TypeMap,
     ) -> Result<ServiceDescriptorInner, DescriptorError> {
@@ -121,7 +126,11 @@ impl ServiceDescriptorInner {
                 )
             })
             .collect::<Result<_, DescriptorError>>()?;
-        Ok(ServiceDescriptorInner { full_name, methods })
+        Ok(ServiceDescriptorInner {
+            full_name,
+            methods,
+            file: file_index,
+        })
     }
 }
 
@@ -163,6 +172,11 @@ impl MethodDescriptor {
     /// Gets a reference to the [`DescriptorPool`] this method is defined in.
     pub fn parent_pool(&self) -> &DescriptorPool {
         self.service.parent_pool()
+    }
+
+    /// Gets a reference to the [`FileDescriptor`] this method is defined in.
+    pub fn parent_file(&self) -> FileDescriptor {
+        self.service.parent_file()
     }
 
     /// Gets the short name of the method, e.g. `method`.

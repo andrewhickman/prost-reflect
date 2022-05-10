@@ -138,15 +138,26 @@ impl DescriptorPool {
                 Some(_) => return Err(DescriptorError::file_already_exists(file.name())),
             }
         }
-        let files = &inner.files[start..];
 
-        inner.type_map.add_files(files.iter().map(|f| &f.raw))?;
+        fn iter_files(
+            files: &[FileDescriptorInner],
+            start: usize,
+        ) -> impl Iterator<Item = (FileIndex, &'_ FileDescriptorProto)> {
+            files
+                .iter()
+                .enumerate()
+                .skip(start)
+                .map(|(idx, f)| (idx.try_into().expect("file index too large"), &f.raw))
+        }
+
+        inner.type_map.add_files(iter_files(&inner.files, start))?;
         inner.type_map.shrink_to_fit();
 
-        for file in files {
-            for service in &file.raw.service {
+        for (file_index, file) in iter_files(&inner.files, start) {
+            for service in &file.service {
                 inner.services.push(ServiceDescriptorInner::from_raw(
-                    &file.raw,
+                    file,
+                    file_index,
                     service,
                     &inner.type_map,
                 )?);
@@ -220,6 +231,7 @@ impl DescriptorPool {
 impl fmt::Debug for DescriptorPool {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("DescriptorPool")
+            .field("files", &debug_fmt_iter(self.files()))
             .field("services", &debug_fmt_iter(self.services()))
             .field("all_messages", &debug_fmt_iter(self.all_messages()))
             .field("all_enums", &debug_fmt_iter(self.all_enums()))
