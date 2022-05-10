@@ -37,9 +37,14 @@ pub struct DescriptorPool {
 
 #[derive(Clone, Default)]
 struct DescriptorPoolInner {
-    raw: Vec<FileDescriptorProto>,
+    files: Vec<FileDescriptorInner>,
     type_map: ty::TypeMap,
     services: Vec<ServiceDescriptorInner>,
+}
+
+#[derive(Clone)]
+struct FileDescriptorInner {
+    raw: FileDescriptorProto,
 }
 
 type FileIndex = u32;
@@ -117,24 +122,24 @@ impl DescriptorPool {
         // avoid putting the pool into an inconsistent state on error.
         let mut inner = (*self.inner).clone();
 
-        let start = inner.raw.len();
+        let start = inner.files.len();
         for file in files {
-            match inner.raw.iter().find(|f| f.name() == file.name()) {
-                None => inner.raw.push(file),
+            match inner.files.iter().find(|f| f.raw.name() == file.name()) {
+                None => inner.files.push(FileDescriptorInner { raw: file }),
                 // Skip duplicate files only if they match exactly
-                Some(existing_file) if *existing_file == file => continue,
+                Some(existing_file) if existing_file.raw == file => continue,
                 Some(_) => return Err(DescriptorError::file_already_exists(file.name())),
             }
         }
-        let files = &inner.raw[start..];
+        let files = &inner.files[start..];
 
-        inner.type_map.add_files(files)?;
+        inner.type_map.add_files(files.iter().map(|f| &f.raw))?;
         inner.type_map.shrink_to_fit();
 
         for file in files {
-            for service in &file.service {
+            for service in &file.raw.service {
                 inner.services.push(ServiceDescriptorInner::from_raw(
-                    file,
+                    &file.raw,
                     service,
                     &inner.type_map,
                 )?);
@@ -160,7 +165,7 @@ impl DescriptorPool {
     pub fn file_descriptor_protos(
         &self,
     ) -> impl ExactSizeIterator<Item = &FileDescriptorProto> + '_ {
-        self.inner.raw.iter()
+        self.inner.files.iter().map(|f| &f.raw)
     }
 
     /// Gets an iterator over the services defined in these protobuf files.
