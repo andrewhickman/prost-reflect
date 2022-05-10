@@ -103,7 +103,7 @@ impl TypeMap {
         }
 
         let parent = match parent {
-            None => ParentKind::File { index: file },
+            None => ParentKind::File,
             Some(parent_name) => ParentKind::Message {
                 index: self.try_get_by_name(&parent_name)?.1,
             },
@@ -114,6 +114,7 @@ impl TypeMap {
             Some(TypeId::new_message(self.messages.len()))
         );
         self.messages.push(MessageDescriptorInner {
+            file,
             fields,
             field_names,
             field_json_names,
@@ -285,7 +286,7 @@ impl TypeMap {
             .collect();
 
         let parent = match parent {
-            None => ParentKind::File { index: file },
+            None => ParentKind::File,
             Some(parent_name) => ParentKind::Message {
                 index: self.try_get_by_name(&parent_name)?.1,
             },
@@ -312,6 +313,7 @@ impl TypeMap {
             Some(TypeId::new_enum(self.enums.len()))
         );
         self.enums.push(EnumDescriptorInner {
+            file,
             full_name,
             parent,
             value_names,
@@ -342,7 +344,7 @@ impl TypeMap {
         let json_name = json_name.into_boxed_str();
 
         let parent = match parent {
-            None => ParentKind::File { index: file },
+            None => ParentKind::File,
             Some(parent_name) => ParentKind::Message {
                 index: self.try_get_by_name(&parent_name)?.1,
             },
@@ -351,6 +353,7 @@ impl TypeMap {
         let index = self.extensions.len().try_into().expect("index too large");
         self.get_message_mut(extendee).extensions.push(index);
         self.extensions.push(ExtensionDescriptorInner {
+            file,
             field,
             number,
             parent,

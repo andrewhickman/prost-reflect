@@ -61,7 +61,7 @@ impl ServiceDescriptor {
         &self.descriptor_pool
     }
 
-    /// Gets a reference to the [`FileDescriptor`] this service is defined in.
+    /// Gets the [`FileDescriptor`] this service is defined in.
     pub fn parent_file(&self) -> FileDescriptor {
         FileDescriptor::new(self.descriptor_pool.clone(), self.inner().file as _)
     }
@@ -174,7 +174,7 @@ impl MethodDescriptor {
         self.service.parent_pool()
     }
 
-    /// Gets a reference to the [`FileDescriptor`] this method is defined in.
+    /// Gets the [`FileDescriptor`] this method is defined in.
     pub fn parent_file(&self) -> FileDescriptor {
         self.service.parent_file()
     }

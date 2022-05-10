@@ -20,7 +20,7 @@ use prost_types::{
 
 use crate::descriptor::{
     debug_fmt_iter, make_full_name, parse_name, parse_namespace, DescriptorError, DescriptorPool,
-    MAP_ENTRY_KEY_NUMBER, MAP_ENTRY_VALUE_NUMBER,
+    FileDescriptor, MAP_ENTRY_KEY_NUMBER, MAP_ENTRY_VALUE_NUMBER,
 };
 
 use super::{EnumIndex, EnumValueIndex, ExtensionIndex, FileIndex, MessageIndex, OneofIndex};
@@ -46,6 +46,7 @@ pub struct MessageDescriptor {
 #[derive(Clone)]
 struct MessageDescriptorInner {
     full_name: Box<str>,
+    file: FileIndex,
     parent: ParentKind,
     is_map_entry: bool,
     fields: BTreeMap<u32, FieldDescriptorInner>,
@@ -101,6 +102,7 @@ pub struct ExtensionDescriptor {
 pub struct ExtensionDescriptorInner {
     field: FieldDescriptorInner,
     number: u32,
+    file: FileIndex,
     parent: ParentKind,
     extendee: TypeId,
     json_name: Box<str>,
@@ -116,6 +118,7 @@ pub struct EnumDescriptor {
 #[derive(Clone)]
 struct EnumDescriptorInner {
     full_name: Box<str>,
+    file: FileIndex,
     parent: ParentKind,
     value_names: HashMap<Box<str>, EnumValueIndex>,
     values: Vec<EnumValueDescriptorInner>,
@@ -188,7 +191,7 @@ pub enum Cardinality {
 
 #[derive(Copy, Clone, Debug)]
 enum ParentKind {
-    File { index: FileIndex },
+    File,
     Message { index: MessageIndex },
 }
 
@@ -223,9 +226,14 @@ impl MessageDescriptor {
         &self.pool
     }
 
+    /// Gets the [`FileDescriptor`] this message is defined in.
+    pub fn parent_file(&self) -> FileDescriptor {
+        FileDescriptor::new(self.pool.clone(), self.inner().file as _)
+    }
+
     /// Gets the parent message type if this message type is nested inside a another message, or `None` otherwise
     pub fn parent_message(&self) -> Option<MessageDescriptor> {
-        self.message_ty()
+        self.inner()
             .parent
             .as_message()
             .map(|ty| MessageDescriptor::new(self.pool.clone(), ty))
@@ -238,7 +246,7 @@ impl MessageDescriptor {
 
     /// Gets the full name of the message type, e.g. `my.package.MyMessage`.
     pub fn full_name(&self) -> &str {
-        &self.message_ty().full_name
+        &self.inner().full_name
     }
 
     /// Gets the name of the package this message type is defined in, e.g. `my.package`.
@@ -250,19 +258,17 @@ impl MessageDescriptor {
 
     /// Gets a reference to the [`FileDescriptorProto`] in which this message is defined.
     pub fn parent_file_descriptor_proto(&self) -> &FileDescriptorProto {
-        self.message_ty()
-            .parent
-            .resolve_parent_file_proto(&self.pool)
+        get_file_descriptor_proto(&self.pool, self.inner().file)
     }
 
     /// Gets a reference to the raw [`DescriptorProto`] wrapped by this [`MessageDescriptor`].
     pub fn descriptor_proto(&self) -> &DescriptorProto {
-        find_message_descriptor_proto(self.parent_pool(), self.index)
+        find_message_descriptor_proto(self.parent_pool(), self.inner().file, self.index)
     }
 
     /// Gets an iterator yielding a [`FieldDescriptor`] for each field defined in this message.
     pub fn fields(&self) -> impl ExactSizeIterator<Item = FieldDescriptor> + '_ {
-        self.message_ty()
+        self.inner()
             .fields
             .keys()
             .map(move |&field| FieldDescriptor {
@@ -273,13 +279,13 @@ impl MessageDescriptor {
 
     /// Gets an iterator yielding a [`OneofDescriptor`] for each oneof field defined in this message.
     pub fn oneofs(&self) -> impl ExactSizeIterator<Item = OneofDescriptor> + '_ {
-        (0..self.message_ty().oneof_decls.len())
+        (0..self.inner().oneof_decls.len())
             .map(move |index| OneofDescriptor::new(self.clone(), index))
     }
 
     /// Gets a [`FieldDescriptor`] with the given number, or `None` if no such field exists.
     pub fn get_field(&self, number: u32) -> Option<FieldDescriptor> {
-        if self.message_ty().fields.contains_key(&number) {
+        if self.inner().fields.contains_key(&number) {
             Some(FieldDescriptor {
                 message: self.clone(),
                 field: number,
@@ -291,7 +297,7 @@ impl MessageDescriptor {
 
     /// Gets a [`FieldDescriptor`] with the given name, or `None` if no such field exists.
     pub fn get_field_by_name(&self, name: &str) -> Option<FieldDescriptor> {
-        self.message_ty()
+        self.inner()
             .field_names
             .get(name)
             .map(|&number| FieldDescriptor {
@@ -302,7 +308,7 @@ impl MessageDescriptor {
 
     /// Gets a [`FieldDescriptor`] with the given JSON name, or `None` if no such field exists.
     pub fn get_field_by_json_name(&self, json_name: &str) -> Option<FieldDescriptor> {
-        self.message_ty()
+        self.inner()
             .field_json_names
             .get(json_name)
             .map(|&number| FieldDescriptor {
@@ -324,7 +330,7 @@ impl MessageDescriptor {
     /// [`map_entry_value_field`][MessageDescriptor::map_entry_value_field] for more a convenient way
     /// to get these fields.
     pub fn is_map_entry(&self) -> bool {
-        self.message_ty().is_map_entry
+        self.inner().is_map_entry
     }
 
     /// If this is a [map entry](MessageDescriptor::is_map_entry), returns a [`FieldDescriptor`] for the key.
@@ -378,7 +384,7 @@ impl MessageDescriptor {
     /// Note this iterates over extension fields defined in any file which extend this message, rather than
     /// extensions defined nested within this message.
     pub fn extensions(&self) -> impl ExactSizeIterator<Item = ExtensionDescriptor> + '_ {
-        self.message_ty()
+        self.inner()
             .extensions
             .iter()
             .map(move |&index| ExtensionDescriptor {
@@ -397,7 +403,7 @@ impl MessageDescriptor {
         self.extensions().find(|ext| ext.json_name() == name)
     }
 
-    fn message_ty(&self) -> &MessageDescriptorInner {
+    fn inner(&self) -> &MessageDescriptorInner {
         self.pool.inner.type_map.get_message(self.index)
     }
 }
@@ -420,6 +426,11 @@ impl FieldDescriptor {
         self.message.parent_pool()
     }
 
+    /// Gets the [`FileDescriptor`] this field is defined in.
+    pub fn parent_file(&self) -> FileDescriptor {
+        self.message.parent_file()
+    }
+
     /// Gets a reference to the [`MessageDescriptor`] this field is defined in.
     pub fn parent_message(&self) -> &MessageDescriptor {
         &self.message
@@ -427,12 +438,12 @@ impl FieldDescriptor {
 
     /// Gets the short name of the message type, e.g. `my_field`.
     pub fn name(&self) -> &str {
-        &self.message_field_ty().name
+        &self.inner().name
     }
 
     /// Gets the full name of the message field, e.g. `my.package.MyMessage.my_field`.
     pub fn full_name(&self) -> &str {
-        &self.message_field_ty().full_name
+        &self.inner().full_name
     }
 
     /// Gets a reference to the raw [`FieldDescriptorProto`] wrapped by this [`FieldDescriptor`].
@@ -455,12 +466,12 @@ impl FieldDescriptor {
     /// This is usually the camel-cased form of the field name, unless
     /// another value is set in the proto file.
     pub fn json_name(&self) -> &str {
-        &self.message_field_ty().json_name
+        &self.inner().json_name
     }
 
     /// Whether this field is encoded using the proto2 group encoding.
     pub fn is_group(&self) -> bool {
-        self.message_field_ty().is_group
+        self.inner().is_group
     }
 
     /// Whether this field is a list type.
@@ -486,12 +497,12 @@ impl FieldDescriptor {
 
     /// Whether this field is a list encoded using [packed encoding](https://developers.google.com/protocol-buffers/docs/encoding#packed).
     pub fn is_packed(&self) -> bool {
-        self.message_field_ty().is_packed
+        self.inner().is_packed
     }
 
     /// The cardinality of this field.
     pub fn cardinality(&self) -> Cardinality {
-        self.message_field_ty().cardinality
+        self.inner().cardinality
     }
 
     /// Whether this field supports distinguishing between an unpopulated field and
@@ -501,32 +512,32 @@ impl FieldDescriptor {
     /// For proto3 this returns `true` for message fields, and fields contained
     /// in a `oneof`.
     pub fn supports_presence(&self) -> bool {
-        self.message_field_ty().supports_presence
+        self.inner().supports_presence
     }
 
     /// Gets the [`Kind`] of this field.
     pub fn kind(&self) -> Kind {
-        self.message_field_ty().ty.to_kind(&self.message.pool)
+        self.inner().ty.to_kind(&self.message.pool)
     }
 
     /// Gets a [`OneofDescriptor`] representing the oneof containing this field,
     /// or `None` if this field is not contained in a oneof.
     pub fn containing_oneof(&self) -> Option<OneofDescriptor> {
-        self.message_field_ty()
+        self.inner()
             .oneof_index
             .map(|index| OneofDescriptor::new(self.message.clone(), index))
     }
 
     pub(crate) fn default_value(&self) -> Option<&crate::Value> {
-        self.message_field_ty().default_value.as_ref()
+        self.inner().default_value.as_ref()
     }
 
     pub(crate) fn is_packable(&self) -> bool {
-        self.message_field_ty().ty.is_packable()
+        self.inner().ty.is_packable()
     }
 
-    fn message_field_ty(&self) -> &FieldDescriptorInner {
-        &self.message.message_ty().fields[&self.field]
+    fn inner(&self) -> &FieldDescriptorInner {
+        &self.message.inner().fields[&self.field]
     }
 }
 
@@ -571,12 +582,17 @@ impl ExtensionDescriptor {
         &self.pool
     }
 
+    /// Gets the [`FileDescriptor`] this extension field is defined in.
+    pub fn parent_file(&self) -> FileDescriptor {
+        FileDescriptor::new(self.pool.clone(), self.inner().file as _)
+    }
+
     /// Gets the parent message type if this extension is defined within another message, or `None` otherwise.
     ///
     /// Note this just corresponds to where the extension was defined in the proto file. See [`containing_message`][ExtensionDescriptor::containing_message]
     /// for the message this field extends.
     pub fn parent_message(&self) -> Option<MessageDescriptor> {
-        self.extension_ty()
+        self.inner()
             .parent
             .as_message()
             .map(|ty| MessageDescriptor::new(self.pool.clone(), ty))
@@ -584,14 +600,14 @@ impl ExtensionDescriptor {
 
     /// Gets the short name of the extension field type, e.g. `my_extension`.
     pub fn name(&self) -> &str {
-        &self.message_field_ty().name
+        &self.field_inner().name
     }
 
     /// Gets the full name of the extension field, e.g. `my.package.ParentMessage.my_field`.
     ///
     /// Note this includes the name of the parent message if any, not the message this field extends.
     pub fn full_name(&self) -> &str {
-        &self.message_field_ty().full_name
+        &self.field_inner().full_name
     }
 
     /// Gets the name of the package this extension field is defined in, e.g. `my.package`.
@@ -603,25 +619,22 @@ impl ExtensionDescriptor {
 
     /// Gets a reference to the [`FileDescriptorProto`] in which this extension is defined.
     pub fn parent_file_descriptor_proto(&self) -> &FileDescriptorProto {
-        self.extension_ty()
-            .parent
-            .resolve_parent_file_proto(&self.pool)
+        get_file_descriptor_proto(&self.pool, self.inner().file)
     }
 
     /// Gets a reference to the raw [`FieldDescriptorProto`] wrapped by this [`ExtensionDescriptor`].
     pub fn field_descriptor_proto(&self) -> &FieldDescriptorProto {
         let name = self.name();
-        match self.extension_ty().parent {
-            ParentKind::File { index: file_index } => {
-                get_file_descriptor_proto(&self.pool, file_index)
-                    .extension
-                    .iter()
-                    .find(|extension| extension.name() == name)
-                    .expect("extension not found")
-            }
+        let inner = self.inner();
+        match inner.parent {
+            ParentKind::File => get_file_descriptor_proto(&self.pool, inner.file)
+                .extension
+                .iter()
+                .find(|extension| extension.name() == name)
+                .expect("extension not found"),
             ParentKind::Message {
                 index: message_index,
-            } => find_message_descriptor_proto(&self.pool, message_index)
+            } => find_message_descriptor_proto(&self.pool, inner.file, message_index)
                 .extension
                 .iter()
                 .find(|extension| extension.name() == name)
@@ -631,17 +644,17 @@ impl ExtensionDescriptor {
 
     /// Gets the number for this extension field.
     pub fn number(&self) -> u32 {
-        self.extension_ty().number
+        self.inner().number
     }
 
     /// Gets the name used for JSON serialization of this extension field, e.g. `[my.package.ParentMessage.my_field]`.
     pub fn json_name(&self) -> &str {
-        &self.extension_ty().json_name
+        &self.inner().json_name
     }
 
     /// Whether this field is encoded using the proto2 group encoding.
     pub fn is_group(&self) -> bool {
-        self.message_field_ty().is_group
+        self.field_inner().is_group
     }
 
     /// Whether this field is a list type.
@@ -667,12 +680,12 @@ impl ExtensionDescriptor {
 
     /// Whether this field is a list encoded using [packed encoding](https://developers.google.com/protocol-buffers/docs/encoding#packed).
     pub fn is_packed(&self) -> bool {
-        self.message_field_ty().is_packed
+        self.field_inner().is_packed
     }
 
     /// The cardinality of this field.
     pub fn cardinality(&self) -> Cardinality {
-        self.message_field_ty().cardinality
+        self.field_inner().cardinality
     }
 
     /// Whether this field supports distinguishing between an unpopulated field and
@@ -682,32 +695,32 @@ impl ExtensionDescriptor {
     /// For proto3 this returns `true` for message fields, and fields contained
     /// in a `oneof`.
     pub fn supports_presence(&self) -> bool {
-        self.message_field_ty().supports_presence
+        self.field_inner().supports_presence
     }
 
     /// Gets the [`Kind`] of this field.
     pub fn kind(&self) -> Kind {
-        self.message_field_ty().ty.to_kind(&self.pool)
+        self.field_inner().ty.to_kind(&self.pool)
     }
 
     /// Gets the containing message that this field extends.
     pub fn containing_message(&self) -> MessageDescriptor {
-        MessageDescriptor::new(self.pool.clone(), self.extension_ty().extendee)
+        MessageDescriptor::new(self.pool.clone(), self.inner().extendee)
     }
 
     pub(crate) fn default_value(&self) -> Option<&crate::Value> {
-        self.message_field_ty().default_value.as_ref()
+        self.field_inner().default_value.as_ref()
     }
 
     pub(crate) fn is_packable(&self) -> bool {
-        self.message_field_ty().ty.is_packable()
+        self.field_inner().ty.is_packable()
     }
 
-    fn message_field_ty(&self) -> &FieldDescriptorInner {
-        &self.extension_ty().field
+    fn field_inner(&self) -> &FieldDescriptorInner {
+        &self.inner().field
     }
 
-    fn extension_ty(&self) -> &ExtensionDescriptorInner {
+    fn inner(&self) -> &ExtensionDescriptorInner {
         self.pool.inner.type_map.get_extension(self.index)
     }
 }
@@ -826,9 +839,14 @@ impl EnumDescriptor {
         &self.pool
     }
 
+    /// Gets the [`FileDescriptor`] this enum type is defined in.
+    pub fn parent_file(&self) -> FileDescriptor {
+        FileDescriptor::new(self.pool.clone(), self.inner().file as _)
+    }
+
     /// Gets the parent message type if this enum type is nested inside a another message, or `None` otherwise
     pub fn parent_message(&self) -> Option<MessageDescriptor> {
-        self.enum_ty()
+        self.inner()
             .parent
             .as_message()
             .map(|ty| MessageDescriptor::new(self.pool.clone(), ty))
@@ -841,7 +859,7 @@ impl EnumDescriptor {
 
     /// Gets the full name of the enum, e.g. `my.package.MyEnum`.
     pub fn full_name(&self) -> &str {
-        &self.enum_ty().full_name
+        &self.inner().full_name
     }
 
     /// Gets the name of the package this enum type is defined in, e.g. `my.package`.
@@ -853,23 +871,22 @@ impl EnumDescriptor {
 
     /// Gets a reference to the [`FileDescriptorProto`] in which this enum is defined.
     pub fn parent_file_descriptor_proto(&self) -> &FileDescriptorProto {
-        self.enum_ty().parent.resolve_parent_file_proto(&self.pool)
+        get_file_descriptor_proto(&self.pool, self.inner().file)
     }
 
     /// Gets a reference to the raw [`EnumDescriptorProto`] wrapped by this [`EnumDescriptor`].
     pub fn enum_descriptor_proto(&self) -> &EnumDescriptorProto {
         let name = self.name();
-        match self.enum_ty().parent {
-            ParentKind::File { index: file_index } => {
-                get_file_descriptor_proto(&self.pool, file_index)
-                    .enum_type
-                    .iter()
-                    .find(|extension| extension.name() == name)
-                    .expect("extension not found")
-            }
+        let inner = self.inner();
+        match inner.parent {
+            ParentKind::File => get_file_descriptor_proto(&self.pool, inner.file)
+                .enum_type
+                .iter()
+                .find(|extension| extension.name() == name)
+                .expect("extension not found"),
             ParentKind::Message {
                 index: message_index,
-            } => find_message_descriptor_proto(&self.pool, message_index)
+            } => find_message_descriptor_proto(&self.pool, inner.file, message_index)
                 .enum_type
                 .iter()
                 .find(|extension| extension.name() == name)
@@ -881,13 +898,13 @@ impl EnumDescriptor {
     pub fn default_value(&self) -> EnumValueDescriptor {
         EnumValueDescriptor {
             parent: self.clone(),
-            index: self.enum_ty().default_value,
+            index: self.inner().default_value,
         }
     }
 
     /// Gets a [`EnumValueDescriptor`] for the enum value with the given name, or `None` if no such value exists.
     pub fn get_value_by_name(&self, name: &str) -> Option<EnumValueDescriptor> {
-        self.enum_ty()
+        self.inner()
             .value_names
             .get(name)
             .map(|&index| EnumValueDescriptor {
@@ -902,7 +919,7 @@ impl EnumDescriptor {
     /// unspecified which one will be returned.
     pub fn get_value(&self, number: i32) -> Option<EnumValueDescriptor> {
         match self
-            .enum_ty()
+            .inner()
             .values
             .binary_search_by_key(&number, |v| v.number)
         {
@@ -913,7 +930,7 @@ impl EnumDescriptor {
 
     /// Gets an iterator yielding a [`EnumValueDescriptor`] for each value in this enum.
     pub fn values(&self) -> impl ExactSizeIterator<Item = EnumValueDescriptor> + '_ {
-        (0..self.enum_ty().values.len())
+        (0..self.inner().values.len())
             .map(move |index| EnumValueDescriptor::new(self.clone(), index))
     }
 
@@ -933,7 +950,7 @@ impl EnumDescriptor {
             .map(|n| n.as_ref())
     }
 
-    fn enum_ty(&self) -> &EnumDescriptorInner {
+    fn inner(&self) -> &EnumDescriptorInner {
         self.pool.inner.type_map.get_enum(self.index)
     }
 }
@@ -960,6 +977,11 @@ impl EnumValueDescriptor {
     /// Gets a reference to the [`DescriptorPool`] this enum value is defined in.
     pub fn parent_pool(&self) -> &DescriptorPool {
         self.parent.parent_pool()
+    }
+
+    /// Gets the [`FileDescriptor`] this enum value is defined in.
+    pub fn parent_file(&self) -> FileDescriptor {
+        self.parent.parent_file()
     }
 
     /// Gets a reference to the [`EnumDescriptor`] this enum value is defined in.
@@ -993,7 +1015,7 @@ impl EnumValueDescriptor {
     }
 
     fn enum_value_ty(&self) -> &EnumValueDescriptorInner {
-        &self.parent.enum_ty().values[self.index as usize]
+        &self.parent.inner().values[self.index as usize]
     }
 }
 
@@ -1018,6 +1040,11 @@ impl OneofDescriptor {
     /// Gets a reference to the [`DescriptorPool`] this oneof is defined in.
     pub fn parent_pool(&self) -> &DescriptorPool {
         self.message.parent_pool()
+    }
+
+    /// Gets the [`FileDescriptor`] this oneof is defined in.
+    pub fn parent_file(&self) -> FileDescriptor {
+        self.message.parent_file()
     }
 
     /// Gets a reference to the [`MessageDescriptor`] this oneof is defined in.
@@ -1052,7 +1079,7 @@ impl OneofDescriptor {
     }
 
     fn oneof_ty(&self) -> &OneofDescriptorInner {
-        &self.message.message_ty().oneof_decls[self.index as usize]
+        &self.message.inner().oneof_decls[self.index as usize]
     }
 }
 
@@ -1241,35 +1268,27 @@ impl ParentKind {
             }
         }
     }
-
-    fn resolve_parent_file_proto<'a>(&self, pool: &'a DescriptorPool) -> &'a FileDescriptorProto {
-        let mut curr = *self;
-        loop {
-            match curr {
-                ParentKind::File { index } => return get_file_descriptor_proto(pool, index),
-                ParentKind::Message { index } => {
-                    curr = pool.inner.type_map.get_message(index).parent;
-                }
-            }
-        }
-    }
 }
 
 fn get_file_descriptor_proto(pool: &DescriptorPool, index: FileIndex) -> &FileDescriptorProto {
     pool.file_descriptor_protos().nth(index as usize).unwrap()
 }
 
-fn find_message_descriptor_proto(pool: &DescriptorPool, index: MessageIndex) -> &DescriptorProto {
+fn find_message_descriptor_proto(
+    pool: &DescriptorPool,
+    file_index: FileIndex,
+    index: MessageIndex,
+) -> &DescriptorProto {
     let message = pool.inner.type_map.get_message(index);
     match message.parent {
-        ParentKind::File { index: file_index } => get_file_descriptor_proto(pool, file_index)
+        ParentKind::File => get_file_descriptor_proto(pool, file_index)
             .message_type
             .iter()
             .find(|ty| ty.name() == parse_name(&message.full_name))
             .expect("message not found"),
         ParentKind::Message {
             index: parent_index,
-        } => find_message_descriptor_proto(pool, parent_index)
+        } => find_message_descriptor_proto(pool, file_index, parent_index)
             .nested_type
             .iter()
             .find(|ty| ty.name() == parse_name(&message.full_name))
