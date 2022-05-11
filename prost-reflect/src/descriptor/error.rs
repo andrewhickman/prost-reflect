@@ -33,6 +33,10 @@ enum DescriptorErrorKind {
         name: String,
         field: String,
     },
+    FileNotFound {
+        required_by: String,
+        name: String,
+    },
     FileAlreadyExists {
         name: String,
     },
@@ -106,6 +110,15 @@ impl DescriptorError {
         }
     }
 
+    pub(crate) fn file_not_found(required_by: impl ToString, name: impl ToString) -> Self {
+        DescriptorError {
+            kind: DescriptorErrorKind::FileNotFound {
+                required_by: required_by.to_string(),
+                name: name.to_string(),
+            },
+        }
+    }
+
     pub(crate) fn file_already_exists(name: impl ToString) -> Self {
         DescriptorError {
             kind: DescriptorErrorKind::FileAlreadyExists {
@@ -161,6 +174,7 @@ impl fmt::Display for DescriptorError {
                     field, name
                 )
             }
+            DescriptorErrorKind::FileNotFound { required_by, name } => write!(f, "the file '{}' was not found while resolving dependencies for '{}'", name, required_by),
             DescriptorErrorKind::FileAlreadyExists { name } => write!(f, "a conflicting file named '{}' is already added. Duplicate files must match exactly.", name),
         }
     }

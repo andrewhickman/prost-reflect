@@ -217,6 +217,8 @@ fn reference_type_in_previously_added_file() {
             name: Some("myfile2.proto".to_owned()),
             package: Some("my.package2".to_owned()),
             syntax: Some("proto3".to_owned()),
+            dependency: vec!["myfile1.proto".to_owned()],
+            public_dependency: vec![0],
             message_type: vec![DescriptorProto {
                 name: Some("MyMessage".to_owned()),
                 field: vec![FieldDescriptorProto {
@@ -238,32 +240,30 @@ fn reference_type_in_previously_added_file() {
     pool.add_file_descriptor_set(file_descriptor_set1).unwrap();
     pool.add_file_descriptor_set(file_descriptor_set2).unwrap();
     assert_eq!(pool.get_file_by_name("notfound"), None);
-    assert_ne!(
-        pool.get_file_by_name("myfile1.proto").unwrap(),
-        pool.get_file_by_name("myfile2.proto").unwrap()
+
+    let file1 = pool.get_file_by_name("myfile1.proto").unwrap();
+    let file2 = pool.get_file_by_name("myfile2.proto").unwrap();
+    assert_ne!(file1, file2);
+    assert_eq!(file1.dependencies().collect::<Vec<_>>(), vec![]);
+    assert_eq!(
+        file2.dependencies().collect::<Vec<_>>(),
+        vec![file1.clone()]
     );
 
+    assert_eq!(file1.name(), "myfile1.proto");
+    assert_eq!(file1.package_name(), "my.package1");
+    assert_eq!(file2.name(), "myfile2.proto");
+    assert_eq!(file2.package_name(), "my.package2");
+
     let message = pool.get_message_by_name("my.package2.MyMessage").unwrap();
-    assert_eq!(message.parent_file().name(), "myfile2.proto");
-    assert_eq!(message.parent_file().package_name(), "my.package2");
+    assert_eq!(message.parent_file(), file2);
+
     let field = message.get_field_by_name("my_field").unwrap();
     assert_eq!(
         field.kind().as_message().unwrap().full_name(),
         "my.package1.MyFieldMessage"
     );
-    assert_eq!(
-        field.kind().as_message().unwrap().parent_file().name(),
-        "myfile1.proto"
-    );
-    assert_eq!(
-        field
-            .kind()
-            .as_message()
-            .unwrap()
-            .parent_file()
-            .package_name(),
-        "my.package1"
-    );
+    assert_eq!(field.kind().as_message().unwrap().parent_file(), file1);
 }
 
 #[test]
@@ -360,4 +360,26 @@ fn add_file_rollback_on_error() {
         .contains("the message or enum type 'my.package.NopeMessage' was not found"));
     assert_eq!(pool.file_descriptor_protos().count(), 0);
     assert_eq!(pool.get_message_by_name(".my.package.MyMessage"), None);
+}
+
+#[test]
+fn add_file_missing_dependency() {
+    let bad_file_descriptor_set = FileDescriptorSet {
+        file: vec![FileDescriptorProto {
+            name: Some("myfile.proto".to_owned()),
+            package: Some("my.package".to_owned()),
+            dependency: vec!["notfound.proto".to_owned()],
+            public_dependency: vec![0],
+            syntax: Some("proto3".to_owned()),
+            ..Default::default()
+        }],
+    };
+
+    let mut pool = DescriptorPool::new();
+    let err = pool
+        .add_file_descriptor_set(bad_file_descriptor_set)
+        .unwrap_err();
+    assert!(err.to_string().contains(
+        "the file 'notfound.proto' was not found while resolving dependencies for 'myfile.proto'"
+    ));
 }

@@ -11,7 +11,7 @@ pub use self::{
     },
 };
 
-use std::{collections::HashMap, convert::TryInto, fmt, iter, sync::Arc};
+use std::{collections::HashMap, convert::TryInto, fmt, iter, ops::Range, sync::Arc};
 
 use prost::{bytes::Buf, Message};
 use prost_types::{FileDescriptorProto, FileDescriptorSet};
@@ -130,35 +130,18 @@ impl DescriptorPool {
         // avoid putting the pool into an inconsistent state on error.
         let mut inner = (*self.inner).clone();
 
-        let start = inner.files.len();
-        for file in files {
-            match inner.files.iter().find(|f| f.raw.name() == file.name()) {
-                None => inner.files.push(FileDescriptorInner { raw: file }),
-                // Skip duplicate files only if they match exactly
-                Some(existing_file) if existing_file.raw == file => continue,
-                Some(_) => return Err(DescriptorError::file_already_exists(file.name())),
-            }
-        }
+        let file_indices = inner.build_files(files)?;
+        let files = &inner.files;
 
-        fn iter_files(
-            files: &[FileDescriptorInner],
-            start: usize,
-        ) -> impl Iterator<Item = (FileIndex, &'_ FileDescriptorProto)> {
-            files
-                .iter()
-                .enumerate()
-                .skip(start)
-                .map(|(idx, f)| (idx.try_into().expect("file index too large"), &f.raw))
-        }
-
-        for (file_index, file) in iter_files(&inner.files, start) {
-            inner.file_names.insert(file.name().into(), file_index);
-        }
-
-        inner.type_map.add_files(iter_files(&inner.files, start))?;
+        inner.type_map.add_files(
+            file_indices
+                .clone()
+                .map(|file_index| (file_index, &files[file_index as usize].raw)),
+        )?;
         inner.type_map.shrink_to_fit();
 
-        for (file_index, file) in iter_files(&inner.files, start) {
+        for file_index in file_indices {
+            let file = &files[file_index as usize].raw;
             for service in &file.service {
                 inner.services.push(ServiceDescriptorInner::from_raw(
                     file,
@@ -241,6 +224,50 @@ impl DescriptorPool {
     }
 }
 
+impl DescriptorPoolInner {
+    fn build_files(
+        &mut self,
+        files: impl IntoIterator<Item = FileDescriptorProto>,
+    ) -> Result<Range<FileIndex>, DescriptorError> {
+        let start = self.files.len();
+
+        for file in files {
+            match self.files.iter().find(|f| f.raw.name() == file.name()) {
+                None => {
+                    let index: FileIndex =
+                        self.files.len().try_into().expect("file index too large");
+                    self.file_names.insert(file.name().into(), index);
+                    self.files.push(FileDescriptorInner { raw: file });
+                }
+                // Skip duplicate files only if they match exactly
+                Some(existing_file) if existing_file.raw == file => continue,
+                Some(_) => return Err(DescriptorError::file_already_exists(file.name())),
+            }
+        }
+
+        let end = self.files.len();
+
+        for file in &self.files[start..end] {
+            for dependency in &file.raw.dependency {
+                if !self.file_names.contains_key(dependency.as_str()) {
+                    return Err(DescriptorError::file_not_found(file.raw.name(), dependency));
+                }
+            }
+            for &dependency_index in &file.raw.public_dependency {
+                if (dependency_index as usize) >= file.raw.dependency.len() {
+                    return Err(DescriptorError::file_not_found(
+                        file.raw.name(),
+                        dependency_index,
+                    ));
+                }
+            }
+        }
+
+        Ok(start.try_into().expect("file index too large")
+            ..end.try_into().expect("file index too large"))
+    }
+}
+
 impl fmt::Debug for DescriptorPool {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("DescriptorPool")
@@ -300,6 +327,18 @@ impl FileDescriptor {
     /// Gets the index of this file within the parent [`DescriptorPool`].
     pub fn index(&self) -> usize {
         self.index as usize
+    }
+
+    /// Gets the public dependencies of this file.
+    ///
+    /// This corresponds to the [`FileDescriptorProto::public_dependency`] field.
+    pub fn dependencies(&self) -> impl ExactSizeIterator<Item = FileDescriptor> + '_ {
+        let pool = self.parent_pool();
+        let raw = self.file_descriptor_proto();
+        raw.public_dependency.iter().map(move |&i| {
+            pool.get_file_by_name(&raw.dependency[i as usize])
+                .expect("dependency not found")
+        })
     }
 
     /// Gets a reference to the raw [`FileDescriptorProto`] wrapped by this [`FileDescriptor`].
