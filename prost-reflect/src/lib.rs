@@ -22,7 +22,7 @@ pub use {prost, prost::bytes, prost_types};
 pub use self::descriptor::{
     Cardinality, DescriptorError, DescriptorPool, EnumDescriptor, EnumValueDescriptor,
     ExtensionDescriptor, FieldDescriptor, FileDescriptor, Kind, MessageDescriptor,
-    MethodDescriptor, OneofDescriptor, ServiceDescriptor,
+    MethodDescriptor, OneofDescriptor, ServiceDescriptor, Syntax,
 };
 pub use self::dynamic::{DynamicMessage, MapKey, Value};
 pub use self::reflect::ReflectMessage;

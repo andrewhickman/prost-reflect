@@ -7,7 +7,7 @@ use std::{
 use prost::bytes::Bytes;
 use prost_types::{
     field_descriptor_proto::{self, Label},
-    DescriptorProto, EnumDescriptorProto, FieldDescriptorProto, FileDescriptorProto,
+    DescriptorProto, EnumDescriptorProto, FieldDescriptorProto,
 };
 
 use crate::{
@@ -18,7 +18,8 @@ use crate::{
             FieldDescriptorInner, MessageDescriptorInner, OneofDescriptorInner, ParentKind, TypeId,
             TypeMap,
         },
-        EnumValueIndex, FileIndex, MAP_ENTRY_KEY_NUMBER, MAP_ENTRY_VALUE_NUMBER,
+        EnumValueIndex, FileDescriptorInner, FileIndex, Syntax, MAP_ENTRY_KEY_NUMBER,
+        MAP_ENTRY_VALUE_NUMBER,
     },
     DescriptorError,
 };
@@ -26,7 +27,7 @@ use crate::{
 impl TypeMap {
     pub fn add_files<'a>(
         &mut self,
-        raw: impl Iterator<Item = (FileIndex, &'a FileDescriptorProto)>,
+        raw: impl Iterator<Item = (FileIndex, &'a FileDescriptorInner)>,
     ) -> Result<(), DescriptorError> {
         let mut messages = Vec::new();
         let mut enums = Vec::new();
@@ -366,21 +367,15 @@ impl TypeMap {
 
     fn iter_files<'a>(
         &mut self,
-        raw: impl Iterator<Item = (FileIndex, &'a FileDescriptorProto)>,
+        raw: impl Iterator<Item = (FileIndex, &'a FileDescriptorInner)>,
         messages: &mut Vec<MessageProto<'a>>,
         enums: &mut Vec<EnumProto<'a>>,
         extensions: &mut Vec<ExtensionProto<'a>>,
     ) -> Result<(), DescriptorError> {
         for (file_index, file) in raw {
-            let syntax = match file.syntax.as_deref() {
-                None | Some("proto2") => Syntax::Proto2,
-                Some("proto3") => Syntax::Proto3,
-                Some(s) => return Err(DescriptorError::unknown_syntax(s)),
-            };
+            let namespace = file.raw.package();
 
-            let namespace = file.package();
-
-            for message_proto in &file.message_type {
+            for message_proto in &file.raw.message_type {
                 let full_name = make_full_name(namespace, message_proto.name());
                 self.iter_message(
                     file_index,
@@ -389,7 +384,7 @@ impl TypeMap {
                     enums,
                     extensions,
                     message_proto,
-                    syntax,
+                    file.syntax,
                 )?;
 
                 self.add_named_type(
@@ -401,11 +396,11 @@ impl TypeMap {
                     full_name,
                     message_proto,
                     parent: None,
-                    syntax,
+                    syntax: file.syntax,
                 });
             }
 
-            for enum_proto in &file.enum_type {
+            for enum_proto in &file.raw.enum_type {
                 let full_name = make_full_name(namespace, enum_proto.name());
 
                 self.add_named_type(
@@ -417,17 +412,17 @@ impl TypeMap {
                     full_name,
                     enum_proto,
                     parent: None,
-                    syntax,
+                    syntax: file.syntax,
                 });
             }
 
-            for field_proto in &file.extension {
+            for field_proto in &file.raw.extension {
                 extensions.push(ExtensionProto {
                     file: file_index,
                     namespace: namespace.into(),
                     field_proto,
                     parent: None,
-                    syntax,
+                    syntax: file.syntax,
                 });
             }
         }
@@ -499,12 +494,6 @@ impl TypeMap {
 
         Ok(())
     }
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-enum Syntax {
-    Proto2,
-    Proto3,
 }
 
 #[derive(Clone)]

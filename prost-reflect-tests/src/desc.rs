@@ -1,12 +1,22 @@
+use prost_reflect::Syntax;
+
 use crate::test_file_descriptor;
 
 #[test]
 fn test_descriptor_methods() {
+    let file_desc = test_file_descriptor()
+        .get_file_by_name("desc.proto")
+        .unwrap();
+    assert_eq!(file_desc.name(), "desc.proto");
+    assert_eq!(file_desc.package_name(), "my.package");
+    assert_eq!(file_desc.syntax(), Syntax::Proto3);
+
     let message_desc = test_file_descriptor()
         .get_message_by_name("my.package.MyMessage")
         .unwrap();
     assert_eq!(message_desc.name(), "MyMessage");
     assert_eq!(message_desc.full_name(), "my.package.MyMessage");
+    assert_eq!(message_desc.parent_file(), file_desc);
     assert_eq!(message_desc.parent_message(), None);
     assert_eq!(message_desc.package_name(), "my.package");
     assert_eq!(
@@ -86,11 +96,19 @@ fn test_descriptor_methods() {
 
 #[test]
 fn test_descriptor_methods_proto2() {
+    let file_desc = test_file_descriptor()
+        .get_file_by_name("desc2.proto")
+        .unwrap();
+    assert_eq!(file_desc.name(), "desc2.proto");
+    assert_eq!(file_desc.package_name(), "my.package2");
+    assert_eq!(file_desc.syntax(), Syntax::Proto2);
+
     let message_desc = test_file_descriptor()
         .get_message_by_name("my.package2.MyMessage")
         .unwrap();
     assert_eq!(message_desc.name(), "MyMessage");
     assert_eq!(message_desc.full_name(), "my.package2.MyMessage");
+    assert_eq!(message_desc.parent_file(), file_desc);
     assert_eq!(message_desc.parent_message(), None);
     assert_eq!(message_desc.package_name(), "my.package2");
     assert_eq!(
@@ -113,6 +131,7 @@ fn test_descriptor_methods_proto2() {
         extensions[0].parent_message().unwrap().full_name(),
         "my.package2.MyMessage"
     );
+    assert_eq!(extensions[0].parent_file(), file_desc);
     assert_eq!(
         extensions[0].containing_message().full_name(),
         "my.package2.MyMessage"
@@ -130,6 +149,7 @@ fn test_descriptor_methods_proto2() {
         extensions[1].parent_message().unwrap().full_name(),
         "my.package2.OtherMessage"
     );
+    assert_eq!(extensions[1].parent_file(), file_desc);
     assert_eq!(
         extensions[1].containing_message().full_name(),
         "my.package2.MyMessage"
@@ -141,6 +161,7 @@ fn test_descriptor_methods_proto2() {
 
     assert_eq!(extensions[2].full_name(), "my.package2.in_file");
     assert!(extensions[2].parent_message().is_none());
+    assert_eq!(extensions[2].parent_file(), file_desc);
     assert_eq!(
         extensions[2].containing_message().full_name(),
         "my.package2.MyMessage"

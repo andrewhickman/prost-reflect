@@ -53,6 +53,16 @@ pub struct FileDescriptor {
 #[derive(Clone)]
 struct FileDescriptorInner {
     raw: FileDescriptorProto,
+    syntax: Syntax,
+}
+
+/// The syntax of a proto file.
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+pub enum Syntax {
+    /// The `proto2` syntax.
+    Proto2,
+    /// The `proto3` syntax.
+    Proto3,
 }
 
 type FileIndex = u32;
@@ -136,7 +146,7 @@ impl DescriptorPool {
         inner.type_map.add_files(
             file_indices
                 .clone()
-                .map(|file_index| (file_index, &files[file_index as usize].raw)),
+                .map(|file_index| (file_index, &files[file_index as usize])),
         )?;
         inner.type_map.shrink_to_fit();
 
@@ -232,12 +242,18 @@ impl DescriptorPoolInner {
         let start = self.files.len();
 
         for file in files {
+            let syntax = match file.syntax.as_deref() {
+                None | Some("proto2") => Syntax::Proto2,
+                Some("proto3") => Syntax::Proto3,
+                Some(s) => return Err(DescriptorError::unknown_syntax(s)),
+            };
+
             match self.files.iter().find(|f| f.raw.name() == file.name()) {
                 None => {
                     let index: FileIndex =
                         self.files.len().try_into().expect("file index too large");
                     self.file_names.insert(file.name().into(), index);
-                    self.files.push(FileDescriptorInner { raw: file });
+                    self.files.push(FileDescriptorInner { raw: file, syntax });
                 }
                 // Skip duplicate files only if they match exactly
                 Some(existing_file) if existing_file.raw == file => continue,
@@ -329,6 +345,11 @@ impl FileDescriptor {
         self.index as usize
     }
 
+    /// Gets the syntax of this protobuf file.
+    pub fn syntax(&self) -> Syntax {
+        self.file_inner().syntax
+    }
+
     /// Gets the public dependencies of this file.
     ///
     /// This corresponds to the [`FileDescriptorProto::public_dependency`] field.
@@ -357,6 +378,15 @@ impl fmt::Debug for FileDescriptor {
             .field("name", &self.name())
             .field("package_name", &self.package_name())
             .finish()
+    }
+}
+
+impl fmt::Debug for Syntax {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match *self {
+            Syntax::Proto2 => write!(f, "proto2"),
+            Syntax::Proto3 => write!(f, "proto3"),
+        }
     }
 }
 
