@@ -202,7 +202,7 @@ fn message_field_type_not_set() {
 fn reference_type_in_previously_added_file() {
     let file_descriptor_set1 = FileDescriptorSet {
         file: vec![FileDescriptorProto {
-            name: Some("myfile.proto".to_owned()),
+            name: Some("myfile1.proto".to_owned()),
             package: Some("my.package1".to_owned()),
             syntax: Some("proto3".to_owned()),
             message_type: vec![DescriptorProto {
@@ -237,9 +237,15 @@ fn reference_type_in_previously_added_file() {
     let mut pool = DescriptorPool::new();
     pool.add_file_descriptor_set(file_descriptor_set1).unwrap();
     pool.add_file_descriptor_set(file_descriptor_set2).unwrap();
+    assert_eq!(pool.get_file_by_name("notfound"), None);
+    assert_ne!(
+        pool.get_file_by_name("myfile1.proto").unwrap(),
+        pool.get_file_by_name("myfile2.proto").unwrap()
+    );
 
     let message = pool.get_message_by_name("my.package2.MyMessage").unwrap();
     assert_eq!(message.parent_file().name(), "myfile2.proto");
+    assert_eq!(message.parent_file().package_name(), "my.package2");
     let field = message.get_field_by_name("my_field").unwrap();
     assert_eq!(
         field.kind().as_message().unwrap().full_name(),
@@ -247,7 +253,16 @@ fn reference_type_in_previously_added_file() {
     );
     assert_eq!(
         field.kind().as_message().unwrap().parent_file().name(),
-        "myfile.proto"
+        "myfile1.proto"
+    );
+    assert_eq!(
+        field
+            .kind()
+            .as_message()
+            .unwrap()
+            .parent_file()
+            .package_name(),
+        "my.package1"
     );
 }
 

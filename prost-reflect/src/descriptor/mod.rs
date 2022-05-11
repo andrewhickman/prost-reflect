@@ -11,7 +11,7 @@ pub use self::{
     },
 };
 
-use std::{convert::TryInto, fmt, iter, sync::Arc};
+use std::{collections::HashMap, convert::TryInto, fmt, iter, sync::Arc};
 
 use prost::{bytes::Buf, Message};
 use prost_types::{FileDescriptorProto, FileDescriptorSet};
@@ -38,6 +38,7 @@ pub struct DescriptorPool {
 #[derive(Clone, Default)]
 struct DescriptorPoolInner {
     files: Vec<FileDescriptorInner>,
+    file_names: HashMap<Box<str>, FileIndex>,
     type_map: ty::TypeMap,
     services: Vec<ServiceDescriptorInner>,
 }
@@ -150,6 +151,10 @@ impl DescriptorPool {
                 .map(|(idx, f)| (idx.try_into().expect("file index too large"), &f.raw))
         }
 
+        for (file_index, file) in iter_files(&inner.files, start) {
+            inner.file_names.insert(file.name().into(), file_index);
+        }
+
         inner.type_map.add_files(iter_files(&inner.files, start))?;
         inner.type_map.shrink_to_fit();
 
@@ -182,6 +187,14 @@ impl DescriptorPool {
     /// Gets an iterator over the file descriptors added to this pool.
     pub fn files(&self) -> impl ExactSizeIterator<Item = FileDescriptor> + '_ {
         FileDescriptor::iter(self)
+    }
+
+    /// Gets a file descriptor by its name, or `None` if no such file has been added.
+    pub fn get_file_by_name(&self, name: &str) -> Option<FileDescriptor> {
+        self.inner
+            .file_names
+            .get(name)
+            .map(|&index| FileDescriptor::new(self.clone(), index as _))
     }
 
     /// Gets a iterator over the raw [`FileDescriptorProto`] instances wrapped by this [`DescriptorPool`].
@@ -281,7 +294,7 @@ impl FileDescriptor {
     ///
     /// If no package name is set, an empty string is returned.
     pub fn package_name(&self) -> &str {
-        self.file_descriptor_proto().name()
+        self.file_descriptor_proto().package()
     }
 
     /// Gets the index of this file within the parent [`DescriptorPool`].
