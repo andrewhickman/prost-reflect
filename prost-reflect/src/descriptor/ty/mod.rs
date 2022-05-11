@@ -379,7 +379,7 @@ impl MessageDescriptor {
             .map(|n| (n.start() as u32)..(n.end() as u32))
     }
 
-    /// Gets an iterator over extensions to this message.
+    /// Gets an iterator over all extensions to this message defined in the parent [`DescriptorPool`].
     ///
     /// Note this iterates over extension fields defined in any file which extend this message, rather than
     /// extensions defined nested within this message.
