@@ -239,10 +239,15 @@ fn reference_type_in_previously_added_file() {
     pool.add_file_descriptor_set(file_descriptor_set2).unwrap();
 
     let message = pool.get_message_by_name("my.package2.MyMessage").unwrap();
+    assert_eq!(message.parent_file().name(), "myfile2.proto");
     let field = message.get_field_by_name("my_field").unwrap();
     assert_eq!(
         field.kind().as_message().unwrap().full_name(),
         "my.package1.MyFieldMessage"
+    );
+    assert_eq!(
+        field.kind().as_message().unwrap().parent_file().name(),
+        "myfile.proto"
     );
 }
 
