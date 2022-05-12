@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Added the `FileDescriptor` API for inspecting individual protobuf files.
+- Added methods to `MessageDescriptor` to get nested messages, enums and extensions.
 
 ## [0.8.0] - 2022-05-09
 
