@@ -1,4 +1,4 @@
-use prost_reflect::Syntax;
+use prost_reflect::{DescriptorPool, Syntax};
 
 use crate::test_file_descriptor;
 
@@ -328,6 +328,27 @@ fn test_raw_getters() {
     for extension in test_file_descriptor().all_extensions() {
         assert_eq!(extension.field_descriptor_proto().name(), extension.name());
     }
+}
+
+#[test]
+fn roundtrip_descriptor_pool() {
+    let original = test_file_descriptor();
+
+    let mut roundtripped = DescriptorPool::new();
+    // These should be sorted into topological order by the protobuf compiler.
+    for file in original.file_descriptor_protos() {
+        roundtripped
+            .add_file_descriptor_proto(file.clone())
+            .unwrap();
+    }
+
+    assert_ne!(original, roundtripped);
+    assert!(original
+        .all_messages()
+        .map(|m| m.full_name().to_owned())
+        .eq(roundtripped
+            .all_messages()
+            .map(|m| m.full_name().to_owned())));
 }
 
 #[test]
