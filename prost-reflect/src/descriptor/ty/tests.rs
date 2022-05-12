@@ -1,7 +1,7 @@
 use prost_types::{
-    field_descriptor_proto::{Label, Type},
-    DescriptorProto, FieldDescriptorProto, FileDescriptorProto, FileDescriptorSet,
-    MethodDescriptorProto, ServiceDescriptorProto,
+    field_descriptor_proto::{self, Label, Type},
+    DescriptorProto, EnumDescriptorProto, EnumValueDescriptorProto, FieldDescriptorProto,
+    FileDescriptorProto, FileDescriptorSet, MethodDescriptorProto, ServiceDescriptorProto,
 };
 
 use crate::DescriptorPool;
@@ -59,6 +59,7 @@ fn resolve_service_name_other_package() {
                 ..Default::default()
             },
             FileDescriptorProto {
+                name: Some("myfile2.proto".to_owned()),
                 package: Some("other.package".to_owned()),
                 syntax: Some("proto3".to_owned()),
                 message_type: vec![DescriptorProto {
@@ -321,9 +322,10 @@ fn add_conflicting_duplicate_file() {
     let err = pool
         .add_file_descriptor_set(file_descriptor_set2)
         .unwrap_err();
-    assert!(err
-        .to_string()
-        .contains("file named 'myfile.proto' is already added"));
+    assert_eq!(
+        err.to_string(),
+        "a conflicting file named 'myfile.proto' is already added. Duplicate files must match exactly"
+    );
 }
 
 #[test]
@@ -355,9 +357,10 @@ fn add_file_rollback_on_error() {
     let err = pool
         .add_file_descriptor_set(bad_file_descriptor_set)
         .unwrap_err();
-    assert!(err
-        .to_string()
-        .contains("the message or enum type 'my.package.NopeMessage' was not found"));
+    assert_eq!(
+        err.to_string(),
+        "the message or enum type 'my.package.NopeMessage' was not found"
+    );
     assert_eq!(pool.file_descriptor_protos().count(), 0);
     assert_eq!(pool.get_message_by_name(".my.package.MyMessage"), None);
 }
@@ -379,7 +382,79 @@ fn add_file_missing_dependency() {
     let err = pool
         .add_file_descriptor_set(bad_file_descriptor_set)
         .unwrap_err();
-    assert!(err.to_string().contains(
+    assert_eq!(
+        err.to_string(),
         "the file 'notfound.proto' was not found while resolving dependencies for 'myfile.proto'"
-    ));
+    );
+}
+
+#[test]
+fn service_method_type_not_message() {
+    let file_descriptor_set = FileDescriptorSet {
+        file: vec![FileDescriptorProto {
+            name: Some("myfile.proto".to_owned()),
+            package: Some("my.package".to_owned()),
+            syntax: Some("proto3".to_owned()),
+            service: vec![ServiceDescriptorProto {
+                name: Some("MyService".to_owned()),
+                method: vec![MethodDescriptorProto {
+                    name: Some("my_method".to_owned()),
+                    input_type: Some(".my.package.MyMessage".to_owned()),
+                    output_type: Some(".my.package.MyMessage".to_owned()),
+                    ..Default::default()
+                }],
+                ..Default::default()
+            }],
+            enum_type: vec![EnumDescriptorProto {
+                name: Some("MyMessage".to_owned()),
+                value: vec![EnumValueDescriptorProto {
+                    name: Some("DEFAULT".to_owned()),
+                    ..Default::default()
+                }],
+                ..Default::default()
+            }],
+            ..Default::default()
+        }],
+    };
+
+    let err = DescriptorPool::from_file_descriptor_set(file_descriptor_set).unwrap_err();
+    assert_eq!(
+        err.to_string(),
+        "invalid type '.my.package.MyMessage' for method 'my.package.MyService.my_method'"
+    );
+}
+
+#[test]
+fn extension_extendee_type_not_message() {
+    let file_descriptor_set = FileDescriptorSet {
+        file: vec![FileDescriptorProto {
+            name: Some("myfile.proto".to_owned()),
+            package: Some("my.package".to_owned()),
+            syntax: Some("proto3".to_owned()),
+            extension: vec![FieldDescriptorProto {
+                name: Some("my_extension".to_owned()),
+                number: Some(1),
+                label: Some(Label::Optional as i32),
+                r#type: Some(field_descriptor_proto::Type::Int32 as i32),
+                extendee: Some("my.package.MyMessage".to_owned()),
+                json_name: Some("myExtension".to_owned()),
+                ..Default::default()
+            }],
+            enum_type: vec![EnumDescriptorProto {
+                name: Some("MyMessage".to_owned()),
+                value: vec![EnumValueDescriptorProto {
+                    name: Some("DEFAULT".to_owned()),
+                    ..Default::default()
+                }],
+                ..Default::default()
+            }],
+            ..Default::default()
+        }],
+    };
+
+    let err = DescriptorPool::from_file_descriptor_set(file_descriptor_set).unwrap_err();
+    assert_eq!(
+        err.to_string(),
+        "invalid type 'my.package.MyMessage' for extension 'my.package.my_extension'"
+    );
 }

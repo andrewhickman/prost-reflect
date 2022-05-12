@@ -40,6 +40,14 @@ enum DescriptorErrorKind {
     FileAlreadyExists {
         name: String,
     },
+    InvalidMethodType {
+        name: String,
+        type_name: String,
+    },
+    InvalidExtendeeType {
+        name: String,
+        type_name: String,
+    },
 }
 
 impl DescriptorError {
@@ -126,6 +134,30 @@ impl DescriptorError {
             },
         }
     }
+
+    pub(crate) fn invalid_method_type(
+        name: impl ToString,
+        type_name: impl ToString,
+    ) -> DescriptorError {
+        DescriptorError {
+            kind: DescriptorErrorKind::InvalidMethodType {
+                name: name.to_string(),
+                type_name: type_name.to_string(),
+            },
+        }
+    }
+
+    pub(crate) fn invalid_extendee_type(
+        name: impl ToString,
+        type_name: impl ToString,
+    ) -> DescriptorError {
+        DescriptorError {
+            kind: DescriptorErrorKind::InvalidExtendeeType {
+                name: name.to_string(),
+                type_name: type_name.to_string(),
+            },
+        }
+    }
 }
 
 impl std::error::Error for DescriptorError {
@@ -175,7 +207,9 @@ impl fmt::Display for DescriptorError {
                 )
             }
             DescriptorErrorKind::FileNotFound { required_by, name } => write!(f, "the file '{}' was not found while resolving dependencies for '{}'", name, required_by),
-            DescriptorErrorKind::FileAlreadyExists { name } => write!(f, "a conflicting file named '{}' is already added. Duplicate files must match exactly.", name),
+            DescriptorErrorKind::FileAlreadyExists { name } => write!(f, "a conflicting file named '{}' is already added. Duplicate files must match exactly", name),
+            DescriptorErrorKind::InvalidMethodType { name, type_name } => write!(f, "invalid type '{}' for method '{}'", type_name, name),
+            DescriptorErrorKind::InvalidExtendeeType { name, type_name } => write!(f, "invalid type '{}' for extension '{}'", type_name, name),
         }
     }
 }

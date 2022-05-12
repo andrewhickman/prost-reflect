@@ -227,11 +227,26 @@ impl MethodDescriptorInner {
         raw_method: &MethodDescriptorProto,
         type_map: &ty::TypeMap,
     ) -> Result<MethodDescriptorInner, DescriptorError> {
+        let full_name = make_full_name(namespace, raw_method.name());
+
         let request_ty = type_map.resolve_type_name(namespace, raw_method.input_type())?;
+        if !request_ty.is_message() {
+            return Err(DescriptorError::invalid_method_type(
+                full_name,
+                raw_method.input_type(),
+            ));
+        }
+
         let response_ty = type_map.resolve_type_name(namespace, raw_method.output_type())?;
+        if !response_ty.is_message() {
+            return Err(DescriptorError::invalid_method_type(
+                full_name,
+                raw_method.output_type(),
+            ));
+        }
 
         Ok(MethodDescriptorInner {
-            full_name: make_full_name(namespace, raw_method.name()),
+            full_name,
             request_ty,
             response_ty,
             client_streaming: raw_method.client_streaming(),

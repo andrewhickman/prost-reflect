@@ -337,6 +337,12 @@ impl TypeMap {
         let (number, field) = self.build_message_field(&namespace, field_proto, syntax, &mut [])?;
 
         let extendee = self.resolve_type_name(&namespace, field_proto.extendee())?;
+        if !extendee.is_message() {
+            return Err(DescriptorError::invalid_extendee_type(
+                field.full_name,
+                field_proto.extendee(),
+            ));
+        }
 
         let mut json_name = String::with_capacity(2 + field.full_name.len());
         json_name.push('[');
