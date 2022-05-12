@@ -165,10 +165,7 @@ impl<'de> Visitor<'de> for GoogleProtobufTimestampVisitor {
     where
         E: Error,
     {
-        // The conformance tests recommend to disallow lowercase 't' and 'z' characters.
-        if v.bytes().any(|ch| ch.is_ascii_lowercase()) {
-            return Err(Error::custom("timestamp contains lowercase character"));
-        }
+        validate_strict_rfc3339(v).map_err(Error::custom)?;
 
         let timestamp: prost_types::Timestamp = v.parse().map_err(Error::custom)?;
 
@@ -387,4 +384,123 @@ impl<'de> Visitor<'de> for GoogleProtobufEmptyVisitor {
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "an empty map")
     }
+}
+
+/// Validates the string is a valid RFC3339 timestamp, requiring upper-case
+/// 'T' and 'Z' characters as recommended by the conformance tests.
+fn validate_strict_rfc3339(v: &str) -> Result<(), String> {
+    use std::{ascii, iter::Peekable, str::Bytes};
+
+    fn pop_digit(bytes: &mut Peekable<Bytes>) -> bool {
+        bytes.next_if(u8::is_ascii_digit).is_some()
+    }
+
+    fn pop_digits(bytes: &mut Peekable<Bytes>, n: usize) -> bool {
+        (0..n).all(|_| pop_digit(bytes))
+    }
+
+    fn pop_char(p: &mut Peekable<Bytes>, c: u8) -> bool {
+        p.next_if_eq(&c).is_some()
+    }
+
+    fn fmt_next(p: &mut Peekable<Bytes>) -> String {
+        match p.peek() {
+            Some(&ch) => format!("'{}'", ascii::escape_default(ch)),
+            None => "end of string".to_owned(),
+        }
+    }
+
+    let mut v = v.bytes().peekable();
+
+    if !(pop_digits(&mut v, 4)
+        && pop_char(&mut v, b'-')
+        && pop_digits(&mut v, 2)
+        && pop_char(&mut v, b'-')
+        && pop_digits(&mut v, 2))
+    {
+        return Err("invalid rfc3339 timestamp: invalid date".to_owned());
+    }
+
+    if !pop_char(&mut v, b'T') {
+        return Err(format!(
+            "invalid rfc3339 timestamp: expected 'T' but found {}",
+            fmt_next(&mut v)
+        ));
+    }
+
+    if !(pop_digits(&mut v, 2)
+        && pop_char(&mut v, b':')
+        && pop_digits(&mut v, 2)
+        && pop_char(&mut v, b':')
+        && pop_digits(&mut v, 2))
+    {
+        return Err("invalid rfc3339 timestamp: invalid time".to_owned());
+    }
+
+    if pop_char(&mut v, b'.') {
+        if !pop_digit(&mut v) {
+            return Err("invalid rfc3339 timestamp: empty fractional seconds".to_owned());
+        }
+        while pop_digit(&mut v) {}
+    }
+
+    if v.next_if(|&ch| ch == b'+' || ch == b'-').is_some() {
+        if !(pop_digits(&mut v, 2) && pop_char(&mut v, b':') && pop_digits(&mut v, 2)) {
+            return Err("invalid rfc3339 timestamp: invalid offset".to_owned());
+        }
+    } else if !pop_char(&mut v, b'Z') {
+        return Err(format!(
+            "invalid rfc3339 timestamp: expected 'Z', '+' or '-' but found {}",
+            fmt_next(&mut v)
+        ));
+    }
+
+    if v.peek().is_some() {
+        return Err(format!(
+            "invalid rfc3339 timestamp: expected end of string but found {}",
+            fmt_next(&mut v)
+        ));
+    }
+
+    Ok(())
+}
+
+#[test]
+fn test_validate_strict_rfc3339() {
+    macro_rules! case {
+        ($s:expr => Ok) => {
+            assert_eq!(validate_strict_rfc3339($s), Ok(()))
+        };
+        ($s:expr => Err($e:expr)) => {
+            assert_eq!(validate_strict_rfc3339($s).unwrap_err().to_string(), $e)
+        };
+    }
+
+    case!("1972-06-30T23:59:60Z" => Ok);
+    case!("2019-03-26T14:00:00.9Z" => Ok);
+    case!("2019-03-26T14:00:00.4999Z" => Ok);
+    case!("2019-03-26T14:00:00.4999+10:00" => Ok);
+    case!("2019-03-26t14:00Z" => Err("invalid rfc3339 timestamp: expected 'T' but found 't'"));
+    case!("2019-03-26T14:00z" => Err("invalid rfc3339 timestamp: invalid time"));
+    case!("2019-03-26T14:00:00,999Z" => Err("invalid rfc3339 timestamp: expected 'Z', '+' or '-' but found ','"));
+    case!("2019-03-26T10:00-04" => Err("invalid rfc3339 timestamp: invalid time"));
+    case!("2019-03-26T14:00.9Z" => Err("invalid rfc3339 timestamp: invalid time"));
+    case!("20190326T1400Z" => Err("invalid rfc3339 timestamp: invalid date"));
+    case!("2019-02-30" => Err("invalid rfc3339 timestamp: expected 'T' but found end of string"));
+    case!("2019-03-25T24:01Z" => Err("invalid rfc3339 timestamp: invalid time"));
+    case!("2019-03-26T14:00+24:00" => Err("invalid rfc3339 timestamp: invalid time"));
+    case!("2019-03-26Z" => Err("invalid rfc3339 timestamp: expected 'T' but found 'Z'"));
+    case!("2019-03-26+01:00" => Err("invalid rfc3339 timestamp: expected 'T' but found '+'"));
+    case!("2019-03-26-04:00" => Err("invalid rfc3339 timestamp: expected 'T' but found '-'"));
+    case!("2019-03-26T10:00-0400" => Err("invalid rfc3339 timestamp: invalid time"));
+    case!("+0002019-03-26T14:00Z" => Err("invalid rfc3339 timestamp: invalid date"));
+    case!("+2019-03-26T14:00Z" => Err("invalid rfc3339 timestamp: invalid date"));
+    case!("002019-03-26T14:00Z" => Err("invalid rfc3339 timestamp: invalid date"));
+    case!("019-03-26T14:00Z" => Err("invalid rfc3339 timestamp: invalid date"));
+    case!("2019-03-26T10:00Q" => Err("invalid rfc3339 timestamp: invalid time"));
+    case!("2019-03-26T10:00T" => Err("invalid rfc3339 timestamp: invalid time"));
+    case!("2019-03-26Q" => Err("invalid rfc3339 timestamp: expected 'T' but found 'Q'"));
+    case!("2019-03-26T" => Err("invalid rfc3339 timestamp: invalid time"));
+    case!("2019-03-26 14:00Z" => Err("invalid rfc3339 timestamp: expected 'T' but found ' '"));
+    case!("2019-03-26T14:00:00." => Err("invalid rfc3339 timestamp: empty fractional seconds"));
 }
