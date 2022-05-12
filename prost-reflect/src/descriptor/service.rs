@@ -1,9 +1,9 @@
-use std::{convert::TryInto, fmt};
+use std::fmt;
 
 use prost_types::{FileDescriptorProto, MethodDescriptorProto, ServiceDescriptorProto};
 
 use super::{
-    debug_fmt_iter, make_full_name, parse_name, parse_namespace, ty, DescriptorError,
+    debug_fmt_iter, make_full_name, parse_name, parse_namespace, to_index, ty, DescriptorError,
     DescriptorPool, FileDescriptor, FileIndex, MessageDescriptor, MethodIndex, ServiceIndex,
 };
 
@@ -47,7 +47,7 @@ impl ServiceDescriptor {
         debug_assert!(index < descriptor_pool.services().len());
         ServiceDescriptor {
             descriptor_pool,
-            index: index.try_into().expect("index too large"),
+            index: to_index(index),
         }
     }
 
@@ -155,7 +155,7 @@ impl MethodDescriptor {
         debug_assert!(index < service.methods().len());
         MethodDescriptor {
             service,
-            index: index.try_into().expect("index too large"),
+            index: to_index(index),
         }
     }
 

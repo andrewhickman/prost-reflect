@@ -153,11 +153,7 @@ impl DescriptorPool {
 
         for file_index in file_indices {
             let file = &mut files[file_index as usize];
-            let start: ServiceIndex = inner
-                .services
-                .len()
-                .try_into()
-                .expect("service index too large");
+            let start: ServiceIndex = to_index(inner.services.len());
             for service in &file.raw.service {
                 inner.services.push(ServiceDescriptorInner::from_raw(
                     &file.raw,
@@ -166,12 +162,7 @@ impl DescriptorPool {
                     &inner.type_map,
                 )?);
             }
-            file.services = start
-                ..(inner
-                    .services
-                    .len()
-                    .try_into()
-                    .expect("service index too large"));
+            file.services = start..to_index(inner.services.len());
         }
 
         self.inner = Arc::new(inner);
@@ -262,8 +253,7 @@ impl DescriptorPoolInner {
 
             match self.files.iter().find(|f| f.raw.name() == file.name()) {
                 None => {
-                    let index: FileIndex =
-                        self.files.len().try_into().expect("file index too large");
+                    let index = to_index(self.files.len());
                     self.file_names.insert(file.name().into(), index);
                     self.files.push(FileDescriptorInner {
                         raw: file,
@@ -295,8 +285,7 @@ impl DescriptorPoolInner {
             }
         }
 
-        Ok(start.try_into().expect("file index too large")
-            ..end.try_into().expect("file index too large"))
+        Ok(to_index(start)..to_index(end))
     }
 }
 
@@ -330,7 +319,7 @@ impl FileDescriptor {
         debug_assert!(index < descriptor_pool.files().len());
         FileDescriptor {
             pool: descriptor_pool,
-            index: index.try_into().expect("file index too large"),
+            index: to_index(index),
         }
     }
 
@@ -501,6 +490,10 @@ where
     }
 
     Wrapper(i.collect())
+}
+
+fn to_index(i: usize) -> u32 {
+    i.try_into().expect("index too large")
 }
 
 #[test]

@@ -1,6 +1,5 @@
 use std::{
     collections::{BTreeMap, HashMap},
-    convert::{TryFrom, TryInto},
     rc::Rc,
 };
 
@@ -12,13 +11,13 @@ use prost_types::{
 
 use crate::{
     descriptor::{
-        make_full_name, parse_namespace,
+        make_full_name, parse_namespace, to_index,
         ty::{
             Cardinality, EnumDescriptorInner, EnumValueDescriptorInner, ExtensionDescriptorInner,
             FieldDescriptorInner, MessageDescriptorInner, OneofDescriptorInner, ParentKind, TypeId,
             TypeMap,
         },
-        EnumValueIndex, FileDescriptorInner, FileIndex, Syntax, MAP_ENTRY_KEY_NUMBER,
+        EnumValueIndex, FileDescriptorInner, FileIndex, OneofIndex, Syntax, MAP_ENTRY_KEY_NUMBER,
         MAP_ENTRY_VALUE_NUMBER,
     },
     DescriptorError,
@@ -112,7 +111,7 @@ impl TypeMap {
 
         debug_assert_eq!(
             self.get_by_name(&full_name),
-            Some(TypeId::new_message(self.messages.len()))
+            Some(TypeId::new_message(to_index(self.messages.len())))
         );
         self.messages.push(MessageDescriptorInner {
             file,
@@ -206,8 +205,8 @@ impl TypeMap {
         };
         let oneof_index = match field_proto.oneof_index {
             Some(index) => {
-                let index = index as usize;
-                if let Some(oneof) = oneof_decls.get_mut(index) {
+                let index = index as OneofIndex;
+                if let Some(oneof) = oneof_decls.get_mut(index as usize) {
                     oneof.fields.push(number);
                 } else {
                     return Err(DescriptorError::invalid_oneof_index(
@@ -278,12 +277,7 @@ impl TypeMap {
         let value_names: HashMap<Box<str>, EnumValueIndex> = values
             .iter()
             .enumerate()
-            .map(|(index, value)| {
-                (
-                    value.name.clone(),
-                    EnumValueIndex::try_from(index).expect("index too large"),
-                )
-            })
+            .map(|(index, value)| (value.name.clone(), to_index(index)))
             .collect();
 
         let parent = match parent {
@@ -304,14 +298,13 @@ impl TypeMap {
             values
                 .iter()
                 .position(|v| v.number == 0)
+                .map(to_index)
                 .ok_or_else(DescriptorError::empty_enum)?
-                .try_into()
-                .expect("index too large")
         };
 
         debug_assert_eq!(
             self.get_by_name(&full_name),
-            Some(TypeId::new_enum(self.enums.len()))
+            Some(TypeId::new_enum(to_index(self.enums.len())))
         );
         self.enums.push(EnumDescriptorInner {
             file,
@@ -357,7 +350,7 @@ impl TypeMap {
             },
         };
 
-        let index = self.extensions.len().try_into().expect("index too large");
+        let index = to_index(self.extensions.len());
         self.get_message_mut(extendee).extensions.push(index);
         self.extensions.push(ExtensionDescriptorInner {
             file,
@@ -395,7 +388,7 @@ impl TypeMap {
 
                 self.add_named_type(
                     full_name.clone(),
-                    TypeId::new_message(self.messages.len() + messages.len()),
+                    TypeId::new_message(to_index(self.messages.len() + messages.len())),
                 )?;
                 messages.push(MessageProto {
                     file: file_index,
@@ -411,7 +404,7 @@ impl TypeMap {
 
                 self.add_named_type(
                     full_name.clone(),
-                    TypeId::new_enum(self.enums.len() + enums.len()),
+                    TypeId::new_enum(to_index(self.enums.len() + enums.len())),
                 )?;
                 enums.push(EnumProto {
                     file: file_index,
@@ -461,7 +454,7 @@ impl TypeMap {
 
             self.add_named_type(
                 full_name.clone(),
-                TypeId::new_message(self.messages.len() + messages.len()),
+                TypeId::new_message(to_index(self.messages.len() + messages.len())),
             )?;
             messages.push(MessageProto {
                 file: file_index,
@@ -477,7 +470,7 @@ impl TypeMap {
 
             self.add_named_type(
                 full_name.clone(),
-                TypeId::new_enum(self.enums.len() + enums.len()),
+                TypeId::new_enum(to_index(self.enums.len() + enums.len())),
             )?;
             enums.push(EnumProto {
                 file: file_index,

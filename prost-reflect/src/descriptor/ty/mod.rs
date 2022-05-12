@@ -7,7 +7,6 @@ use std::{
         hash_map::{self, HashMap},
         BTreeMap,
     },
-    convert::TryInto,
     fmt,
     ops::{Range, RangeInclusive},
 };
@@ -19,8 +18,8 @@ use prost_types::{
 };
 
 use crate::descriptor::{
-    debug_fmt_iter, make_full_name, parse_name, parse_namespace, DescriptorError, DescriptorPool,
-    FileDescriptor, MAP_ENTRY_KEY_NUMBER, MAP_ENTRY_VALUE_NUMBER,
+    debug_fmt_iter, make_full_name, parse_name, parse_namespace, to_index, DescriptorError,
+    DescriptorPool, FileDescriptor, MAP_ENTRY_KEY_NUMBER, MAP_ENTRY_VALUE_NUMBER,
 };
 
 use super::{EnumIndex, EnumValueIndex, ExtensionIndex, FileIndex, MessageIndex, OneofIndex};
@@ -87,7 +86,7 @@ struct FieldDescriptorInner {
     is_packed: bool,
     supports_presence: bool,
     default_value: Option<crate::Value>,
-    oneof_index: Option<usize>,
+    oneof_index: Option<OneofIndex>,
     ty: TypeId,
 }
 
@@ -280,7 +279,7 @@ impl MessageDescriptor {
     /// Gets an iterator yielding a [`OneofDescriptor`] for each oneof field defined in this message.
     pub fn oneofs(&self) -> impl ExactSizeIterator<Item = OneofDescriptor> + '_ {
         (0..self.inner().oneof_decls.len())
-            .map(move |index| OneofDescriptor::new(self.clone(), index))
+            .map(move |index| OneofDescriptor::new(self.clone(), to_index(index)))
     }
 
     /// Gets the nested message types defined within this message.
@@ -615,7 +614,7 @@ impl ExtensionDescriptor {
             .extensions()
             .map(move |index| ExtensionDescriptor {
                 pool: pool.clone(),
-                index: index.try_into().expect("index too large"),
+                index: to_index(index),
             })
     }
 
@@ -965,7 +964,7 @@ impl EnumDescriptor {
             .values
             .binary_search_by_key(&number, |v| v.number)
         {
-            Ok(index) => Some(EnumValueDescriptor::new(self.clone(), index)),
+            Ok(index) => Some(EnumValueDescriptor::new(self.clone(), to_index(index))),
             Err(_) => None,
         }
     }
@@ -973,7 +972,7 @@ impl EnumDescriptor {
     /// Gets an iterator yielding a [`EnumValueDescriptor`] for each value in this enum.
     pub fn values(&self) -> impl ExactSizeIterator<Item = EnumValueDescriptor> + '_ {
         (0..self.inner().values.len())
-            .map(move |index| EnumValueDescriptor::new(self.clone(), index))
+            .map(move |index| EnumValueDescriptor::new(self.clone(), to_index(index)))
     }
 
     /// Gets an iterator over reserved value number ranges in this enum.
@@ -1009,11 +1008,8 @@ impl fmt::Debug for EnumDescriptor {
 }
 
 impl EnumValueDescriptor {
-    fn new(parent: EnumDescriptor, index: usize) -> EnumValueDescriptor {
-        EnumValueDescriptor {
-            parent,
-            index: index.try_into().expect("index too large"),
-        }
+    fn new(parent: EnumDescriptor, index: EnumValueIndex) -> EnumValueDescriptor {
+        EnumValueDescriptor { parent, index }
     }
 
     /// Gets a reference to the [`DescriptorPool`] this enum value is defined in.
@@ -1072,11 +1068,8 @@ impl fmt::Debug for EnumValueDescriptor {
 }
 
 impl OneofDescriptor {
-    fn new(message: MessageDescriptor, index: usize) -> Self {
-        OneofDescriptor {
-            message,
-            index: index.try_into().expect("index too large"),
-        }
+    fn new(message: MessageDescriptor, index: OneofIndex) -> Self {
+        OneofDescriptor { message, index }
     }
 
     /// Gets a reference to the [`DescriptorPool`] this oneof is defined in.
@@ -1207,11 +1200,11 @@ impl TypeMap {
     }
 
     fn messages(&self) -> impl ExactSizeIterator<Item = TypeId> {
-        (0..self.messages.len()).map(TypeId::new_message)
+        (0..self.messages.len()).map(|index| TypeId::new_message(to_index(index)))
     }
 
     fn enums(&self) -> impl ExactSizeIterator<Item = TypeId> {
-        (0..self.enums.len()).map(TypeId::new_enum)
+        (0..self.enums.len()).map(|index| TypeId::new_enum(to_index(index)))
     }
 
     fn extensions(&self) -> impl ExactSizeIterator<Item = usize> {
@@ -1220,18 +1213,12 @@ impl TypeMap {
 }
 
 impl TypeId {
-    pub fn new_message(index: usize) -> Self {
-        TypeId(
-            field_descriptor_proto::Type::Message,
-            index.try_into().expect("invalid message index"),
-        )
+    pub fn new_message(index: MessageIndex) -> Self {
+        TypeId(field_descriptor_proto::Type::Message, index)
     }
 
-    pub fn new_enum(index: usize) -> Self {
-        TypeId(
-            field_descriptor_proto::Type::Enum,
-            index.try_into().expect("invalid enum index"),
-        )
+    pub fn new_enum(index: EnumIndex) -> Self {
+        TypeId(field_descriptor_proto::Type::Enum, index)
     }
 
     pub(crate) fn new_scalar(scalar: field_descriptor_proto::Type) -> Self {
