@@ -242,6 +242,19 @@ fn test_debug_impls() {
 
     for file in test_file_descriptor().files() {
         let _ = format!("{:?}", file);
+
+        assert!(file.messages().eq(test_file_descriptor()
+            .all_messages()
+            .filter(|m| m.parent_message().is_none() && m.parent_file() == file)));
+        assert!(file.enums().eq(test_file_descriptor()
+            .all_enums()
+            .filter(|m| m.parent_message().is_none() && m.parent_file() == file)));
+        assert!(file.extensions().eq(test_file_descriptor()
+            .all_extensions()
+            .filter(|m| m.parent_message().is_none() && m.parent_file() == file)));
+        assert!(file.services().eq(test_file_descriptor()
+            .services()
+            .filter(|m| m.parent_file() == file)));
     }
 
     for message in test_file_descriptor().all_messages() {

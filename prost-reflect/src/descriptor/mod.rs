@@ -54,6 +54,7 @@ pub struct FileDescriptor {
 struct FileDescriptorInner {
     raw: FileDescriptorProto,
     syntax: Syntax,
+    services: Range<ServiceIndex>,
 }
 
 /// The syntax of a proto file.
@@ -141,7 +142,7 @@ impl DescriptorPool {
         let mut inner = (*self.inner).clone();
 
         let file_indices = inner.build_files(files)?;
-        let files = &inner.files;
+        let files = &mut inner.files;
 
         inner.type_map.add_files(
             file_indices
@@ -151,15 +152,26 @@ impl DescriptorPool {
         inner.type_map.shrink_to_fit();
 
         for file_index in file_indices {
-            let file = &files[file_index as usize].raw;
-            for service in &file.service {
+            let file = &mut files[file_index as usize];
+            let start: ServiceIndex = inner
+                .services
+                .len()
+                .try_into()
+                .expect("service index too large");
+            for service in &file.raw.service {
                 inner.services.push(ServiceDescriptorInner::from_raw(
-                    file,
+                    &file.raw,
                     file_index,
                     service,
                     &inner.type_map,
                 )?);
             }
+            file.services = start
+                ..(inner
+                    .services
+                    .len()
+                    .try_into()
+                    .expect("service index too large"));
         }
 
         self.inner = Arc::new(inner);
@@ -253,7 +265,11 @@ impl DescriptorPoolInner {
                     let index: FileIndex =
                         self.files.len().try_into().expect("file index too large");
                     self.file_names.insert(file.name().into(), index);
-                    self.files.push(FileDescriptorInner { raw: file, syntax });
+                    self.files.push(FileDescriptorInner {
+                        raw: file,
+                        syntax,
+                        services: Default::default(),
+                    });
                 }
                 // Skip duplicate files only if they match exactly
                 Some(existing_file) if existing_file.raw == file => continue,
@@ -360,6 +376,57 @@ impl FileDescriptor {
             pool.get_file_by_name(&raw.dependency[i as usize])
                 .expect("dependency not found")
         })
+    }
+
+    /// Gets the top-level messages defined within this file.
+    ///
+    /// This does not include nested messages defined within another message.
+    pub fn messages(&self) -> impl ExactSizeIterator<Item = MessageDescriptor> + '_ {
+        let pool = self.parent_pool();
+        let raw_file = self.file_descriptor_proto();
+        raw_file.message_type.iter().map(move |raw_message| {
+            pool.get_message_by_name(&make_full_name(raw_file.package(), raw_message.name()))
+                .expect("message not found")
+        })
+    }
+
+    /// Gets the top-level enums defined within this file.
+    ///
+    /// This does not include nested enums defined within another message.
+    pub fn enums(&self) -> impl ExactSizeIterator<Item = EnumDescriptor> + '_ {
+        let pool = self.parent_pool();
+        let raw_file = self.file_descriptor_proto();
+        raw_file.enum_type.iter().map(move |raw_enum| {
+            pool.get_enum_by_name(&make_full_name(raw_file.package(), raw_enum.name()))
+                .expect("enum not found")
+        })
+    }
+
+    /// Gets the top-level extensions defined within this file.
+    ///
+    /// This does not include nested extensions defined within another message.
+    pub fn extensions(&self) -> impl ExactSizeIterator<Item = ExtensionDescriptor> + '_ {
+        let pool = self.parent_pool();
+        let raw_file = self.file_descriptor_proto();
+        raw_file.extension.iter().map(move |raw_extension| {
+            let extendee = pool
+                .inner
+                .type_map
+                .resolve_type_name(raw_file.package(), raw_extension.extendee())
+                .expect("extendee not found");
+            MessageDescriptor::new(pool.clone(), extendee)
+                .get_extension(raw_extension.number() as u32)
+                .expect("extension not found")
+        })
+    }
+
+    /// Gets the services defined within this file.
+    pub fn services(&self) -> impl ExactSizeIterator<Item = ServiceDescriptor> + '_ {
+        let pool = self.parent_pool();
+        self.file_inner()
+            .services
+            .clone()
+            .map(move |index| ServiceDescriptor::new(pool.clone(), index as usize))
     }
 
     /// Gets a reference to the raw [`FileDescriptorProto`] wrapped by this [`FileDescriptor`].

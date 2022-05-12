@@ -1271,7 +1271,7 @@ impl ParentKind {
 }
 
 fn get_file_descriptor_proto(pool: &DescriptorPool, index: FileIndex) -> &FileDescriptorProto {
-    pool.file_descriptor_protos().nth(index as usize).unwrap()
+    &pool.inner.files[index as usize].raw
 }
 
 fn find_message_descriptor_proto(
