@@ -331,7 +331,7 @@ fn test_raw_getters() {
 }
 
 #[test]
-fn roundtrip_descriptor_pool() {
+fn descriptor_pool_add_individual_files() {
     let original = test_file_descriptor();
 
     let mut roundtripped = DescriptorPool::new();
@@ -349,6 +349,14 @@ fn roundtrip_descriptor_pool() {
         .eq(roundtripped
             .all_messages()
             .map(|m| m.full_name().to_owned())));
+    let message_desc = roundtripped
+        .get_message_by_name("my.package.MyMessage")
+        .unwrap();
+    assert_eq!(message_desc.name(), "MyMessage");
+    assert_eq!(message_desc.full_name(), "my.package.MyMessage");
+    assert_eq!(message_desc.parent_pool(), &roundtripped);
+    assert_eq!(message_desc.parent_message(), None);
+    assert_eq!(message_desc.package_name(), "my.package");
 }
 
 #[test]
