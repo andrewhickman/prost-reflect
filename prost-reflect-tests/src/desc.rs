@@ -242,19 +242,6 @@ fn test_debug_impls() {
 
     for file in test_file_descriptor().files() {
         let _ = format!("{:?}", file);
-
-        assert!(file.messages().eq(test_file_descriptor()
-            .all_messages()
-            .filter(|m| m.parent_message().is_none() && m.parent_file() == file)));
-        assert!(file.enums().eq(test_file_descriptor()
-            .all_enums()
-            .filter(|m| m.parent_message().is_none() && m.parent_file() == file)));
-        assert!(file.extensions().eq(test_file_descriptor()
-            .all_extensions()
-            .filter(|m| m.parent_message().is_none() && m.parent_file() == file)));
-        assert!(file.services().eq(test_file_descriptor()
-            .services()
-            .filter(|m| m.parent_file() == file)));
     }
 
     for message in test_file_descriptor().all_messages() {
@@ -286,6 +273,19 @@ fn test_raw_getters() {
 
     for file in test_file_descriptor().files() {
         assert_eq!(file.file_descriptor_proto().name(), file.name());
+
+        assert!(file.messages().eq(test_file_descriptor()
+            .all_messages()
+            .filter(|m| m.parent_message().is_none() && m.parent_file() == file)));
+        assert!(file.enums().eq(test_file_descriptor()
+            .all_enums()
+            .filter(|m| m.parent_message().is_none() && m.parent_file() == file)));
+        assert!(file.extensions().eq(test_file_descriptor()
+            .all_extensions()
+            .filter(|m| m.parent_message().is_none() && m.parent_file() == file)));
+        assert!(file.services().eq(test_file_descriptor()
+            .services()
+            .filter(|m| m.parent_file() == file)));
     }
 
     for service in test_file_descriptor().services() {
@@ -303,6 +303,19 @@ fn test_raw_getters() {
         for oneof in message.oneofs() {
             assert_eq!(oneof.oneof_descriptor_proto().name(), oneof.name());
         }
+        assert!(message.extensions().eq(test_file_descriptor()
+            .all_extensions()
+            .filter(|m| m.containing_message() == message)));
+
+        assert!(message.messages().eq(test_file_descriptor()
+            .all_messages()
+            .filter(|m| m.parent_message() == Some(message.clone()))));
+        assert!(message.enums().eq(test_file_descriptor()
+            .all_enums()
+            .filter(|m| m.parent_message() == Some(message.clone()))));
+        assert!(message.child_extensions().eq(test_file_descriptor()
+            .all_extensions()
+            .filter(|m| m.parent_message() == Some(message.clone()))));
     }
 
     for enum_ in test_file_descriptor().all_enums() {

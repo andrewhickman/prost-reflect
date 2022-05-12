@@ -283,6 +283,62 @@ impl MessageDescriptor {
             .map(move |index| OneofDescriptor::new(self.clone(), index))
     }
 
+    /// Gets the nested message types defined within this message.
+    pub fn messages(&self) -> impl ExactSizeIterator<Item = MessageDescriptor> + '_ {
+        let pool = self.parent_pool();
+        let namespace = self.full_name();
+        let raw_message = self.descriptor_proto();
+        raw_message.nested_type.iter().map(move |raw_nested| {
+            pool.get_message_by_name(&make_full_name(namespace, raw_nested.name()))
+                .expect("message not found")
+        })
+    }
+
+    /// Gets the nested enum types defined within this message.
+    pub fn enums(&self) -> impl ExactSizeIterator<Item = EnumDescriptor> + '_ {
+        let pool = self.parent_pool();
+        let namespace = self.full_name();
+        let raw_message = self.descriptor_proto();
+        raw_message.enum_type.iter().map(move |raw_enum| {
+            pool.get_enum_by_name(&make_full_name(namespace, raw_enum.name()))
+                .expect("enum not found")
+        })
+    }
+
+    /// Gets the nested extension fields defined within this message.
+    ///
+    /// Note this only returns extensions defined nested within this message. See
+    /// [`MessageDescriptor::extensions`] to get fields defined anywhere that extend this message.
+    pub fn child_extensions(&self) -> impl ExactSizeIterator<Item = ExtensionDescriptor> + '_ {
+        let pool = self.parent_pool();
+        let namespace = self.full_name();
+        let raw_message = self.descriptor_proto();
+        raw_message.extension.iter().map(move |raw_extension| {
+            let extendee = pool
+                .inner
+                .type_map
+                .resolve_type_name(namespace, raw_extension.extendee())
+                .expect("extendee not found");
+            MessageDescriptor::new(pool.clone(), extendee)
+                .get_extension(raw_extension.number() as u32)
+                .expect("extension not found")
+        })
+    }
+
+    /// Gets an iterator over all extensions to this message defined in the parent [`DescriptorPool`].
+    ///
+    /// Note this iterates over extension fields defined anywhere which extend this message. See
+    /// [`MessageDescriptor::child_extensions`] to just get extensions defined nested within this message.
+    pub fn extensions(&self) -> impl ExactSizeIterator<Item = ExtensionDescriptor> + '_ {
+        self.inner()
+            .extensions
+            .iter()
+            .map(move |&index| ExtensionDescriptor {
+                pool: self.pool.clone(),
+                index,
+            })
+    }
+
     /// Gets a [`FieldDescriptor`] with the given number, or `None` if no such field exists.
     pub fn get_field(&self, number: u32) -> Option<FieldDescriptor> {
         if self.inner().fields.contains_key(&number) {
@@ -377,20 +433,6 @@ impl MessageDescriptor {
             .extension_range
             .iter()
             .map(|n| (n.start() as u32)..(n.end() as u32))
-    }
-
-    /// Gets an iterator over all extensions to this message defined in the parent [`DescriptorPool`].
-    ///
-    /// Note this iterates over extension fields defined in any file which extend this message, rather than
-    /// extensions defined nested within this message.
-    pub fn extensions(&self) -> impl ExactSizeIterator<Item = ExtensionDescriptor> + '_ {
-        self.inner()
-            .extensions
-            .iter()
-            .map(move |&index| ExtensionDescriptor {
-                pool: self.pool.clone(),
-                index,
-            })
     }
 
     /// Gets an extension to this message by its number, or `None` if no such extension exists.

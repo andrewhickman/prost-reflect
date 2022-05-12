@@ -214,14 +214,14 @@ impl DescriptorPool {
         (0..self.inner.services.len()).map(move |index| ServiceDescriptor::new(self.clone(), index))
     }
 
-    /// Gets an iterator over all messages defined in these protobuf files.
+    /// Gets an iterator over all message types defined in these protobuf files.
     ///
     /// The iterator includes nested messages defined in another message.
     pub fn all_messages(&self) -> impl ExactSizeIterator<Item = MessageDescriptor> + '_ {
         MessageDescriptor::iter(self)
     }
 
-    /// Gets an iterator over all enums defined in these protobuf files.
+    /// Gets an iterator over all enum types defined in these protobuf files.
     ///
     /// The iterator includes nested enums defined in another message.
     pub fn all_enums(&self) -> impl ExactSizeIterator<Item = EnumDescriptor> + '_ {
@@ -378,7 +378,7 @@ impl FileDescriptor {
         })
     }
 
-    /// Gets the top-level messages defined within this file.
+    /// Gets the top-level message types defined within this file.
     ///
     /// This does not include nested messages defined within another message.
     pub fn messages(&self) -> impl ExactSizeIterator<Item = MessageDescriptor> + '_ {
@@ -390,7 +390,7 @@ impl FileDescriptor {
         })
     }
 
-    /// Gets the top-level enums defined within this file.
+    /// Gets the top-level enum types defined within this file.
     ///
     /// This does not include nested enums defined within another message.
     pub fn enums(&self) -> impl ExactSizeIterator<Item = EnumDescriptor> + '_ {
@@ -402,7 +402,7 @@ impl FileDescriptor {
         })
     }
 
-    /// Gets the top-level extensions defined within this file.
+    /// Gets the top-level extension fields defined within this file.
     ///
     /// This does not include nested extensions defined within another message.
     pub fn extensions(&self) -> impl ExactSizeIterator<Item = ExtensionDescriptor> + '_ {
