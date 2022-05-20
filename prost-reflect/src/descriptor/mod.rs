@@ -165,7 +165,11 @@ impl DescriptorPool {
             file.services = start..to_index(inner.services.len());
         }
 
-        self.inner = Arc::new(inner);
+        if let Some(old_inner) = Arc::get_mut(&mut self.inner) {
+            *old_inner = inner;
+        } else {
+            self.inner = Arc::new(inner);
+        }
         Ok(())
     }
 
