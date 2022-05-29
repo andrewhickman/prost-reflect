@@ -283,7 +283,7 @@ impl MessageDescriptor {
     }
 
     /// Gets the nested message types defined within this message.
-    pub fn messages(&self) -> impl ExactSizeIterator<Item = MessageDescriptor> + '_ {
+    pub fn child_messages(&self) -> impl ExactSizeIterator<Item = MessageDescriptor> + '_ {
         let pool = self.parent_pool();
         let namespace = self.full_name();
         let raw_message = self.descriptor_proto();
@@ -294,7 +294,7 @@ impl MessageDescriptor {
     }
 
     /// Gets the nested enum types defined within this message.
-    pub fn enums(&self) -> impl ExactSizeIterator<Item = EnumDescriptor> + '_ {
+    pub fn child_enums(&self) -> impl ExactSizeIterator<Item = EnumDescriptor> + '_ {
         let pool = self.parent_pool();
         let namespace = self.full_name();
         let raw_message = self.descriptor_proto();

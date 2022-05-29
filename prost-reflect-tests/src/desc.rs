@@ -307,10 +307,10 @@ fn test_raw_getters() {
             .all_extensions()
             .filter(|m| m.containing_message() == message)));
 
-        assert!(message.messages().eq(test_file_descriptor()
+        assert!(message.child_messages().eq(test_file_descriptor()
             .all_messages()
             .filter(|m| m.parent_message() == Some(message.clone()))));
-        assert!(message.enums().eq(test_file_descriptor()
+        assert!(message.child_enums().eq(test_file_descriptor()
             .all_enums()
             .filter(|m| m.parent_message() == Some(message.clone()))));
         assert!(message.child_extensions().eq(test_file_descriptor()
