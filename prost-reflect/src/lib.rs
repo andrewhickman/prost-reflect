@@ -8,7 +8,7 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![warn(missing_debug_implementations, missing_docs)]
 #![deny(unsafe_code)]
-#![doc(html_root_url = "https://docs.rs/prost-reflect/0.8.0/")]
+#![doc(html_root_url = "https://docs.rs/prost-reflect/0.8.1/")]
 
 #[cfg(feature = "serde1")]
 extern crate serde1 as serde;
