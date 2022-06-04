@@ -4,6 +4,7 @@ use criterion::{criterion_group, criterion_main, Criterion};
 use prost::Message;
 use prost_reflect::{DynamicMessage, ReflectMessage};
 use prost_reflect_tests::WellKnownTypes;
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 
 fn sample_wkt() -> WellKnownTypes {
     WellKnownTypes {
@@ -75,9 +76,39 @@ fn encode_wkt(c: &mut Criterion) {
     });
 }
 
+fn decode_wkt_multithread(c: &mut Criterion) {
+    let value = sample_wkt().transcode_to_dynamic();
+
+    c.bench_function("decode_wkt_multithread", |b| {
+        b.iter(|| {
+            (0i32..256)
+                .into_par_iter()
+                .for_each(|_| drop(criterion::black_box(value.encode_to_vec())))
+        })
+    });
+}
+
+fn encode_wkt_multithread(c: &mut Criterion) {
+    let value = sample_wkt().encode_to_vec();
+    let desc = prost_reflect_tests::test_file_descriptor()
+        .get_message_by_name("test.WellKnownTypes")
+        .unwrap();
+
+    c.bench_function("encode_wkt_multithread", |b| {
+        b.iter(|| {
+            (0i32..256).into_par_iter().for_each(|_| {
+                drop(criterion::black_box(DynamicMessage::decode(
+                    desc.clone(),
+                    value.as_slice(),
+                )))
+            })
+        })
+    });
+}
+
 criterion_group! {
     name = benches;
     config = Criterion::default().sample_size(500);
-    targets = decode_wkt, encode_wkt
+    targets = decode_wkt, encode_wkt, decode_wkt_multithread, encode_wkt_multithread
 }
 criterion_main!(benches);
