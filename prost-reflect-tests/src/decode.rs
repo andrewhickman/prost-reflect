@@ -854,7 +854,7 @@ where
     T: PartialEq + Debug + ReflectMessage + Default,
 {
     let dynamic_message = message.transcode_to_dynamic();
-    let roundtripped_message = T::transcode_from_dynamic(&dynamic_message).unwrap();
+    let roundtripped_message: T = dynamic_message.transcode_to().unwrap();
     prop_assert_eq!(message, &roundtripped_message);
 
     // Check roundtripping through unknown fields works
