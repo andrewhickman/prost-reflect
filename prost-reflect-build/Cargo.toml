@@ -13,6 +13,10 @@ edition = "2018"
 rust-version = "1.54.0"
 exclude = ["test.proto"]
 
+[features]
+default = []
+vendored = ["prost-build/vendored"]
+
 [dependencies]
 prost-reflect = { path = "../prost-reflect", version = "0.8.0", features = [
     "derive"
