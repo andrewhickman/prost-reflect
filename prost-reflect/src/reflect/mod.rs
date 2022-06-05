@@ -1,7 +1,7 @@
 #[cfg(feature = "reflect-well-known-types")]
 mod wkt;
 
-use prost::Message;
+use prost::{DecodeError, Message};
 
 use crate::{DynamicMessage, MessageDescriptor};
 
@@ -10,8 +10,7 @@ pub trait ReflectMessage: Message {
     /// Gets a [`MessageDescriptor`] describing the type of this message.
     fn descriptor(&self) -> MessageDescriptor;
 
-    /// Converts this message into an instance of [`DynamicMessage`] by going
-    /// through the byte representation.
+    /// Converts this message into an instance of [`DynamicMessage`].
     fn transcode_to_dynamic(&self) -> DynamicMessage
     where
         Self: Sized,
@@ -23,6 +22,15 @@ pub trait ReflectMessage: Message {
             .transcode_from(self)
             .expect("error converting to dynamic message");
         message
+    }
+
+    /// Creates an instance of this message type from a [`DynamicMessage`]. The conversion may fail if `dynamic`
+    /// contains fields of an incompatible type for this message.
+    fn transcode_from_dynamic(dynamic: &DynamicMessage) -> Result<Self, DecodeError>
+    where
+        Self: Sized + Default,
+    {
+        dynamic.transcode_to()
     }
 }
 
