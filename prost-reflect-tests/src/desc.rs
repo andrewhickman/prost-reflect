@@ -1,6 +1,7 @@
-use prost_reflect::{DescriptorPool, Syntax};
+use prost::Message;
+use prost_reflect::{DescriptorPool, Syntax, Value};
 
-use crate::test_file_descriptor;
+use crate::{test_file_descriptor, DESCRIPTOR_POOL_BYTES};
 
 #[test]
 fn test_descriptor_methods() {
@@ -121,33 +122,24 @@ fn test_descriptor_methods_proto2() {
 
     let mut extensions: Vec<_> = test_file_descriptor().all_extensions().collect();
     extensions.sort_by_key(|e| e.full_name().to_owned());
-    assert_eq!(extensions.len(), 3);
+    assert_eq!(extensions.len(), 4);
 
-    assert_eq!(
-        extensions[0].full_name(),
-        "my.package2.MyMessage.in_extendee"
-    );
-    assert_eq!(
-        extensions[0].parent_message().unwrap().full_name(),
-        "my.package2.MyMessage"
-    );
-    assert_eq!(extensions[0].parent_file(), file_desc);
+    assert_eq!(extensions[0].full_name(), "demo.len");
+    assert_eq!(extensions[0].parent_message(), None);
+    assert_eq!(extensions[0].parent_file().name(), "ext.proto");
     assert_eq!(
         extensions[0].containing_message().full_name(),
-        "my.package2.MyMessage"
+        "google.protobuf.EnumValueOptions"
     );
-    assert_eq!(
-        extensions[0].json_name(),
-        "[my.package2.MyMessage.in_extendee]"
-    );
+    assert_eq!(extensions[0].json_name(), "[demo.len]");
 
     assert_eq!(
         extensions[1].full_name(),
-        "my.package2.OtherMessage.in_other"
+        "my.package2.MyMessage.in_extendee"
     );
     assert_eq!(
         extensions[1].parent_message().unwrap().full_name(),
-        "my.package2.OtherMessage"
+        "my.package2.MyMessage"
     );
     assert_eq!(extensions[1].parent_file(), file_desc);
     assert_eq!(
@@ -156,17 +148,35 @@ fn test_descriptor_methods_proto2() {
     );
     assert_eq!(
         extensions[1].json_name(),
-        "[my.package2.OtherMessage.in_other]"
+        "[my.package2.MyMessage.in_extendee]"
     );
 
-    assert_eq!(extensions[2].full_name(), "my.package2.in_file");
-    assert!(extensions[2].parent_message().is_none());
+    assert_eq!(
+        extensions[2].full_name(),
+        "my.package2.OtherMessage.in_other"
+    );
+    assert_eq!(
+        extensions[2].parent_message().unwrap().full_name(),
+        "my.package2.OtherMessage"
+    );
     assert_eq!(extensions[2].parent_file(), file_desc);
     assert_eq!(
         extensions[2].containing_message().full_name(),
         "my.package2.MyMessage"
     );
-    assert_eq!(extensions[2].json_name(), "[my.package2.in_file]");
+    assert_eq!(
+        extensions[2].json_name(),
+        "[my.package2.OtherMessage.in_other]"
+    );
+
+    assert_eq!(extensions[3].full_name(), "my.package2.in_file");
+    assert!(extensions[3].parent_message().is_none());
+    assert_eq!(extensions[3].parent_file(), file_desc);
+    assert_eq!(
+        extensions[3].containing_message().full_name(),
+        "my.package2.MyMessage"
+    );
+    assert_eq!(extensions[3].json_name(), "[my.package2.in_file]");
 }
 
 #[test]
@@ -389,4 +399,51 @@ fn test_enum_alias() {
     assert_eq!(enum_desc.get_value(2).unwrap().number(), 2);
     assert_eq!(enum_desc.get_value(2).unwrap().name(), "TWO");
     assert_eq!(enum_desc.get_value(3), None);
+}
+
+#[test]
+fn test_get_extension() {
+    let file_descriptor_set = test_file_descriptor()
+        .get_message_by_name("google.protobuf.FileDescriptorSet")
+        .unwrap();
+
+    let mut dynamic_message = prost_reflect::DynamicMessage::new(file_descriptor_set);
+    dynamic_message.merge(DESCRIPTOR_POOL_BYTES).unwrap();
+
+    let extension = test_file_descriptor()
+        .get_message_by_name("google.protobuf.EnumValueOptions")
+        .unwrap()
+        .get_extension_by_full_name("demo.len")
+        .unwrap();
+
+    assert_eq!(
+        dynamic_message
+            .get_field_by_name("file")
+            .unwrap()
+            .as_list()
+            .unwrap()
+            .iter()
+            .map(|f| f.as_message().unwrap())
+            .find(|f| f.get_field_by_name("name").unwrap().as_str() == Some("ext.proto"))
+            .unwrap()
+            .get_field_by_name("enum_type")
+            .unwrap()
+            .as_list()
+            .unwrap()[0]
+            .as_message()
+            .unwrap()
+            .get_field_by_name("value")
+            .unwrap()
+            .as_list()
+            .unwrap()[1]
+            .as_message()
+            .unwrap()
+            .get_field_by_name("options")
+            .unwrap()
+            .as_message()
+            .unwrap()
+            .get_extension(&extension)
+            .as_ref(),
+        &Value::U32(1)
+    );
 }

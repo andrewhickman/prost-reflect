@@ -439,6 +439,11 @@ impl MessageDescriptor {
         self.extensions().find(|ext| ext.number() == number)
     }
 
+    /// Gets an extension to this message by its full name (e.g. `my.package.my_extension`), or `None` if no such extension exists.
+    pub fn get_extension_by_full_name(&self, name: &str) -> Option<ExtensionDescriptor> {
+        self.extensions().find(|ext| ext.full_name() == name)
+    }
+
     /// Gets an extension to this message by its JSON name (e.g. `[my.package.my_extension]`), or `None` if no such extension exists.
     pub fn get_extension_by_json_name(&self, name: &str) -> Option<ExtensionDescriptor> {
         self.extensions().find(|ext| ext.json_name() == name)
