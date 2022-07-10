@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added `MessageDescriptor::get_extension_by_full_name()`.
 
+### Changed
+
+- The minimum supported rust version is now **1.57.0**.
+
 ## [0.8.1] - 2022-05-29
 
 ### Added
