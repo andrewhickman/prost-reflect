@@ -10,7 +10,7 @@ documentation = "https://docs.rs/prost-reflect-derive"
 license = "MIT OR Apache-2.0"
 readme = "../README.md"
 edition = "2018"
-rust-version = "1.57.0"
+rust-version = "1.56.0"
 autotests = false
 exclude = ["tests"]
 
