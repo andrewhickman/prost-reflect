@@ -14,6 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Updated to prost [**0.11.0**](https://github.com/tokio-rs/prost/releases/tag/v0.11.0)
+- The `time` dependency has been removed. The new `FromStr` implementation for `prost_types::Timestamp` is now used when deserializing it from JSON instead. 
 - The minimum supported rust version is now **1.56.0**.
 
 ## [0.8.1] - 2022-05-29
