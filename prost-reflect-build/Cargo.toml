@@ -15,13 +15,12 @@ exclude = ["test.proto"]
 
 [features]
 default = []
-vendored = ["prost-build/vendored"]
 
 [dependencies]
 prost-reflect = { path = "../prost-reflect", version = "0.8.0", features = [
     "derive"
 ] }
-prost-build = "0.10.0"
+prost-build = "0.11.0"
 
 [[package.metadata.release.pre-release-replacements]]
 file = "src/lib.rs"
