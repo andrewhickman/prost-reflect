@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0] - 2022-07-30
+
 ### Added
 
 - Added `MessageDescriptor::get_extension_by_full_name()`.
@@ -213,7 +215,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial release, including support for inspecting message types at runtime.
 
-[Unreleased]: https://github.com/andrewhickman/prost-reflect/compare/0.8.1...HEAD
+[Unreleased]: https://github.com/andrewhickman/prost-reflect/compare/0.9.0...HEAD
+[0.9.0]: https://github.com/andrewhickman/prost-reflect/compare/0.8.1...0.9.0
 [0.8.1]: https://github.com/andrewhickman/prost-reflect/compare/0.8.0...0.8.1
 [0.8.0]: https://github.com/andrewhickman/prost-reflect/compare/0.7.0...0.8.0
 [0.7.0]: https://github.com/andrewhickman/prost-reflect/compare/0.6.1...0.7.0
