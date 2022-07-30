@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Updated to prost [**0.11.0**](https://github.com/tokio-rs/prost/releases/tag/v0.11.0)
-- The `time` dependency has been removed. The new `FromStr` implementation for `prost_types::Timestamp` is now used when deserializing it from JSON instead. 
+- When the `serde` feature is enabled, the functions in `prost-types` for parsing and formatting time types are now used. This removes the `time` dependency.
 - The minimum supported rust version is now **1.56.0**.
 
 ## [0.8.1] - 2022-05-29
@@ -24,10 +24,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added the `FileDescriptor` API for inspecting individual protobuf files.
 - Added methods to `MessageDescriptor` to get child messages, enums and extensions.
-
-### Changed
-
-- When the `serde` feature is enabled, the functions in `prost-types` for parsing and formatting time types are now used. This removes the `time` dependency.
 
 ## [0.8.0] - 2022-05-09
 
