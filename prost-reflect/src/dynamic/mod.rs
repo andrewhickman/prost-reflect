@@ -91,6 +91,18 @@ impl DynamicMessage {
 
     /// Decodes an instance of the message type specified by the [`MessageDescriptor`] from the buffer and merges it into a
     /// new instance of [`DynamicMessage`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use prost::Message;
+    /// # use prost_types::FileDescriptorSet;
+    /// # use prost_reflect::{DynamicMessage, DescriptorPool, Value};
+    /// # let pool = DescriptorPool::decode(include_bytes!("../file_descriptor_set.bin").as_ref()).unwrap();
+    /// # let message_descriptor = pool.get_message_by_name("package.MyMessage").unwrap();
+    /// let dynamic_message = DynamicMessage::decode(message_descriptor, b"\x08\x96\x01".as_ref()).unwrap();
+    /// assert_eq!(dynamic_message.get_field_by_name("foo").unwrap().as_ref(), &Value::I32(150));
+    /// ```
     pub fn decode<B>(desc: MessageDescriptor, buf: B) -> Result<Self, DecodeError>
     where
         B: Buf,
@@ -108,6 +120,47 @@ impl DynamicMessage {
     ///
     /// If this method returns `false`, then the field will not be included in the encoded bytes
     /// of this message.
+    ///
+    /// # Examples
+    ///
+    /// This example uses the following message definition:
+    ///
+    /// ```lang-protobuf
+    /// message MyMessage {
+    ///     int32 foo = 1;
+    ///
+    ///     oneof optional {
+    ///         int32 bar = 2;
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// ```
+    /// # use prost::Message;
+    /// # use prost_types::FileDescriptorSet;
+    /// # use prost_reflect::{DynamicMessage, DescriptorPool, Value};
+    /// # let pool = DescriptorPool::decode(include_bytes!("../file_descriptor_set.bin").as_ref()).unwrap();
+    /// # let message_descriptor = pool.get_message_by_name("package.MyMessage").unwrap();
+    /// let foo = message_descriptor.get_field_by_name("foo").unwrap();
+    /// let bar = message_descriptor.get_field_by_name("bar").unwrap();
+    ///
+    /// assert!(!foo.supports_presence());
+    /// assert!(bar.supports_presence());
+    ///
+    /// let mut dynamic_message = DynamicMessage::new(message_descriptor);
+    /// assert!(!dynamic_message.has_field(&foo));
+    /// assert!(!dynamic_message.has_field(&bar));
+    ///
+    /// dynamic_message.set_field(&foo, Value::I32(0));
+    /// dynamic_message.set_field(&bar, Value::I32(0));
+    /// assert!(!dynamic_message.has_field(&foo));
+    /// assert!(dynamic_message.has_field(&bar));
+    ///
+    /// dynamic_message.set_field(&foo, Value::I32(5));
+    /// dynamic_message.set_field(&bar, Value::I32(6));
+    /// assert!(dynamic_message.has_field(&foo));
+    /// assert!(dynamic_message.has_field(&bar));
+    /// ```
     pub fn has_field(&self, field_desc: &FieldDescriptor) -> bool {
         self.fields.has(field_desc)
     }

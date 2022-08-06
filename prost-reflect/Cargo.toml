@@ -11,7 +11,11 @@ license = "MIT OR Apache-2.0"
 readme = "../README.md"
 edition = "2018"
 rust-version = "1.56.0"
-exclude = ["proptest-regressions", "src/file_descriptor_set.bin"]
+exclude = [
+    "proptest-regressions",
+    "src/file_descriptor_set.bin",
+    "src/doctest.proto"
+]
 build = "build.rs"
 
 [features]

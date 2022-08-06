@@ -29,6 +29,21 @@ pub struct DeserializeOptions {
 #[cfg_attr(docsrs, doc(cfg(feature = "serde")))]
 impl Serialize for DynamicMessage {
     /// Serialize this message into `serializer` using the [canonical JSON encoding](https://developers.google.com/protocol-buffers/docs/proto3#json).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use prost::Message;
+    /// # use prost_types::FileDescriptorSet;
+    /// # use prost_reflect::{DynamicMessage, DescriptorPool, Value};
+    /// # use serde1::Serialize;
+    /// # let pool = DescriptorPool::decode(include_bytes!("../../file_descriptor_set.bin").as_ref()).unwrap();
+    /// # let message_descriptor = pool.get_message_by_name("package.MyMessage").unwrap();
+    /// let dynamic_message = DynamicMessage::decode(message_descriptor, b"\x08\x96\x01".as_ref()).unwrap();
+    /// let mut serializer = serde_json::Serializer::new(vec![]);
+    /// dynamic_message.serialize(&mut serializer).unwrap();
+    /// assert_eq!(serializer.into_inner(), b"{\"foo\":150}");
+    /// ```
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -42,6 +57,24 @@ impl<'de> DeserializeSeed<'de> for MessageDescriptor {
     type Value = DynamicMessage;
 
     /// Deserialize a [`DynamicMessage`] from `deserializer` using the [canonical JSON encoding](https://developers.google.com/protocol-buffers/docs/proto3#json).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use prost::Message;
+    /// # use prost_reflect::{DynamicMessage, DescriptorPool, Value};
+    /// # use serde1 as serde;
+    /// # let pool = DescriptorPool::decode(include_bytes!("../../file_descriptor_set.bin").as_ref()).unwrap();
+    /// # let message_descriptor = pool.get_message_by_name("package.MyMessage").unwrap();
+    /// use serde::de::DeserializeSeed;
+    ///
+    /// let json = r#"{ "foo": 150 }"#;
+    /// let mut deserializer = serde_json::de::Deserializer::from_str(json);
+    /// let dynamic_message = message_descriptor.deserialize(&mut deserializer).unwrap();
+    /// deserializer.end().unwrap();
+    ///
+    /// assert_eq!(dynamic_message.get_field_by_name("foo").unwrap().as_ref(), &Value::I32(150));
+    /// ```
     fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
     where
         D: Deserializer<'de>,
@@ -52,6 +85,22 @@ impl<'de> DeserializeSeed<'de> for MessageDescriptor {
 
 impl DynamicMessage {
     /// Serialize this message into `serializer` using the encoding specified by `options`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use prost::Message;
+    /// # use prost_types::FileDescriptorSet;
+    /// # use prost_reflect::{DynamicMessage, DescriptorPool, Value, SerializeOptions};
+    /// # use serde1::Serialize;
+    /// # let pool = DescriptorPool::decode(include_bytes!("../../file_descriptor_set.bin").as_ref()).unwrap();
+    /// # let message_descriptor = pool.get_message_by_name("package.MyMessage").unwrap();
+    /// let dynamic_message = DynamicMessage::decode(message_descriptor, b"".as_ref()).unwrap();
+    /// let mut serializer = serde_json::Serializer::new(vec![]);
+    /// let mut options = SerializeOptions::new().skip_default_fields(false);
+    /// dynamic_message.serialize_with_options(&mut serializer, &options).unwrap();
+    /// assert_eq!(serializer.into_inner(), b"{\"foo\":0}");
+    /// ```
     #[cfg_attr(docsrs, doc(cfg(feature = "serde")))]
     pub fn serialize_with_options<S>(
         &self,
@@ -65,6 +114,22 @@ impl DynamicMessage {
     }
 
     /// Deserialize an instance of the message type described by `desc` from `deserializer`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use prost::Message;
+    /// # use prost_reflect::{DynamicMessage, DescriptorPool, Value};
+    /// # use serde1 as serde;
+    /// # let pool = DescriptorPool::decode(include_bytes!("../../file_descriptor_set.bin").as_ref()).unwrap();
+    /// # let message_descriptor = pool.get_message_by_name("package.MyMessage").unwrap();
+    /// let json = r#"{ "foo": 150 }"#;
+    /// let mut deserializer = serde_json::de::Deserializer::from_str(json);
+    /// let dynamic_message = DynamicMessage::deserialize(message_descriptor, &mut deserializer).unwrap();
+    /// deserializer.end().unwrap();
+    ///
+    /// assert_eq!(dynamic_message.get_field_by_name("foo").unwrap().as_ref(), &Value::I32(150));
+    /// ```
     #[cfg_attr(docsrs, doc(cfg(feature = "serde")))]
     pub fn deserialize<'de, D>(desc: MessageDescriptor, deserializer: D) -> Result<Self, D::Error>
     where
@@ -75,6 +140,23 @@ impl DynamicMessage {
 
     /// Deserialize an instance of the message type described by `desc` from `deserializer`, using
     /// the encoding specified by `options`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use prost::Message;
+    /// # use prost_reflect::{DynamicMessage, DescriptorPool, Value, DeserializeOptions};
+    /// # use serde1 as serde;
+    /// # let pool = DescriptorPool::decode(include_bytes!("../../file_descriptor_set.bin").as_ref()).unwrap();
+    /// # let message_descriptor = pool.get_message_by_name("package.MyMessage").unwrap();
+    /// let json = r#"{ "foo": 150, "unknown": true }"#;
+    /// let mut deserializer = serde_json::de::Deserializer::from_str(json);
+    /// let options = DeserializeOptions::new().deny_unknown_fields(false);
+    /// let dynamic_message = DynamicMessage::deserialize_with_options(message_descriptor, &mut deserializer, &options).unwrap();
+    /// deserializer.end().unwrap();
+    ///
+    /// assert_eq!(dynamic_message.get_field_by_name("foo").unwrap().as_ref(), &Value::I32(150));
+    /// ```
     #[cfg_attr(docsrs, doc(cfg(feature = "serde")))]
     pub fn deserialize_with_options<'de, D>(
         desc: MessageDescriptor,

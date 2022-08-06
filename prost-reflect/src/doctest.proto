@@ -1,0 +1,12 @@
+// Protobuf definitions used in doctests. file_descriptor_set.bin should be the compiled version of this file.
+syntax = "proto3";
+
+package package;
+
+message MyMessage {
+    int32 foo = 1;
+
+    oneof optional {
+        int32 bar = 2;
+    }
+}
