@@ -1,13 +1,3 @@
-// TO test:
-// - groups (field + extension)
-// - unknown fields
-//    - groups
-//    - can a string be mistaken for a message?
-//    - negative varints
-//    - any
-//         - type name not found
-//         - invalid bytes
-
 use std::{
     collections::{BTreeMap, HashMap},
     iter::FromIterator,
