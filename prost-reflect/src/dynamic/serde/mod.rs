@@ -95,7 +95,7 @@ impl DynamicMessage {
     /// # use serde1::Serialize;
     /// # let pool = DescriptorPool::decode(include_bytes!("../../file_descriptor_set.bin").as_ref()).unwrap();
     /// # let message_descriptor = pool.get_message_by_name("package.MyMessage").unwrap();
-    /// let dynamic_message = DynamicMessage::decode(message_descriptor, b"".as_ref()).unwrap();
+    /// let dynamic_message = DynamicMessage::new(message_descriptor);
     /// let mut serializer = serde_json::Serializer::new(vec![]);
     /// let mut options = SerializeOptions::new().skip_default_fields(false);
     /// dynamic_message.serialize_with_options(&mut serializer, &options).unwrap();
