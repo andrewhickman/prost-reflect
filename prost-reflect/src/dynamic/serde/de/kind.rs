@@ -548,8 +548,8 @@ impl<'a, 'de> Visitor<'de> for MessageVisitorInner<'a> {
                     map.next_value_seed(OptionalFieldDescriptorSeed(&field, self.1))?
                 {
                     if let Some(oneof_desc) = field.containing_oneof() {
-                        for field in oneof_desc.fields() {
-                            if self.0.has_field(&field) {
+                        for oneof_field in oneof_desc.fields() {
+                            if self.0.has_field(&oneof_field) {
                                 return Err(Error::custom(format!(
                                     "multiple fields provided for oneof '{}'",
                                     oneof_desc.name()

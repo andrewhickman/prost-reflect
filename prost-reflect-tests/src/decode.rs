@@ -12,8 +12,11 @@ use prost_reflect::{DynamicMessage, MapKey, ReflectMessage, Value};
 use prost_types::FileDescriptorSet;
 
 use crate::{
-    contains_group, message_with_oneof, test_file_descriptor, ComplexType, ContainsGroup,
-    MessageWithOneof, ScalarArrays, Scalars, WellKnownTypes,
+    proto::{
+        contains_group, message_with_oneof, ComplexType, ContainsGroup, MessageWithOneof,
+        ScalarArrays, Scalars, WellKnownTypes,
+    },
+    test_file_descriptor,
 };
 
 #[test]

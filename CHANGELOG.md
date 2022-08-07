@@ -10,7 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Added support for formatting dynamic messages using the protobuf [text format](https://developers.google.com/protocol-buffers/docs/text-format-spec), through the new [`Display`](https://docs.rs/prost-reflect/latest/prost_reflect/struct.DynamicMessage.html#impl-Display) implementation for `DynamicMessage`.
+- Added support for parsing and formatting dynamic messages using the text format. This functionality is enabled with the new `text_format` feature flag. See [`DynamicMessage::parse_text_format`](https://docs.rs/prost-reflect/latest/prost_reflect/struct.DynamicMessage.html#method.parse_text_format) and [`DynamicMessage::to_text_format`](https://docs.rs/prost-reflect/latest/prost_reflect/struct.DynamicMessage.html#method.to_text_format).
+- Added a `Display` implementation for `DynamicMessage` and `Value` which uses the text format. This is available even when the `text_format` feature is disabled.
 - Added new methods for setting dynamic message fields without panicking: [`try_set_field`](https://docs.rs/prost-reflect/latest/prost_reflect/struct.DynamicMessage.html#method.try_set_field), [`try_set_field_by_number`](https://docs.rs/prost-reflect/latest/prost_reflect/struct.DynamicMessage.html#method.try_set_field_by_number) and [`try_set_field_by_name`](https://docs.rs/prost-reflect/latest/prost_reflect/struct.DynamicMessage.html#method.try_set_field_by_name)
 - Added [`Value::into_map_key()`](https://docs.rs/prost-reflect/latest/prost_reflect/enum.Value.html#method.into_map_key)
 

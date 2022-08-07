@@ -10,6 +10,8 @@ use serde::{
 use crate::{DynamicMessage, MessageDescriptor};
 
 /// Options to control serialization of messages.
+///
+/// Used by [`DynamicMessage::serialize_with_options()`].
 #[derive(Debug, Clone)]
 #[cfg_attr(docsrs, doc(cfg(feature = "serde")))]
 pub struct SerializeOptions {
@@ -20,6 +22,8 @@ pub struct SerializeOptions {
 }
 
 /// Options to control deserialization of messages.
+///
+/// Used by [`DynamicMessage::deserialize_with_options()`].
 #[derive(Debug, Clone)]
 #[cfg_attr(docsrs, doc(cfg(feature = "serde")))]
 pub struct DeserializeOptions {

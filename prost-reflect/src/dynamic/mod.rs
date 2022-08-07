@@ -1,11 +1,19 @@
+#[cfg(feature = "text-format")]
+/// Parsing and formatting for the protobuf [text format](https://developers.google.com/protocol-buffers/docs/text-format-spec).
+///
+/// This module contains options for customizing the text format output. See the associated functions [`DynamicMessage::parse_text_format()`] and
+/// [`DynamicMessage::to_text_format()`].
+pub mod text_format;
+
 mod fields;
-mod fmt;
 mod message;
 #[cfg(feature = "serde")]
 mod serde;
+#[cfg(not(feature = "text-format"))]
+mod text_format;
 mod unknown;
 
-use std::{borrow::Cow, collections::HashMap};
+use std::{borrow::Cow, collections::HashMap, error::Error, fmt};
 
 #[cfg(feature = "serde")]
 pub use self::serde::{DeserializeOptions, SerializeOptions};
@@ -468,26 +476,6 @@ impl DynamicMessage {
     {
         let buf = self.encode_to_vec();
         T::decode(buf.as_slice())
-    }
-
-    /// Formats this dynamic message using the protobuf text format.
-    ///
-    /// Output is pretty-printed with each field on a new line, and nested messages indented. This function is equivalent to
-    /// formatting the message using the alternate format specifier: `format!("{:#}", message)`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # use prost::Message;
-    /// # use prost_types::FileDescriptorSet;
-    /// # use prost_reflect::{DynamicMessage, DescriptorPool, Value};
-    /// # let pool = DescriptorPool::decode(include_bytes!("../file_descriptor_set.bin").as_ref()).unwrap();
-    /// # let message_descriptor = pool.get_message_by_name("package.MyMessage").unwrap();
-    /// let dynamic_message = DynamicMessage::decode(message_descriptor, b"\x08\x96\x01\x1a\x02\x10\x42".as_ref()).unwrap();
-    /// assert_eq!(dynamic_message.to_string_pretty(), "foo: 150\nnested {\n  bar: 66\n}");
-    /// ```
-    pub fn to_string_pretty(&self) -> String {
-        format!("{:#}", self)
     }
 }
 
@@ -1014,6 +1002,34 @@ impl From<MapKey> for Value {
         }
     }
 }
+
+impl fmt::Display for SetFieldError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            SetFieldError::NotFound => write!(f, "field not found"),
+            SetFieldError::InvalidType { field, value } => {
+                write!(f, "expected a value of type '")?;
+                if field.is_map() {
+                    let entry = field.kind();
+                    let entry = entry.as_message().unwrap();
+                    write!(
+                        f,
+                        "map<{:?}, {:?}>",
+                        entry.map_entry_key_field().kind(),
+                        entry.map_entry_value_field().kind()
+                    )?;
+                } else if field.is_list() {
+                    write!(f, "repeated {:?}", field.kind())?;
+                } else {
+                    write!(f, "{:?}", field.kind())?;
+                }
+                write!(f, "', but found '{}'", value)
+            }
+        }
+    }
+}
+
+impl Error for SetFieldError {}
 
 #[test]
 fn type_sizes() {

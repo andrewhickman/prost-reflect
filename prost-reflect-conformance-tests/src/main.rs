@@ -5,7 +5,7 @@ use prost::{
     bytes::{Buf, BufMut},
     Message,
 };
-use prost_reflect::{DescriptorPool, DeserializeOptions, DynamicMessage};
+use prost_reflect::{text_format, DescriptorPool, DeserializeOptions, DynamicMessage};
 
 use prost_reflect_conformance_tests::conformance::{
     conformance_request, conformance_response, ConformanceRequest, ConformanceResponse,
@@ -110,10 +110,11 @@ fn handle_request(request: ConformanceRequest) -> conformance_response::Result {
                 "jspb payload is not supported".to_string(),
             );
         }
-        Some(conformance_request::Payload::TextPayload(_)) => {
-            return conformance_response::Result::Skipped(
-                "text payload is not supported".to_string(),
-            );
+        Some(conformance_request::Payload::TextPayload(text)) => {
+            match DynamicMessage::parse_text_format(message_desc, &text) {
+                Ok(message) => message,
+                Err(error) => return conformance_response::Result::ParseError(error.to_string()),
+            }
         }
     };
 
@@ -125,7 +126,11 @@ fn handle_request(request: ConformanceRequest) -> conformance_response::Result {
             conformance_response::Result::Skipped("JSPB output is not supported".to_string())
         }
         WireFormat::TextFormat => {
-            conformance_response::Result::TextPayload(dynamic_message.to_string())
+            let options = text_format::FormatOptions::new()
+                .skip_unknown_fields(!request.print_unknown_fields);
+            conformance_response::Result::TextPayload(
+                dynamic_message.to_text_format_with_options(&options),
+            )
         }
         WireFormat::Json => match serde_json::to_string(&dynamic_message) {
             Ok(s) => conformance_response::Result::JsonPayload(s),

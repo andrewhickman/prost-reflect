@@ -12,8 +12,11 @@ mod json;
 #[cfg(test)]
 mod text_format;
 
-include!(concat!(env!("OUT_DIR"), "/test.rs"));
-include!(concat!(env!("OUT_DIR"), "/test2.rs"));
+pub mod proto {
+    #![allow(clippy::all)]
+    include!(concat!(env!("OUT_DIR"), "/test.rs"));
+    include!(concat!(env!("OUT_DIR"), "/test2.rs"));
+}
 
 const DESCRIPTOR_POOL_BYTES: &[u8] =
     include_bytes!(concat!(env!("OUT_DIR"), "/file_descriptor_set.bin"));

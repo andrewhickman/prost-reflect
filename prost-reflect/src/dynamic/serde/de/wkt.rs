@@ -11,6 +11,7 @@ use serde::de::{
 };
 
 use crate::{
+    descriptor::{GOOGLE_APIS_DOMAIN, GOOGLE_PROD_DOMAIN},
     dynamic::{
         serde::{
             case::camel_case_to_snake_case, check_duration, check_timestamp, is_well_known_type,
@@ -59,7 +60,10 @@ impl<'a, 'de> Visitor<'de> for GoogleProtobufAnyVisitor<'a> {
             }
         };
 
-        if let Some(message_name) = type_url.strip_prefix("type.googleapis.com/") {
+        if let Some(message_name) = type_url
+            .strip_prefix(GOOGLE_APIS_DOMAIN)
+            .or_else(|| type_url.strip_prefix(GOOGLE_PROD_DOMAIN))
+        {
             let message_desc = self
                 .0
                 .get_message_by_name(message_name)

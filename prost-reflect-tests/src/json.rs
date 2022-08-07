@@ -11,9 +11,12 @@ use prost_types::FileDescriptorSet;
 use serde_json::json;
 
 use crate::{
-    arbitrary, contains_group, message_with_oneof, test_file_descriptor, ComplexType,
-    ContainsGroup, MessageWithAliasedEnum, MessageWithOneof, Point, ScalarArrays, Scalars,
-    WellKnownTypes,
+    arbitrary,
+    proto::{
+        contains_group, message_with_oneof, ComplexType, ContainsGroup, MessageWithAliasedEnum,
+        MessageWithOneof, Point, ScalarArrays, Scalars, WellKnownTypes,
+    },
+    test_file_descriptor,
 };
 
 #[test]

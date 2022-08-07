@@ -1,6 +1,9 @@
 // Protobuf definitions used in doctests. file_descriptor_set.bin should be the compiled version of this file.
 syntax = "proto3";
 
+import public "google/protobuf/empty.proto";
+import public "google/protobuf/any.proto";
+
 package package;
 
 message MyMessage {

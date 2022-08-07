@@ -3,7 +3,7 @@ use std::{collections::BTreeMap, iter::FromIterator};
 use criterion::{criterion_group, criterion_main, Criterion};
 use prost::Message;
 use prost_reflect::{DynamicMessage, ReflectMessage};
-use prost_reflect_tests::WellKnownTypes;
+use prost_reflect_tests::proto::WellKnownTypes;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 
 fn sample_wkt() -> WellKnownTypes {

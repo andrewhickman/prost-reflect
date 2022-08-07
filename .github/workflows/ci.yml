@@ -41,6 +41,12 @@ jobs:
         uses: arduino/setup-protoc@v1
       - run: cargo fmt --all -- --check
       - run: cargo clippy --all -- -D warnings
+      - run: cargo check
+      - run: cargo check --package prost-reflect --no-default-features
+      - run: cargo check --package prost-reflect --no-default-features --features=text-format
+      - run: cargo check --package prost-reflect --no-default-features --features=serde
+      - run: cargo check --package prost-reflect --no-default-features --features=reflect-well-known-types
+      - run: cargo check --package prost-reflect --all-features
       - name: Check README.md is up-to-date
         shell: pwsh
         run: |

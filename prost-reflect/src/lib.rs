@@ -33,3 +33,7 @@ pub use self::dynamic::{DeserializeOptions, SerializeOptions};
 #[cfg(feature = "derive")]
 #[cfg_attr(docsrs, doc(cfg(feature = "derive")))]
 pub use prost_reflect_derive::ReflectMessage;
+
+#[cfg(feature = "text-format")]
+#[cfg_attr(docsrs, doc(cfg(feature = "text-format")))]
+pub use self::dynamic::text_format;

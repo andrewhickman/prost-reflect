@@ -21,7 +21,8 @@ prost = "0.11.0"
 prost-reflect = { path = "../prost-reflect", features = [
     "serde",
     "derive",
-    "reflect-well-known-types"
+    "reflect-well-known-types",
+    "text-format"
 ] }
 prost-types = "0.11.0"
 

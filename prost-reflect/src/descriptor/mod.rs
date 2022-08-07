@@ -21,6 +21,9 @@ use self::service::ServiceDescriptorInner;
 pub(crate) const MAP_ENTRY_KEY_NUMBER: u32 = 1;
 pub(crate) const MAP_ENTRY_VALUE_NUMBER: u32 = 2;
 
+pub(crate) const GOOGLE_APIS_DOMAIN: &str = "type.googleapis.com/";
+pub(crate) const GOOGLE_PROD_DOMAIN: &str = "type.googleprod.com/";
+
 /// A `DescriptorPool` is a collection of related descriptors. Typically it will be created from
 /// a [`FileDescriptorSet`] output by the protobuf compiler (see [`DescriptorPool::from_file_descriptor_set`])
 /// but it may also be built up manually by adding individual files.

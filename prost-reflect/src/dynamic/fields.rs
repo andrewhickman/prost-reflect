@@ -11,6 +11,7 @@ use crate::{
 use super::unknown::UnknownField;
 
 pub(super) trait FieldDescriptorLike: fmt::Debug {
+    fn text_name(&self) -> &str;
     fn number(&self) -> u32;
     fn default_value(&self) -> Value;
     fn is_default_value(&self, value: &Value) -> bool;
@@ -206,6 +207,10 @@ impl ValueOrUnknown {
 }
 
 impl FieldDescriptorLike for FieldDescriptor {
+    fn text_name(&self) -> &str {
+        self.name()
+    }
+
     fn number(&self) -> u32 {
         self.number()
     }
@@ -256,6 +261,10 @@ impl FieldDescriptorLike for FieldDescriptor {
 }
 
 impl FieldDescriptorLike for ExtensionDescriptor {
+    fn text_name(&self) -> &str {
+        self.json_name()
+    }
+
     fn number(&self) -> u32 {
         self.number()
     }

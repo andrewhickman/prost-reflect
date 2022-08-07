@@ -1,122 +1,18 @@
-use std::fmt::{self, Display, Formatter, Write};
+use std::fmt::{self, Write};
 
 use prost::Message;
 
 use crate::{
+    descriptor::{GOOGLE_APIS_DOMAIN, GOOGLE_PROD_DOMAIN},
     dynamic::{
         fields::ValueAndDescriptor,
+        text_format::FormatOptions,
         unknown::{UnknownField, UnknownFieldSet},
     },
     DynamicMessage, Kind, MapKey, Value,
 };
 
-use super::SetFieldError;
-
-struct FormatOptions {
-    pub pretty: bool,
-    pub skip_unknown_fields: bool,
-    pub expand_any: bool,
-}
-
-impl Display for Value {
-    /// Formats this value using the protobuf text format.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # use std::{collections::HashMap, iter::FromIterator};
-    /// # use prost_reflect::{MapKey, Value};
-    /// assert_eq!(format!("{}", Value::String("hello".to_owned())), "\"hello\"");
-    /// assert_eq!(format!("{}", Value::List(vec![Value::I32(1), Value::I32(2)])), "[1,2]");
-    /// assert_eq!(format!("{}", Value::Map(HashMap::from_iter([(MapKey::I32(1), Value::U32(2))]))), "[{key:1,value:2}]");
-    /// // The alternate format specifier may be used to indent the output
-    /// assert_eq!(format!("{:#}", Value::Map(HashMap::from_iter([(MapKey::I32(1), Value::U32(2))]))), "[{\n  key: 1\n  value: 2\n}]");
-    /// ```
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        Writer::new(FormatOptions::from_formatter(f), f).fmt_value(self, None)
-    }
-}
-
-impl Display for DynamicMessage {
-    /// Formats this message using the protobuf text format.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # use prost::Message;
-    /// # use prost_types::FileDescriptorSet;
-    /// # use prost_reflect::{DynamicMessage, DescriptorPool, Value};
-    /// # let pool = DescriptorPool::decode(include_bytes!("../file_descriptor_set.bin").as_ref()).unwrap();
-    /// # let message_descriptor = pool.get_message_by_name("package.MyMessage").unwrap();
-    /// let dynamic_message = DynamicMessage::decode(message_descriptor, b"\x08\x96\x01\x1a\x02\x10\x42".as_ref()).unwrap();
-    /// assert_eq!(format!("{}", dynamic_message), "foo:150,nested{bar:66}");
-    /// // The alternate format specifier may be used to pretty-print the output
-    /// assert_eq!(format!("{:#}", dynamic_message), "foo: 150\nnested {\n  bar: 66\n}");
-    /// ```
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        Writer::new(FormatOptions::from_formatter(f), f).fmt_message(self)
-    }
-}
-
-impl Display for UnknownFieldSet {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        Writer::new(
-            FormatOptions {
-                skip_unknown_fields: false,
-                ..FormatOptions::from_formatter(f)
-            },
-            f,
-        )
-        .fmt_delimited(self.fields(), Writer::fmt_unknown_field)
-    }
-}
-
-impl Display for SetFieldError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            SetFieldError::NotFound => write!(f, "field not found"),
-            SetFieldError::InvalidType { field, value } => {
-                write!(f, "expected a value of type '")?;
-                if field.is_map() {
-                    let entry = field.kind();
-                    let entry = entry.as_message().unwrap();
-                    write!(
-                        f,
-                        "map<{:?}, {:?}>",
-                        entry.map_entry_key_field().kind(),
-                        entry.map_entry_value_field().kind()
-                    )?;
-                } else if field.is_list() {
-                    write!(f, "repeated {:?}", field.kind())?;
-                } else {
-                    write!(f, "{:?}", field.kind())?;
-                }
-                write!(f, "', but found '{}'", value)
-            }
-        }
-    }
-}
-
-impl FormatOptions {
-    fn from_formatter(f: &mut Formatter) -> Self {
-        FormatOptions {
-            pretty: f.alternate(),
-            ..Default::default()
-        }
-    }
-}
-
-impl Default for FormatOptions {
-    fn default() -> Self {
-        FormatOptions {
-            pretty: false,
-            skip_unknown_fields: true,
-            expand_any: true,
-        }
-    }
-}
-
-struct Writer<'a, W> {
+pub(in crate::dynamic::text_format) struct Writer<'a, W> {
     options: FormatOptions,
     f: &'a mut W,
     indent_level: u32,
@@ -126,7 +22,7 @@ impl<'a, W> Writer<'a, W>
 where
     W: Write,
 {
-    fn new(options: FormatOptions, f: &'a mut W) -> Self {
+    pub fn new(options: FormatOptions, f: &'a mut W) -> Self {
         Writer {
             options,
             f,
@@ -134,7 +30,7 @@ where
         }
     }
 
-    fn fmt_message(&mut self, message: &DynamicMessage) -> fmt::Result {
+    pub fn fmt_message(&mut self, message: &DynamicMessage) -> fmt::Result {
         if self.options.expand_any {
             if let Some((type_url, body)) = as_any(message) {
                 self.f.write_char('[')?;
@@ -156,15 +52,27 @@ where
         }
     }
 
-    fn fmt_value(&mut self, value: &Value, kind: Option<&Kind>) -> fmt::Result {
+    pub fn fmt_value(&mut self, value: &Value, kind: Option<&Kind>) -> fmt::Result {
         match value {
             Value::Bool(value) => write!(self.f, "{}", value),
             Value::I32(value) => write!(self.f, "{}", value),
             Value::I64(value) => write!(self.f, "{}", value),
             Value::U32(value) => write!(self.f, "{}", value),
             Value::U64(value) => write!(self.f, "{}", value),
-            Value::F32(value) => write!(self.f, "{}", value),
-            Value::F64(value) => write!(self.f, "{}", value),
+            Value::F32(value) => {
+                if value.fract() == 0.0 {
+                    write!(self.f, "{:.1}", value)
+                } else {
+                    write!(self.f, "{}", value)
+                }
+            }
+            Value::F64(value) => {
+                if value.fract() == 0.0 {
+                    write!(self.f, "{:.1}", value)
+                } else {
+                    write!(self.f, "{}", value)
+                }
+            }
             Value::String(s) => self.fmt_string(s.as_bytes()),
             Value::Bytes(s) => self.fmt_string(s.as_ref()),
             Value::EnumNumber(value) => {
@@ -248,15 +156,7 @@ where
                 self.fmt_field_value(&value, Some(&desc.kind()))
             }
             ValueAndDescriptor::Extension(value, desc) => {
-                if desc.is_group() {
-                    write!(
-                        self.f,
-                        "[{}]",
-                        desc.kind().as_message().unwrap().full_name()
-                    )?;
-                } else {
-                    write!(self.f, "[{}]", desc.full_name())?;
-                }
+                write!(self.f, "[{}]", desc.full_name())?;
                 self.fmt_field_value(&value, Some(&desc.kind()))
             }
             ValueAndDescriptor::Unknown(number, values) => self.fmt_delimited(
@@ -409,8 +309,8 @@ fn as_any(message: &DynamicMessage) -> Option<(String, DynamicMessage)> {
     let any = message.transcode_to::<prost_types::Any>().ok()?;
     let message_name = any
         .type_url
-        .strip_prefix("type.googleapis.com/")
-        .or_else(|| any.type_url.strip_prefix("type.googleprod.com/"))?;
+        .strip_prefix(GOOGLE_APIS_DOMAIN)
+        .or_else(|| any.type_url.strip_prefix(GOOGLE_PROD_DOMAIN))?;
 
     let desc = message
         .desc
@@ -420,16 +320,40 @@ fn as_any(message: &DynamicMessage) -> Option<(String, DynamicMessage)> {
     Some((any.type_url, body))
 }
 
-#[test]
-fn fmt_unknown_scalar() {
-    let value = UnknownFieldSet::decode(b"\x09\x9a\x99\x99\x99\x99\x99\xf1\x3f\x15\xcd\xcc\x0c\x40\x18\x03\x20\x04\x28\x05\x30\x06\x38\x0e\x40\x10\x4d\x09\x00\x00\x00\x51\x0a\x00\x00\x00\x00\x00\x00\x00\x5d\x0b\x00\x00\x00\x61\x0c\x00\x00\x00\x00\x00\x00\x00\x68\x01\x72\x01\x35\x7a\x07\x69\xa6\xbe\x6d\xb6\xff\x58".as_ref()).unwrap();
-    assert_eq!(
-        format!("{}", value),
-        r#"1:0x3ff199999999999a,2:0x400ccccd,3:3,4:4,5:5,6:6,7:14,8:16,9:0x00000009,10:0x000000000000000a,11:0x0000000b,12:0x000000000000000c,13:1,14:"5",15:"i\246\276m\266\377X""#
-    );
-    assert_eq!(
-        format!("{:#}", value),
-        r#"1: 0x3ff199999999999a
+#[cfg(test)]
+#[cfg(feature = "text-format")]
+mod tests {
+    use super::*;
+
+    fn fmt_unknown(value: &UnknownFieldSet) -> String {
+        let mut string = String::new();
+        Writer::new(FormatOptions::new().skip_unknown_fields(false), &mut string)
+            .fmt_delimited(value.fields(), Writer::fmt_unknown_field)
+            .unwrap();
+        string
+    }
+
+    fn fmt_unknown_pretty(value: &UnknownFieldSet) -> String {
+        let mut string = String::new();
+        Writer::new(
+            FormatOptions::new().skip_unknown_fields(false).pretty(true),
+            &mut string,
+        )
+        .fmt_delimited(value.fields(), Writer::fmt_unknown_field)
+        .unwrap();
+        string
+    }
+
+    #[test]
+    fn fmt_unknown_scalar() {
+        let value = UnknownFieldSet::decode(b"\x09\x9a\x99\x99\x99\x99\x99\xf1\x3f\x15\xcd\xcc\x0c\x40\x18\x03\x20\x04\x28\x05\x30\x06\x38\x0e\x40\x10\x4d\x09\x00\x00\x00\x51\x0a\x00\x00\x00\x00\x00\x00\x00\x5d\x0b\x00\x00\x00\x61\x0c\x00\x00\x00\x00\x00\x00\x00\x68\x01\x72\x01\x35\x7a\x07\x69\xa6\xbe\x6d\xb6\xff\x58".as_ref()).unwrap();
+        assert_eq!(
+            fmt_unknown(&value),
+            r#"1:0x3ff199999999999a,2:0x400ccccd,3:3,4:4,5:5,6:6,7:14,8:16,9:0x00000009,10:0x000000000000000a,11:0x0000000b,12:0x000000000000000c,13:1,14:"5",15:"i\246\276m\266\377X""#
+        );
+        assert_eq!(
+            fmt_unknown_pretty(&value),
+            r#"1: 0x3ff199999999999a
 2: 0x400ccccd
 3: 3
 4: 4
@@ -444,19 +368,19 @@ fn fmt_unknown_scalar() {
 13: 1
 14: "5"
 15: "i\246\276m\266\377X""#
-    );
-}
+        );
+    }
 
-#[test]
-fn fmt_unknown_complex_type() {
-    let value = UnknownFieldSet::decode(b"\x0a\x15\x0a\x01\x31\x12\x10\x09\x9a\x99\x99\x99\x99\x99\xf1\x3f\x15\xcd\xcc\x0c\x40\x18\x03\x12\x0d\x08\x03\x12\x09\x38\x0e\x40\x10\x4d\x09\x00\x00\x00\x1a\x16\x5d\x0b\x00\x00\x00\x61\x0c\x00\x00\x00\x00\x00\x00\x00\x68\x01\x72\x01\x35\x7a\x01\x36\x22\x0e\x00\x01\x02\x03\xfc\xff\xff\xff\xff\xff\xff\xff\xff\x01\x28\x01".as_ref()).unwrap();
-    assert_eq!(
-        format!("{}", value),
-        r#"1{1:"1",2{1:0x3ff199999999999a,2:0x400ccccd,3:3}},2{1:3,2{7:14,8:16,9:0x00000009}},3{11:0x0000000b,12:0x000000000000000c,13:1,14:"5",15:"6"},4:"\000\001\002\003\374\377\377\377\377\377\377\377\377\001",5:1"#
-    );
-    assert_eq!(
-        format!("{:#}", value),
-        r#"1 {
+    #[test]
+    fn fmt_unknown_complex_type() {
+        let value = UnknownFieldSet::decode(b"\x0a\x15\x0a\x01\x31\x12\x10\x09\x9a\x99\x99\x99\x99\x99\xf1\x3f\x15\xcd\xcc\x0c\x40\x18\x03\x12\x0d\x08\x03\x12\x09\x38\x0e\x40\x10\x4d\x09\x00\x00\x00\x1a\x16\x5d\x0b\x00\x00\x00\x61\x0c\x00\x00\x00\x00\x00\x00\x00\x68\x01\x72\x01\x35\x7a\x01\x36\x22\x0e\x00\x01\x02\x03\xfc\xff\xff\xff\xff\xff\xff\xff\xff\x01\x28\x01".as_ref()).unwrap();
+        assert_eq!(
+            fmt_unknown(&value),
+            r#"1{1:"1",2{1:0x3ff199999999999a,2:0x400ccccd,3:3}},2{1:3,2{7:14,8:16,9:0x00000009}},3{11:0x0000000b,12:0x000000000000000c,13:1,14:"5",15:"6"},4:"\000\001\002\003\374\377\377\377\377\377\377\377\377\001",5:1"#
+        );
+        assert_eq!(
+            fmt_unknown_pretty(&value),
+            r#"1 {
   1: "1"
   2 {
     1: 0x3ff199999999999a
@@ -481,19 +405,19 @@ fn fmt_unknown_complex_type() {
 }
 4: "\000\001\002\003\374\377\377\377\377\377\377\377\377\001"
 5: 1"#
-    );
-}
+        );
+    }
 
-#[test]
-fn fmt_unknown_group() {
-    let value = UnknownFieldSet::decode(b"\x0b\x0a\x03\x62\x61\x72\x0c\x13\x0a\x03\x66\x6f\x6f\x10\xfb\xff\xff\xff\xff\xff\xff\xff\xff\x01\x14\x1b\x0a\x00\x1c\x1b\x0a\x05\x68\x65\x6c\x6c\x6f\x10\x0a\x1c".as_ref()).unwrap();
-    assert_eq!(
-        format!("{}", value),
-        r#"1{1:"bar"},2{1:"foo",2:18446744073709551611},3{1:""},3{1:"hello",2:10}"#
-    );
-    assert_eq!(
-        format!("{:#}", value),
-        r#"1 {
+    #[test]
+    fn fmt_unknown_group() {
+        let value = UnknownFieldSet::decode(b"\x0b\x0a\x03\x62\x61\x72\x0c\x13\x0a\x03\x66\x6f\x6f\x10\xfb\xff\xff\xff\xff\xff\xff\xff\xff\x01\x14\x1b\x0a\x00\x1c\x1b\x0a\x05\x68\x65\x6c\x6c\x6f\x10\x0a\x1c".as_ref()).unwrap();
+        assert_eq!(
+            fmt_unknown(&value),
+            r#"1{1:"bar"},2{1:"foo",2:18446744073709551611},3{1:""},3{1:"hello",2:10}"#
+        );
+        assert_eq!(
+            fmt_unknown_pretty(&value),
+            r#"1 {
   1: "bar"
 }
 2 {
@@ -507,5 +431,6 @@ fn fmt_unknown_group() {
   1: "hello"
   2: 10
 }"#
-    );
+        );
+    }
 }
