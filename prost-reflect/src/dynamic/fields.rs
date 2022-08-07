@@ -165,18 +165,29 @@ impl DynamicMessageFieldSet {
             .fields()
             .filter(move |f| !f.supports_presence() || self.has(f))
             .map(move |f| ValueAndDescriptor::Field(self.get(&f), f));
-        let extensions = message
-            .extensions()
-            .filter(move |f| !f.supports_presence() || self.has(f))
-            .map(move |f| ValueAndDescriptor::Extension(self.get(&f), f));
-        let unknown = self.fields.iter().filter_map(|(&tag, value)| {
-            if let ValueOrUnknown::Unknown(unknowns) = value {
-                Some(ValueAndDescriptor::Unknown(tag, unknowns.as_slice()))
-            } else {
-                None
-            }
-        });
-        fields.chain(extensions).chain(unknown)
+        let others = self
+            .fields
+            .iter()
+            .filter_map(move |(&number, value)| match value {
+                ValueOrUnknown::Value(value) => {
+                    if let Some(extension) = message.get_extension(number) {
+                        if extension.has(value) {
+                            Some(ValueAndDescriptor::Extension(
+                                Cow::Borrowed(value),
+                                extension,
+                            ))
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    }
+                }
+                ValueOrUnknown::Unknown(unknown) => {
+                    Some(ValueAndDescriptor::Unknown(number, unknown.as_slice()))
+                }
+            });
+        fields.chain(others)
     }
 
     pub(super) fn clear_all(&mut self) {
