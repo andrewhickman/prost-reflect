@@ -828,21 +828,42 @@ fn roundtrip_file_descriptor_set() {
 
 #[test]
 fn roundtrip_group() {
-    assert!(test_file_descriptor()
+    let message = test_file_descriptor()
         .get_message_by_name("test2.ContainsGroup")
-        .unwrap()
-        .get_field_by_name("groupmessage")
+        .unwrap();
+    assert!(message
+        .get_field_by_name("requiredgroup")
         .unwrap()
         .is_group());
+    assert!(message
+        .get_field_by_name("optionalgroup")
+        .unwrap()
+        .is_group());
+    assert!(message
+        .get_field_by_name("repeatedgroup")
+        .unwrap()
+        .is_group());
+    assert!(message
+        .get_field_by_name("repeatedgroup")
+        .unwrap()
+        .is_list());
 
     roundtrip(&ContainsGroup {
-        groupmessage: vec![
-            contains_group::GroupMessage {
+        requiredgroup: Some(contains_group::RequiredGroup {
+            a: "bar".to_string(),
+            b: None,
+        }),
+        optionalgroup: Some(contains_group::OptionalGroup {
+            c: "foo".to_string(),
+            d: Some(-5),
+        }),
+        repeatedgroup: vec![
+            contains_group::RepeatedGroup {
                 ..Default::default()
             },
-            contains_group::GroupMessage {
-                url: "hello".to_string(),
-                id: Some(10),
+            contains_group::RepeatedGroup {
+                e: "hello".to_string(),
+                f: Some(10),
             },
         ],
     })

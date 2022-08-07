@@ -32,8 +32,16 @@ enum Proto2Enum {
 }
 
 message ContainsGroup {
-  repeated group GroupMessage = 1 {
-    required string url = 2;
-    optional int32 id = 3;
+  optional group RequiredGroup = 1 {
+    required string a = 1;
+    optional int32 b = 2;
+  }
+  optional group OptionalGroup = 2 {
+    required string c = 1;
+    optional int32 d = 2;
+  }
+  repeated group RepeatedGroup = 3 {
+    required string e = 1;
+    optional int32 f = 2;
   }
 }

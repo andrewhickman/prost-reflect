@@ -11,8 +11,9 @@ use prost_types::FileDescriptorSet;
 use serde_json::json;
 
 use crate::{
-    arbitrary, message_with_oneof, test_file_descriptor, ComplexType, MessageWithAliasedEnum,
-    MessageWithOneof, Point, ScalarArrays, Scalars, WellKnownTypes,
+    arbitrary, contains_group, message_with_oneof, test_file_descriptor, ComplexType,
+    ContainsGroup, MessageWithAliasedEnum, MessageWithOneof, Point, ScalarArrays, Scalars,
+    WellKnownTypes,
 };
 
 #[test]
@@ -1211,6 +1212,30 @@ fn serialize_timestamp_seconds_out_of_range() {
 fn deserialize_timestamp_seconds_out_of_range() {
     let _: prost_types::Timestamp =
         from_json(json!("0000-01-01T00:00:00Z"), "google.protobuf.Timestamp");
+}
+
+#[test]
+fn roundtrip_group() {
+    roundtrip_json(&ContainsGroup {
+        requiredgroup: Some(contains_group::RequiredGroup {
+            a: "bar".to_string(),
+            b: None,
+        }),
+        optionalgroup: Some(contains_group::OptionalGroup {
+            c: "foo".to_string(),
+            d: Some(-5),
+        }),
+        repeatedgroup: vec![
+            contains_group::RepeatedGroup {
+                ..Default::default()
+            },
+            contains_group::RepeatedGroup {
+                e: "hello".to_string(),
+                f: Some(10),
+            },
+        ],
+    })
+    .unwrap();
 }
 
 proptest! {
