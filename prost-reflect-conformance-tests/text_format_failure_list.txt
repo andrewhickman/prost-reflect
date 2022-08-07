@@ -1,0 +1,5 @@
+# A way to print unknown fields in text format is not currently exposed
+Recommended.Proto3.ProtobufInput.GroupUnknownFields_Print.TextFormatOutput
+Recommended.Proto3.ProtobufInput.MessageUnknownFields_Print.TextFormatOutput
+Recommended.Proto3.ProtobufInput.RepeatedUnknownFields_Print.TextFormatOutput
+Recommended.Proto3.ProtobufInput.ScalarUnknownFields_Print.TextFormatOutput

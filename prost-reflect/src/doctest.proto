@@ -9,4 +9,6 @@ message MyMessage {
     oneof optional {
         int32 bar = 2;
     }
+
+    MyMessage nested = 3;
 }

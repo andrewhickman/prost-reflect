@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added support for formatting dynamic messages using the protobuf [text format](https://developers.google.com/protocol-buffers/docs/text-format-spec), through the new [`Display`](https://docs.rs/prost-reflect/latest/prost_reflect/struct.DynamicMessage.html#impl-Display) implementation for `DynamicMessage`.
+
 ## [0.9.1] - 2022-08-01
 
 ### Fixed

@@ -24,7 +24,9 @@ fn test_conformance() {
     let status = Command::new(conformance::test_runner())
         .arg("--enforce_recommended")
         .arg("--failure_list")
-        .arg("failing_tests.txt")
+        .arg("failure_list.txt")
+        .arg("--text_format_failure_list")
+        .arg("text_format_failure_list.txt")
         .arg(proto_conformance)
         .status()
         .expect("failed to execute conformance-test-runner");

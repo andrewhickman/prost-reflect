@@ -41,8 +41,8 @@ pub(super) enum ValueOrUnknown {
 }
 
 pub(super) enum ValueAndDescriptor<'a> {
-    Field(&'a Value, FieldDescriptor),
-    Extension(&'a Value, ExtensionDescriptor),
+    Field(Cow<'a, Value>, FieldDescriptor),
+    Extension(Cow<'a, Value>, ExtensionDescriptor),
     Unknown(u32, &'a [UnknownField]),
 }
 
@@ -134,13 +134,16 @@ impl DynamicMessageFieldSet {
                 ValueOrUnknown::Value(value) => {
                     if let Some(field) = message.get_field(number) {
                         if field.has(value) {
-                            Some(ValueAndDescriptor::Field(value, field))
+                            Some(ValueAndDescriptor::Field(Cow::Borrowed(value), field))
                         } else {
                             None
                         }
                     } else if let Some(extension) = message.get_extension(number) {
                         if extension.has(value) {
-                            Some(ValueAndDescriptor::Extension(value, extension))
+                            Some(ValueAndDescriptor::Extension(
+                                Cow::Borrowed(value),
+                                extension,
+                            ))
                         } else {
                             None
                         }
@@ -152,6 +155,28 @@ impl DynamicMessageFieldSet {
                     Some(ValueAndDescriptor::Unknown(number, unknown.as_slice()))
                 }
             })
+    }
+
+    pub(crate) fn iter_include_default<'a>(
+        &'a self,
+        message: &'a MessageDescriptor,
+    ) -> impl Iterator<Item = ValueAndDescriptor> + 'a {
+        let fields = message
+            .fields()
+            .filter(move |f| !f.supports_presence() || self.has(f))
+            .map(move |f| ValueAndDescriptor::Field(self.get(&f), f));
+        let extensions = message
+            .extensions()
+            .filter(move |f| !f.supports_presence() || self.has(f))
+            .map(move |f| ValueAndDescriptor::Extension(self.get(&f), f));
+        let unknown = self.fields.iter().filter_map(|(&tag, value)| {
+            if let ValueOrUnknown::Unknown(unknowns) = value {
+                Some(ValueAndDescriptor::Unknown(tag, unknowns.as_slice()))
+            } else {
+                None
+            }
+        });
+        fields.chain(extensions).chain(unknown)
     }
 
     pub(super) fn clear_all(&mut self) {

@@ -74,45 +74,41 @@ where
             map.serialize_entry(
                 name,
                 &SerializeWrapper {
-                    value: &ValueAndKind { value, kind },
+                    value: &ValueAndKind {
+                        value: value.as_ref(),
+                        kind,
+                    },
                     options,
                 },
             )?;
         }
     } else {
-        for field_desc in value.desc.fields() {
-            if !field_desc.supports_presence() || value.fields.has(&field_desc) {
-                let name = if options.use_proto_field_name {
-                    field_desc.name()
-                } else {
-                    field_desc.json_name()
-                };
+        for field in value.fields.iter_include_default(&value.desc) {
+            let (name, value, ref kind) = match field {
+                ValueAndDescriptor::Field(value, ref field_desc) => {
+                    let name = if options.use_proto_field_name {
+                        field_desc.name()
+                    } else {
+                        field_desc.json_name()
+                    };
+                    (name, value, field_desc.kind())
+                }
+                ValueAndDescriptor::Extension(value, ref extension_desc) => {
+                    (extension_desc.json_name(), value, extension_desc.kind())
+                }
+                ValueAndDescriptor::Unknown(_, _) => continue,
+            };
 
-                map.serialize_entry(
-                    name,
-                    &SerializeWrapper {
-                        value: &ValueAndKind {
-                            value: value.fields.get(&field_desc).as_ref(),
-                            kind: &field_desc.kind(),
-                        },
-                        options,
+            map.serialize_entry(
+                name,
+                &SerializeWrapper {
+                    value: &ValueAndKind {
+                        value: value.as_ref(),
+                        kind,
                     },
-                )?;
-            }
-        }
-        for extension_desc in value.desc.extensions() {
-            if !extension_desc.supports_presence() || value.fields.has(&extension_desc) {
-                map.serialize_entry(
-                    extension_desc.json_name(),
-                    &SerializeWrapper {
-                        value: &ValueAndKind {
-                            value: value.fields.get(&extension_desc).as_ref(),
-                            kind: &extension_desc.kind(),
-                        },
-                        options,
-                    },
-                )?;
-            }
+                    options,
+                },
+            )?;
         }
     }
 

@@ -26,6 +26,18 @@ pub(crate) struct UnknownFieldSet {
     fields: BTreeMap<u32, Vec<UnknownField>>,
 }
 
+impl UnknownFieldSet {
+    pub(crate) fn is_empty(&self) -> bool {
+        self.fields.is_empty()
+    }
+
+    pub(crate) fn fields(&self) -> impl Iterator<Item = (u32, &'_ UnknownField)> {
+        self.fields
+            .iter()
+            .flat_map(|(&number, field)| field.iter().map(move |f| (number, f)))
+    }
+}
+
 impl Message for UnknownFieldSet {
     fn encode_raw<B>(&self, buf: &mut B)
     where

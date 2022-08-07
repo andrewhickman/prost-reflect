@@ -74,10 +74,11 @@ fn handle_request(request: ConformanceRequest) -> conformance_response::Result {
         TestCategory::UnspecifiedTest => (),
         TestCategory::BinaryTest => (),
         TestCategory::JsonTest => (),
+        TestCategory::TextFormatTest => (),
         TestCategory::JsonIgnoreUnknownParsingTest => {
             json_deserialize_options = json_deserialize_options.deny_unknown_fields(false);
         }
-        TestCategory::JspbTest | TestCategory::TextFormatTest => {
+        TestCategory::JspbTest => {
             return conformance_response::Result::Skipped("unsupported test category".to_string())
         }
     }
@@ -124,7 +125,7 @@ fn handle_request(request: ConformanceRequest) -> conformance_response::Result {
             conformance_response::Result::Skipped("JSPB output is not supported".to_string())
         }
         WireFormat::TextFormat => {
-            conformance_response::Result::Skipped("TEXT_FORMAT output is not supported".to_string())
+            conformance_response::Result::TextPayload(dynamic_message.to_string())
         }
         WireFormat::Json => match serde_json::to_string(&dynamic_message) {
             Ok(s) => conformance_response::Result::JsonPayload(s),

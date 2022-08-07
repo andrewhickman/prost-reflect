@@ -9,6 +9,8 @@ mod decode;
 mod desc;
 #[cfg(test)]
 mod json;
+#[cfg(test)]
+mod text_format;
 
 include!(concat!(env!("OUT_DIR"), "/test.rs"));
 include!(concat!(env!("OUT_DIR"), "/test2.rs"));
