@@ -80,14 +80,19 @@ impl Display for SetFieldError {
                 if field.is_map() {
                     let entry = field.kind();
                     let entry = entry.as_message().unwrap();
-                    write!(f, "map<{:?}, {:?}>", entry.map_entry_key_field().kind(), entry.map_entry_value_field().kind())?;
+                    write!(
+                        f,
+                        "map<{:?}, {:?}>",
+                        entry.map_entry_key_field().kind(),
+                        entry.map_entry_value_field().kind()
+                    )?;
                 } else if field.is_list() {
                     write!(f, "repeated {:?}", field.kind())?;
                 } else {
                     write!(f, "{:?}", field.kind())?;
                 }
                 write!(f, "', but found '{}'", value)
-            },
+            }
         }
     }
 }

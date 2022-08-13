@@ -92,7 +92,7 @@ pub enum SetFieldError {
         field: FieldDescriptor,
         /// The invalid value.
         value: Value,
-    }
+    },
 }
 
 impl DynamicMessage {
@@ -220,12 +220,19 @@ impl DynamicMessage {
     ///     value: Value::String("bar".to_owned()),
     /// }));
     /// ```
-    pub fn try_set_field(&mut self, field_desc: &FieldDescriptor, value: Value) -> Result<(), SetFieldError> {
+    pub fn try_set_field(
+        &mut self,
+        field_desc: &FieldDescriptor,
+        value: Value,
+    ) -> Result<(), SetFieldError> {
         if value.is_valid_for_field(field_desc) {
             self.fields.set(field_desc, value);
             Ok(())
         } else {
-            Err(SetFieldError::InvalidType { field: field_desc.clone(), value })
+            Err(SetFieldError::InvalidType {
+                field: field_desc.clone(),
+                value,
+            })
         }
     }
 
@@ -298,7 +305,11 @@ impl DynamicMessage {
     /// }));
     /// assert_eq!(dynamic_message.try_set_field_by_number(42, Value::I32(5)), Err(SetFieldError::NotFound));
     /// ```
-    pub fn try_set_field_by_number(&mut self, number: u32, value: Value) -> Result<(), SetFieldError> {
+    pub fn try_set_field_by_number(
+        &mut self,
+        number: u32,
+        value: Value,
+    ) -> Result<(), SetFieldError> {
         if let Some(field_desc) = self.desc.get_field(number) {
             self.try_set_field(&field_desc, value)
         } else {
@@ -827,6 +838,28 @@ impl Value {
     pub fn as_map_mut(&mut self) -> Option<&mut HashMap<MapKey, Value>> {
         match self {
             Value::Map(value) => Some(value),
+            _ => None,
+        }
+    }
+
+    /// Converts this value into a [`MapKey`], or `None` if it is not a valid map key type.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use prost_reflect::{Value, MapKey, bytes::Bytes};
+    /// assert_eq!(Value::I32(5).into_map_key(), Some(MapKey::I32(5)));
+    /// assert_eq!(Value::String("foo".to_owned()).into_map_key(), Some(MapKey::String("foo".to_owned())));
+    /// assert_eq!(Value::Bytes(Bytes::from_static(b"bytes")).into_map_key(), None);
+    /// ```
+    pub fn into_map_key(self) -> Option<MapKey> {
+        match self {
+            Value::Bool(value) => Some(MapKey::Bool(value)),
+            Value::I32(value) => Some(MapKey::I32(value)),
+            Value::I64(value) => Some(MapKey::I64(value)),
+            Value::U32(value) => Some(MapKey::U32(value)),
+            Value::U64(value) => Some(MapKey::U64(value)),
+            Value::String(value) => Some(MapKey::String(value)),
             _ => None,
         }
     }

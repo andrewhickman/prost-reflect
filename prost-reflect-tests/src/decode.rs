@@ -77,7 +77,13 @@ fn try_set_field_validates_type() {
         message.transcode_to_dynamic()
     };
 
-    assert_eq!(dynamic.try_set_field_by_name("double", Value::U32(5)).unwrap_err().to_string(), "expected a value of type 'double', but found '5'");
+    assert_eq!(
+        dynamic
+            .try_set_field_by_name("double", Value::U32(5))
+            .unwrap_err()
+            .to_string(),
+        "expected a value of type 'double', but found '5'"
+    );
 }
 
 #[test]
