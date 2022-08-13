@@ -60,7 +60,7 @@ fn clear_message() {
 }
 
 #[test]
-#[should_panic(expected = "nvalid value U32(5) for field")]
+#[should_panic(expected = "InvalidType")]
 fn set_field_validates_type() {
     let mut dynamic = {
         let message = &Scalars::default();
@@ -68,6 +68,16 @@ fn set_field_validates_type() {
     };
 
     dynamic.set_field_by_name("double", Value::U32(5));
+}
+
+#[test]
+fn try_set_field_validates_type() {
+    let mut dynamic = {
+        let message = &Scalars::default();
+        message.transcode_to_dynamic()
+    };
+
+    assert_eq!(dynamic.try_set_field_by_name("double", Value::U32(5)).unwrap_err().to_string(), "expected a value of type 'double', but found '5'");
 }
 
 #[test]

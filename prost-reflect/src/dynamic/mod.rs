@@ -81,6 +81,20 @@ pub enum MapKey {
     String(String),
 }
 
+/// Error type returned by [`DynamicMessage::try_set_field()`].
+#[derive(Debug, Clone, PartialEq)]
+pub enum SetFieldError {
+    /// The field was not found.
+    NotFound,
+    /// The value type was not compatible with the field type (see [`Value::is_valid_for_field`]).
+    InvalidType {
+        /// The descriptor for the field which could not be set.
+        field: FieldDescriptor,
+        /// The invalid value.
+        value: Value,
+    }
+}
+
 impl DynamicMessage {
     /// Creates a new, empty instance of [`DynamicMessage`] for the message type specified by the [`MessageDescriptor`].
     pub fn new(desc: MessageDescriptor) -> Self {
@@ -182,9 +196,37 @@ impl DynamicMessage {
     /// # Panics
     ///
     /// This method may panic if the value type is not compatible with the field type, as defined
-    /// by [`Value::is_valid_for_field`].
+    /// by [`Value::is_valid_for_field`]. Consider using [`try_set_field()`](DynamicMessage::try_set_field)
+    /// for a non-panicking version.
     pub fn set_field(&mut self, field_desc: &FieldDescriptor, value: Value) {
-        self.fields.set(field_desc, value);
+        self.try_set_field(field_desc, value).unwrap()
+    }
+
+    /// Tries to set the value of the given field, returning an error if the value is an invalid type.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use prost::Message;
+    /// # use prost_types::FileDescriptorSet;
+    /// # use prost_reflect::{DynamicMessage, DescriptorPool, Value, SetFieldError};
+    /// # let pool = DescriptorPool::decode(include_bytes!("../file_descriptor_set.bin").as_ref()).unwrap();
+    /// # let message_descriptor = pool.get_message_by_name("package.MyMessage").unwrap();
+    /// let mut dynamic_message = DynamicMessage::new(message_descriptor.clone());
+    /// let foo = message_descriptor.get_field_by_name("foo").unwrap();
+    /// assert_eq!(dynamic_message.try_set_field(&foo, Value::I32(5)), Ok(()));
+    /// assert_eq!(dynamic_message.try_set_field(&foo, Value::String("bar".to_owned())), Err(SetFieldError::InvalidType {
+    ///     field: foo,
+    ///     value: Value::String("bar".to_owned()),
+    /// }));
+    /// ```
+    pub fn try_set_field(&mut self, field_desc: &FieldDescriptor, value: Value) -> Result<(), SetFieldError> {
+        if value.is_valid_for_field(field_desc) {
+            self.fields.set(field_desc, value);
+            Ok(())
+        } else {
+            Err(SetFieldError::InvalidType { field: field_desc.clone(), value })
+        }
     }
 
     /// Clears the given field.
@@ -227,7 +269,7 @@ impl DynamicMessage {
             .map(move |field_desc| self.get_field_mut(&field_desc))
     }
 
-    /// Sets the value of the field with number `number`, or the default value if it is unset.
+    /// Sets the value of the field with number `number`.
     ///
     /// If no field with the given number exists, this method does nothing.
     ///
@@ -235,6 +277,32 @@ impl DynamicMessage {
     pub fn set_field_by_number(&mut self, number: u32, value: Value) {
         if let Some(field_desc) = self.desc.get_field(number) {
             self.set_field(&field_desc, value)
+        }
+    }
+
+    /// Tries to set the value of the field with number `number`, returning an error if the value is an invalid type or does not exist.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use prost::Message;
+    /// # use prost_types::FileDescriptorSet;
+    /// # use prost_reflect::{DynamicMessage, DescriptorPool, Value, SetFieldError};
+    /// # let pool = DescriptorPool::decode(include_bytes!("../file_descriptor_set.bin").as_ref()).unwrap();
+    /// # let message_descriptor = pool.get_message_by_name("package.MyMessage").unwrap();
+    /// let mut dynamic_message = DynamicMessage::new(message_descriptor.clone());
+    /// assert_eq!(dynamic_message.try_set_field_by_number(1, Value::I32(5)), Ok(()));
+    /// assert_eq!(dynamic_message.try_set_field_by_number(1, Value::String("bar".to_owned())), Err(SetFieldError::InvalidType {
+    ///     field: message_descriptor.get_field(1).unwrap(),
+    ///     value: Value::String("bar".to_owned()),
+    /// }));
+    /// assert_eq!(dynamic_message.try_set_field_by_number(42, Value::I32(5)), Err(SetFieldError::NotFound));
+    /// ```
+    pub fn try_set_field_by_number(&mut self, number: u32, value: Value) -> Result<(), SetFieldError> {
+        if let Some(field_desc) = self.desc.get_field(number) {
+            self.try_set_field(&field_desc, value)
+        } else {
+            Err(SetFieldError::NotFound)
         }
     }
 
@@ -289,6 +357,32 @@ impl DynamicMessage {
     pub fn set_field_by_name(&mut self, name: &str, value: Value) {
         if let Some(field_desc) = self.desc.get_field_by_name(name) {
             self.set_field(&field_desc, value)
+        }
+    }
+
+    /// Tries to set the value of the field with name `name`, returning an error if the value is an invalid type or does not exist.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use prost::Message;
+    /// # use prost_types::FileDescriptorSet;
+    /// # use prost_reflect::{DynamicMessage, DescriptorPool, Value, SetFieldError};
+    /// # let pool = DescriptorPool::decode(include_bytes!("../file_descriptor_set.bin").as_ref()).unwrap();
+    /// # let message_descriptor = pool.get_message_by_name("package.MyMessage").unwrap();
+    /// let mut dynamic_message = DynamicMessage::new(message_descriptor.clone());
+    /// assert_eq!(dynamic_message.try_set_field_by_name("foo", Value::I32(5)), Ok(()));
+    /// assert_eq!(dynamic_message.try_set_field_by_name("foo", Value::String("bar".to_owned())), Err(SetFieldError::InvalidType {
+    ///     field: message_descriptor.get_field_by_name("foo").unwrap(),
+    ///     value: Value::String("bar".to_owned()),
+    /// }));
+    /// assert_eq!(dynamic_message.try_set_field_by_name("notfound", Value::I32(5)), Err(SetFieldError::NotFound));
+    /// ```
+    pub fn try_set_field_by_name(&mut self, name: &str, value: Value) -> Result<(), SetFieldError> {
+        if let Some(field_desc) = self.desc.get_field_by_name(name) {
+            self.try_set_field(&field_desc, value)
+        } else {
+            Err(SetFieldError::NotFound)
         }
     }
 

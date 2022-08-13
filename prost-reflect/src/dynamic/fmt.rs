@@ -10,6 +10,8 @@ use crate::{
     DynamicMessage, Kind, MapKey, Value,
 };
 
+use super::SetFieldError;
+
 struct FormatOptions {
     pub pretty: bool,
     pub skip_unknown_fields: bool,
@@ -66,6 +68,27 @@ impl Display for UnknownFieldSet {
             f,
         )
         .fmt_delimited(self.fields(), Writer::fmt_unknown_field)
+    }
+}
+
+impl Display for SetFieldError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SetFieldError::NotFound => write!(f, "field not found"),
+            SetFieldError::InvalidType { field, value } => {
+                write!(f, "expected a value of type '")?;
+                if field.is_map() {
+                    let entry = field.kind();
+                    let entry = entry.as_message().unwrap();
+                    write!(f, "map<{:?}, {:?}>", entry.map_entry_key_field().kind(), entry.map_entry_value_field().kind())?;
+                } else if field.is_list() {
+                    write!(f, "repeated {:?}", field.kind())?;
+                } else {
+                    write!(f, "{:?}", field.kind())?;
+                }
+                write!(f, "', but found '{}'", value)
+            },
+        }
     }
 }
 

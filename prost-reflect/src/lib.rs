@@ -24,7 +24,7 @@ pub use self::descriptor::{
     ExtensionDescriptor, FieldDescriptor, FileDescriptor, Kind, MessageDescriptor,
     MethodDescriptor, OneofDescriptor, ServiceDescriptor, Syntax,
 };
-pub use self::dynamic::{DynamicMessage, MapKey, Value};
+pub use self::dynamic::{DynamicMessage, MapKey, Value, SetFieldError};
 pub use self::reflect::ReflectMessage;
 
 #[cfg(feature = "serde")]
