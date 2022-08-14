@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.2] - 2022-08-14
+
 ### Added
 
 - Added support for parsing and formatting dynamic messages using the text format. This functionality is enabled with the new `text_format` feature flag. See [`DynamicMessage::parse_text_format`](https://docs.rs/prost-reflect/latest/prost_reflect/struct.DynamicMessage.html#method.parse_text_format) and [`DynamicMessage::to_text_format`](https://docs.rs/prost-reflect/latest/prost_reflect/struct.DynamicMessage.html#method.to_text_format).
@@ -228,7 +230,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial release, including support for inspecting message types at runtime.
 
-[Unreleased]: https://github.com/andrewhickman/prost-reflect/compare/0.9.1...HEAD
+[Unreleased]: https://github.com/andrewhickman/prost-reflect/compare/0.9.2...HEAD
+[0.9.2]: https://github.com/andrewhickman/prost-reflect/compare/0.9.1...0.9.2
 [0.9.1]: https://github.com/andrewhickman/prost-reflect/compare/0.9.0...0.9.1
 [0.9.0]: https://github.com/andrewhickman/prost-reflect/compare/0.8.1...0.9.0
 [0.8.1]: https://github.com/andrewhickman/prost-reflect/compare/0.8.0...0.8.1
