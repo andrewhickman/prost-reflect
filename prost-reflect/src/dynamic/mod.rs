@@ -1,8 +1,9 @@
-#[cfg(feature = "text-format")]
 /// Parsing and formatting for the protobuf [text format](https://developers.google.com/protocol-buffers/docs/text-format-spec).
 ///
 /// This module contains options for customizing the text format output. See the associated functions [`DynamicMessage::parse_text_format()`] and
 /// [`DynamicMessage::to_text_format()`].
+#[cfg(feature = "text-format")]
+#[cfg_attr(docsrs, doc(cfg(feature = "text-format")))]
 pub mod text_format;
 
 mod fields;
