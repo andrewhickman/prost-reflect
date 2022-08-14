@@ -24,6 +24,8 @@ jobs:
         uses: lukka/get-cmake@latest
       - name: Install Protoc
         uses: arduino/setup-protoc@v1
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - run: cargo test
 
   lints:
@@ -39,6 +41,8 @@ jobs:
         uses: lukka/get-cmake@latest
       - name: Install Protoc
         uses: arduino/setup-protoc@v1
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - run: cargo fmt --all -- --check
       - run: cargo clippy --all -- -D warnings
       - run: cargo check
@@ -67,6 +71,8 @@ jobs:
         uses: lukka/get-cmake@latest
       - name: Install Protoc
         uses: arduino/setup-protoc@v1
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Generate code coverage
         run: |
           cargo tarpaulin --verbose --packages prost-reflect prost-reflect-tests --all-features --timeout 120 --out Xml
