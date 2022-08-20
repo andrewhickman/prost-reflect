@@ -60,7 +60,7 @@ impl DynamicMessage {
     pub fn merge_text_format(&mut self, input: &str) -> Result<(), ParseError> {
         parse::Parser::new(input)
             .parse_message(self)
-            .map_err(ParseError::new)
+            .map_err(|kind| ParseError::new(kind, input))
     }
 
     /// Formats this dynamic message using the protobuf text format, with default options.

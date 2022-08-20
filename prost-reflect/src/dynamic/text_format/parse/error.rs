@@ -1,6 +1,4 @@
 use logos::Span;
-#[cfg(feature = "miette")]
-use miette::Diagnostic;
 use std::{
     error::Error,
     fmt::{self, Display},
@@ -9,19 +7,29 @@ use std::{
 /// An error that may occur while parsing the protobuf text format.
 #[derive(Debug)]
 #[cfg_attr(docsrs, doc(cfg(feature = "text-format")))]
-#[cfg_attr(feature = "miette", derive(Diagnostic), diagnostic(transparent))]
 pub struct ParseError {
     kind: ParseErrorKind,
+    #[cfg(feature = "miette")]
+    source: String,
 }
 
 impl ParseError {
-    pub(crate) fn new(kind: ParseErrorKind) -> Self {
+    #[cfg(feature = "miette")]
+    pub(crate) fn new(kind: ParseErrorKind, source: &str) -> Self {
+        ParseError {
+            kind,
+            source: source.to_owned(),
+        }
+    }
+
+    #[cfg(not(feature = "miette"))]
+    pub(crate) fn new(kind: ParseErrorKind, _: &str) -> Self {
         ParseError { kind }
     }
 }
 
 #[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "miette", derive(Diagnostic))]
+#[cfg_attr(feature = "miette", derive(miette::Diagnostic))]
 pub(crate) enum ParseErrorKind {
     InvalidToken {
         #[cfg_attr(feature = "miette", label("found here"))]
@@ -194,3 +202,39 @@ impl Display for ParseError {
 }
 
 impl Error for ParseError {}
+
+#[cfg(feature = "miette")]
+#[cfg_attr(docsrs, doc(cfg(feature = "miette")))]
+impl miette::Diagnostic for ParseError {
+    fn code<'a>(&'a self) -> Option<Box<dyn Display + 'a>> {
+        self.kind.code()
+    }
+
+    fn severity(&self) -> Option<miette::Severity> {
+        self.kind.severity()
+    }
+
+    fn help<'a>(&'a self) -> Option<Box<dyn Display + 'a>> {
+        self.kind.help()
+    }
+
+    fn url<'a>(&'a self) -> Option<Box<dyn Display + 'a>> {
+        self.kind.url()
+    }
+
+    fn source_code(&self) -> Option<&dyn miette::SourceCode> {
+        Some(&self.source)
+    }
+
+    fn labels(&self) -> Option<Box<dyn Iterator<Item = miette::LabeledSpan> + '_>> {
+        self.kind.labels()
+    }
+
+    fn related<'a>(&'a self) -> Option<Box<dyn Iterator<Item = &'a dyn miette::Diagnostic> + 'a>> {
+        self.kind.related()
+    }
+
+    fn diagnostic_source(&self) -> Option<&dyn miette::Diagnostic> {
+        self.kind.diagnostic_source()
+    }
+}
