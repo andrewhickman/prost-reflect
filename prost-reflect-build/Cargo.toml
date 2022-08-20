@@ -9,7 +9,7 @@ repository = "https://github.com/andrewhickman/prost-reflect"
 documentation = "https://docs.rs/prost-reflect-build"
 license = "MIT OR Apache-2.0"
 readme = "../README.md"
-edition = "2018"
+edition = "2021"
 rust-version = "1.56.0"
 exclude = ["test.proto"]
 

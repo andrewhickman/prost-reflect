@@ -4,7 +4,7 @@ description = "Tests for prost-reflect."
 version = "0.0.0"
 authors = ["Andrew Hickman <andrew.hickman1@sky.com>"]
 license = "MIT OR Apache-2.0"
-edition = "2018"
+edition = "2021"
 publish = false
 build = "build.rs"
 
