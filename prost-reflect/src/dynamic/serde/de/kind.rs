@@ -491,14 +491,27 @@ impl<'de> Visitor<'de> for BytesVisitor {
     where
         E: Error,
     {
-        use base64::{decode_config_buf, DecodeError, STANDARD, URL_SAFE};
+        use base64::{
+            alphabet, decode_engine_vec,
+            engine::{
+                fast_portable::{FastPortable, FastPortableConfig},
+                DecodePaddingMode,
+            },
+            DecodeError,
+        };
+
+        const CONFIG: FastPortableConfig = FastPortableConfig::new()
+            .with_decode_allow_trailing_bits(true)
+            .with_decode_padding_mode(DecodePaddingMode::Indifferent);
+        const STANDARD: FastPortable = FastPortable::from(&alphabet::STANDARD, CONFIG);
+        const URL_SAFE: FastPortable = FastPortable::from(&alphabet::URL_SAFE, CONFIG);
 
         let mut buf = Vec::new();
-        match decode_config_buf(v, STANDARD.decode_allow_trailing_bits(true), &mut buf) {
+        match decode_engine_vec(v, &mut buf, &STANDARD) {
             Ok(()) => Ok(buf.into()),
             Err(DecodeError::InvalidByte(_, b'-')) | Err(DecodeError::InvalidByte(_, b'_')) => {
                 buf.clear();
-                match decode_config_buf(v, URL_SAFE.decode_allow_trailing_bits(true), &mut buf) {
+                match decode_engine_vec(v, &mut buf, &URL_SAFE) {
                     Ok(()) => Ok(buf.into()),
                     Err(err) => Err(Error::custom(format!("invalid base64: {}", err))),
                 }

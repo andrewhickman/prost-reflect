@@ -247,7 +247,7 @@ where
 {
     let raw: Vec<u8> = msg.transcode_to().map_err(decode_to_ser_err)?;
 
-    serializer.collect_str(&Base64Display::with_config(&raw, base64::STANDARD))
+    serializer.collect_str(&Base64Display::from(&raw, &base64::engine::DEFAULT_ENGINE))
 }
 
 fn serialize_field_mask<S>(

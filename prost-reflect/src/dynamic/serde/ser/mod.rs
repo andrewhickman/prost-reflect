@@ -169,7 +169,7 @@ impl<'a> Serialize for SerializeWrapper<'a, ValueAndKind<'a>> {
             }
             Value::String(value) => serializer.serialize_str(value),
             Value::Bytes(value) => {
-                serializer.collect_str(&Base64Display::with_config(value, base64::STANDARD))
+                serializer.collect_str(&Base64Display::from(value, &base64::engine::DEFAULT_ENGINE))
             }
             Value::EnumNumber(number) => {
                 let enum_ty = match self.value.kind {
