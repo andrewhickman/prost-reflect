@@ -44,7 +44,7 @@ fn main() -> Result<()> {
 
     let test_includes = &include_dir.join("google").join("protobuf");
     prost_build::Config::new()
-        .btree_map(&["."])
+        .btree_map(["."])
         .file_descriptor_set_path(out_dir.join("test_messages.bin"))
         .compile_protos(
             &[
@@ -105,7 +105,7 @@ fn install_conformance_test_runner(src_dir: &Path, prefix_dir: &Path) -> Result<
         .arg("-p1")
         .arg("-i")
         .arg(patch_src)
-        .current_dir(&src_dir)
+        .current_dir(src_dir)
         .status()
         .context("failed to apply patch")?;
     anyhow::ensure!(rc.success(), "protobuf patch failed");
@@ -118,7 +118,7 @@ fn install_conformance_test_runner(src_dir: &Path, prefix_dir: &Path) -> Result<
         .arg(&format!("-DCMAKE_INSTALL_PREFIX={}", prefix_dir.display()))
         .arg("-Dprotobuf_BUILD_CONFORMANCE=ON")
         .arg("-Dprotobuf_BUILD_TESTS=OFF")
-        .current_dir(&src_dir)
+        .current_dir(src_dir)
         .status()
         .context("failed to execute CMake")?;
     assert!(rc.success(), "protobuf CMake failed");
@@ -129,7 +129,7 @@ fn install_conformance_test_runner(src_dir: &Path, prefix_dir: &Path) -> Result<
         .arg("-j")
         .arg(&num_jobs)
         .arg("install")
-        .current_dir(&src_dir)
+        .current_dir(src_dir)
         .status()
         .context("failed to execute ninja protobuf")?;
     anyhow::ensure!(rc.success(), "failed to make protobuf");
