@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- The minimum supported rust version is now **1.57.0**.
+- Updated the base64 dependency to version [0.20.0](https://crates.io/crates/base64/0.20.0).
+
 ## [0.9.2] - 2022-08-14
 
 ### Added
