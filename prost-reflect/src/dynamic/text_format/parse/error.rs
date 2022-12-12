@@ -8,7 +8,7 @@ use std::{
 #[derive(Debug)]
 #[cfg_attr(docsrs, doc(cfg(feature = "text-format")))]
 pub struct ParseError {
-    kind: ParseErrorKind,
+    kind: Box<ParseErrorKind>,
     #[cfg(feature = "miette")]
     source: String,
 }
@@ -17,14 +17,16 @@ impl ParseError {
     #[cfg(feature = "miette")]
     pub(crate) fn new(kind: ParseErrorKind, source: &str) -> Self {
         ParseError {
-            kind,
+            kind: Box::new(kind),
             source: source.to_owned(),
         }
     }
 
     #[cfg(not(feature = "miette"))]
     pub(crate) fn new(kind: ParseErrorKind, _: &str) -> Self {
-        ParseError { kind }
+        ParseError {
+            kind: Box::new(kind),
+        }
     }
 }
 
