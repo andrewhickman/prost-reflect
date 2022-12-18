@@ -1,22 +1,22 @@
+mod api;
+mod build;
 mod error;
-mod service;
-mod ty;
+mod tag;
+#[cfg(test)]
+mod tests;
 
-pub use self::{
-    error::DescriptorError,
-    service::{MethodDescriptor, ServiceDescriptor},
-    ty::{
-        Cardinality, EnumDescriptor, EnumValueDescriptor, ExtensionDescriptor, FieldDescriptor,
-        Kind, MessageDescriptor, OneofDescriptor,
-    },
+use prost_types::FileDescriptorProto;
+
+use crate::Value;
+
+pub use self::error::DescriptorError;
+
+use std::{
+    collections::{BTreeMap, HashMap},
+    convert::TryInto,
+    fmt,
+    sync::Arc,
 };
-
-use std::{collections::HashMap, convert::TryInto, fmt, iter, ops::Range, sync::Arc};
-
-use prost::{bytes::Buf, Message};
-use prost_types::{FileDescriptorProto, FileDescriptorSet};
-
-use self::service::ServiceDescriptorInner;
 
 pub(crate) const MAP_ENTRY_KEY_NUMBER: u32 = 1;
 pub(crate) const MAP_ENTRY_VALUE_NUMBER: u32 = 2;
@@ -24,9 +24,101 @@ pub(crate) const MAP_ENTRY_VALUE_NUMBER: u32 = 2;
 pub(crate) const GOOGLE_APIS_DOMAIN: &str = "type.googleapis.com/";
 pub(crate) const GOOGLE_PROD_DOMAIN: &str = "type.googleprod.com/";
 
+/// Cardinality determines whether a field is optional, required, or repeated.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum Cardinality {
+    /// The field appears zero or one times.
+    Optional,
+    /// The field appears exactly one time. This cardinality is invalid with Proto3.
+    Required,
+    /// The field appears zero or more times.
+    Repeated,
+}
+
+/// The syntax of a proto file.
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+pub enum Syntax {
+    /// The `proto2` syntax.
+    Proto2,
+    /// The `proto3` syntax.
+    Proto3,
+}
+
+/// The type of a protobuf message field.
+#[derive(Clone, PartialEq, Eq)]
+pub enum Kind {
+    /// The protobuf `double` type.
+    Double,
+    /// The protobuf `float` type.
+    Float,
+    /// The protobuf `int32` type.
+    Int32,
+    /// The protobuf `int64` type.
+    Int64,
+    /// The protobuf `uint32` type.
+    Uint32,
+    /// The protobuf `uint64` type.
+    Uint64,
+    /// The protobuf `sint32` type.
+    Sint32,
+    /// The protobuf `sint64` type.
+    Sint64,
+    /// The protobuf `fixed32` type.
+    Fixed32,
+    /// The protobuf `fixed64` type.
+    Fixed64,
+    /// The protobuf `sfixed32` type.
+    Sfixed32,
+    /// The protobuf `sfixed64` type.
+    Sfixed64,
+    /// The protobuf `bool` type.
+    Bool,
+    /// The protobuf `string` type.
+    String,
+    /// The protobuf `bytes` type.
+    Bytes,
+    /// A protobuf message type.
+    Message(MessageDescriptor),
+    /// A protobuf enum type.
+    Enum(EnumDescriptor),
+}
+
+#[derive(Copy, Clone)]
+enum KindIndex {
+    Double,
+    Float,
+    Int32,
+    Int64,
+    Uint32,
+    Uint64,
+    Sint32,
+    Sint64,
+    Fixed32,
+    Fixed64,
+    Sfixed32,
+    Sfixed64,
+    Bool,
+    String,
+    Bytes,
+    Message(MessageIndex),
+    Enum(EnumIndex),
+    Group(MessageIndex),
+}
+
+type DescriptorIndex = u32;
+type FileIndex = DescriptorIndex;
+type ServiceIndex = DescriptorIndex;
+type MethodIndex = DescriptorIndex;
+type MessageIndex = DescriptorIndex;
+type FieldIndex = DescriptorIndex;
+type OneofIndex = DescriptorIndex;
+type ExtensionIndex = DescriptorIndex;
+type EnumIndex = DescriptorIndex;
+type EnumValueIndex = DescriptorIndex;
+
 /// A `DescriptorPool` is a collection of related descriptors. Typically it will be created from
-/// a [`FileDescriptorSet`] output by the protobuf compiler (see [`DescriptorPool::from_file_descriptor_set`])
-/// but it may also be built up manually by adding individual files.
+/// a [`FileDescriptorSet`][prost_types::FileDescriptorSet] output by the protobuf compiler
+/// (see [`DescriptorPool::from_file_descriptor_set`]) but it may also be built up by adding files individually.
 ///
 /// Methods like [`MessageDescriptor::extensions`] will be scoped to just the files contained within the parent
 /// `DescriptorPool`.
@@ -40,10 +132,41 @@ pub struct DescriptorPool {
 
 #[derive(Clone, Default)]
 struct DescriptorPoolInner {
-    files: Vec<FileDescriptorInner>,
+    names: HashMap<Box<str>, Definition>,
     file_names: HashMap<Box<str>, FileIndex>,
-    type_map: ty::TypeMap,
+    files: Vec<FileDescriptorInner>,
+    messages: Vec<MessageDescriptorInner>,
+    enums: Vec<EnumDescriptorInner>,
+    extensions: Vec<ExtensionDescriptorInner>,
     services: Vec<ServiceDescriptorInner>,
+}
+
+#[derive(Clone)]
+struct Identity {
+    file: FileIndex,
+    path: Box<[i32]>,
+    full_name: Box<str>,
+    name_index: usize,
+}
+
+#[derive(Clone)]
+struct Definition {
+    file: FileIndex,
+    path: Box<[i32]>,
+    kind: DefinitionKind,
+}
+
+#[derive(Copy, Clone)]
+enum DefinitionKind {
+    Package,
+    Message(MessageIndex),
+    Field(MessageIndex, FieldIndex),
+    Oneof(MessageIndex, OneofIndex),
+    Service(ServiceIndex),
+    Method(ServiceIndex, MethodIndex),
+    Enum(EnumIndex),
+    EnumValue(EnumIndex, EnumValueIndex),
+    Extension(ExtensionIndex),
 }
 
 /// A single source file containing protobuf messages and services.
@@ -55,452 +178,223 @@ pub struct FileDescriptor {
 
 #[derive(Clone)]
 struct FileDescriptorInner {
-    raw: FileDescriptorProto,
     syntax: Syntax,
-    services: Range<ServiceIndex>,
+    raw: FileDescriptorProto,
+    dependencies: Vec<FileIndex>,
 }
 
-/// The syntax of a proto file.
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
-pub enum Syntax {
-    /// The `proto2` syntax.
-    Proto2,
-    /// The `proto3` syntax.
-    Proto3,
+/// A protobuf message definition.
+#[derive(Clone, PartialEq, Eq)]
+pub struct MessageDescriptor {
+    pool: DescriptorPool,
+    index: MessageIndex,
 }
 
-type FileIndex = u32;
-type ServiceIndex = u32;
-type MethodIndex = u32;
-type MessageIndex = u32;
-type OneofIndex = u32;
-type ExtensionIndex = u32;
-type EnumIndex = u32;
-type EnumValueIndex = u32;
+#[derive(Clone)]
+struct MessageDescriptorInner {
+    id: Identity,
+    parent: Option<MessageIndex>,
+    extensions: Vec<ExtensionIndex>,
+    fields: Vec<FieldDescriptorInner>,
+    field_numbers: BTreeMap<u32, FieldIndex>,
+    field_names: HashMap<Box<str>, FieldIndex>,
+    field_json_names: HashMap<Box<str>, FieldIndex>,
+    oneofs: Vec<OneofDescriptorInner>,
+}
 
-impl DescriptorPool {
-    /// Creates a new, empty [`DescriptorPool`].
-    ///
-    /// For the common case of creating a `DescriptorPool` from a single [`FileDescriptorSet`], see
-    /// [`DescriptorPool::from_file_descriptor_set`] or [`DescriptorPool::decode`].
-    pub fn new() -> Self {
-        DescriptorPool::default()
+/// A oneof field in a protobuf message.
+#[derive(Clone, PartialEq, Eq)]
+pub struct OneofDescriptor {
+    message: MessageDescriptor,
+    index: OneofIndex,
+}
+
+#[derive(Clone)]
+struct OneofDescriptorInner {
+    id: Identity,
+    fields: Vec<FieldIndex>,
+}
+
+/// A protobuf message definition.
+#[derive(Clone, PartialEq, Eq)]
+pub struct FieldDescriptor {
+    message: MessageDescriptor,
+    index: FieldIndex,
+}
+
+#[derive(Clone)]
+struct FieldDescriptorInner {
+    id: Identity,
+    number: u32,
+    kind: KindIndex,
+    oneof: Option<OneofIndex>,
+    is_packed: bool,
+    supports_presence: bool,
+    cardinality: Cardinality,
+    default: Option<Value>,
+}
+
+/// A protobuf extension field definition.
+#[derive(Clone, PartialEq, Eq)]
+pub struct ExtensionDescriptor {
+    pool: DescriptorPool,
+    index: ExtensionIndex,
+}
+
+#[derive(Clone)]
+pub struct ExtensionDescriptorInner {
+    id: Identity,
+    parent: Option<MessageIndex>,
+    number: u32,
+    json_name: Box<str>,
+    extendee: MessageIndex,
+    kind: KindIndex,
+    is_packed: bool,
+    supports_presence: bool,
+    cardinality: Cardinality,
+    default: Option<Value>,
+}
+
+/// A protobuf enum type.
+#[derive(Clone, PartialEq, Eq)]
+pub struct EnumDescriptor {
+    pool: DescriptorPool,
+    index: EnumIndex,
+}
+
+#[derive(Clone)]
+struct EnumDescriptorInner {
+    id: Identity,
+    parent: Option<MessageIndex>,
+    values: Vec<EnumValueDescriptorInner>,
+    value_numbers: Vec<(i32, EnumValueIndex)>,
+    value_names: HashMap<Box<str>, EnumValueIndex>,
+    allow_alias: bool,
+}
+
+/// A value in a protobuf enum type.
+#[derive(Clone, PartialEq, Eq)]
+pub struct EnumValueDescriptor {
+    parent: EnumDescriptor,
+    index: EnumValueIndex,
+}
+
+#[derive(Clone)]
+struct EnumValueDescriptorInner {
+    id: Identity,
+    number: i32,
+}
+
+/// A protobuf service definition.
+#[derive(Clone, PartialEq, Eq)]
+pub struct ServiceDescriptor {
+    pool: DescriptorPool,
+    index: ServiceIndex,
+}
+
+#[derive(Clone)]
+struct ServiceDescriptorInner {
+    id: Identity,
+    methods: Vec<MethodDescriptorInner>,
+}
+
+/// A method definition for a [`ServiceDescriptor`].
+#[derive(Clone, PartialEq, Eq)]
+pub struct MethodDescriptor {
+    service: ServiceDescriptor,
+    index: MethodIndex,
+}
+
+#[derive(Clone)]
+struct MethodDescriptorInner {
+    id: Identity,
+    input: MessageIndex,
+    output: MessageIndex,
+}
+
+impl Identity {
+    fn new(file: FileIndex, path: &[i32], full_name: &str, name: &str) -> Identity {
+        debug_assert!(full_name.ends_with(name));
+        let name_index = full_name.len() - name.len();
+        debug_assert!(name_index == 0 || full_name.as_bytes()[name_index - 1] == b'.');
+        Identity {
+            file,
+            path: path.into(),
+            full_name: full_name.into(),
+            name_index,
+        }
     }
 
-    /// Creates a [`DescriptorPool`] from a [`FileDescriptorSet`].
-    ///
-    /// This is equivalent to calling [`DescriptorPool::add_file_descriptor_set`] on an empty `DescriptorPool`
-    /// instance. See that method's documentation for details.
-    pub fn from_file_descriptor_set(
-        file_descriptor_set: FileDescriptorSet,
-    ) -> Result<Self, DescriptorError> {
-        let mut pool = DescriptorPool::new();
-        pool.add_file_descriptor_set(file_descriptor_set)?;
-        Ok(pool)
+    fn full_name(&self) -> &str {
+        &self.full_name
     }
 
-    /// Decodes a [`FileDescriptorSet`] from its protobuf byte representation and
-    /// creates a new [`DescriptorPool`] wrapping it.
-    pub fn decode<B>(bytes: B) -> Result<Self, DescriptorError>
-    where
-        B: Buf,
-    {
-        DescriptorPool::from_file_descriptor_set(
-            FileDescriptorSet::decode(bytes)
-                .map_err(DescriptorError::decode_file_descriptor_set)?,
-        )
+    fn name(&self) -> &str {
+        &self.full_name[self.name_index..]
     }
+}
 
-    /// Adds a new [`FileDescriptorSet`] to this [`DescriptorPool`].
-    ///
-    /// A file descriptor set may be generated by running the protobuf compiler with the
-    /// `--descriptor_set_out` flag. If you are using [`prost-build`](https://crates.io/crates/prost-build),
-    /// then [`Config::file_descriptor_set_path`](https://docs.rs/prost-build/latest/prost_build/struct.Config.html#method..file_descriptor_set_path)
-    /// is a convenient way to generate it as part of your build.
-    ///
-    /// This method may return an error if `file_descriptor_set` is invalid, for example
-    /// it contains references to types not in the set. If `file_descriptor_set` was created by
-    /// the protobuf compiler, these error cases should never occur since it performs its own
-    /// validation.
-    pub fn add_file_descriptor_set(
-        &mut self,
-        file_descriptor_set: FileDescriptorSet,
-    ) -> Result<(), DescriptorError> {
-        self.add_file_descriptor_protos(file_descriptor_set.file)
-    }
-
-    /// Adds a collection of file descriptors to this pool.
-    ///
-    /// The file descriptors may be provided in any order, however all types referenced must be defined
-    /// either in one of the files provided, or in a file previously added to the pool.
-    ///
-    /// Duplicate file descriptors are ignored, however adding two different files with the same name
-    /// will return an error.
-    pub fn add_file_descriptor_protos<I>(&mut self, files: I) -> Result<(), DescriptorError>
-    where
-        I: IntoIterator<Item = FileDescriptorProto>,
-    {
-        // Note we could use `Arc::make_mut` here but by always cloning we
-        // avoid putting the pool into an inconsistent state on error.
-        let mut inner = (*self.inner).clone();
-
-        let file_indices = inner.build_files(files)?;
-        let files = &mut inner.files;
-
-        inner.type_map.add_files(
-            file_indices
-                .clone()
-                .map(|file_index| (file_index, &files[file_index as usize])),
-        )?;
-        inner.type_map.shrink_to_fit();
-
-        for file_index in file_indices {
-            let file = &mut files[file_index as usize];
-            let start: ServiceIndex = to_index(inner.services.len());
-            for service in &file.raw.service {
-                inner.services.push(ServiceDescriptorInner::from_raw(
-                    &file.raw,
-                    file_index,
-                    service,
-                    &inner.type_map,
-                )?);
+impl KindIndex {
+    fn is_packable(&self) -> bool {
+        match self {
+            KindIndex::Double
+            | KindIndex::Float
+            | KindIndex::Int32
+            | KindIndex::Int64
+            | KindIndex::Uint32
+            | KindIndex::Uint64
+            | KindIndex::Sint32
+            | KindIndex::Sint64
+            | KindIndex::Fixed32
+            | KindIndex::Fixed64
+            | KindIndex::Sfixed32
+            | KindIndex::Sfixed64
+            | KindIndex::Bool
+            | KindIndex::Enum(_) => true,
+            KindIndex::String | KindIndex::Bytes | KindIndex::Message(_) | KindIndex::Group(_) => {
+                false
             }
-            file.services = start..to_index(inner.services.len());
         }
+    }
 
-        if let Some(old_inner) = Arc::get_mut(&mut self.inner) {
-            *old_inner = inner;
-        } else {
-            self.inner = Arc::new(inner);
+    fn is_message(&self) -> bool {
+        matches!(self, KindIndex::Message(_) | KindIndex::Group(_))
+    }
+}
+
+fn to_index(i: usize) -> DescriptorIndex {
+    i.try_into().expect("index too large")
+}
+
+impl fmt::Debug for KindIndex {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            KindIndex::Double => write!(f, "double"),
+            KindIndex::Float => write!(f, "float"),
+            KindIndex::Int32 => write!(f, "int32"),
+            KindIndex::Int64 => write!(f, "int64"),
+            KindIndex::Uint32 => write!(f, "uint32"),
+            KindIndex::Uint64 => write!(f, "uint64"),
+            KindIndex::Sint32 => write!(f, "sint32"),
+            KindIndex::Sint64 => write!(f, "sint64"),
+            KindIndex::Fixed32 => write!(f, "fixed32"),
+            KindIndex::Fixed64 => write!(f, "fixed64"),
+            KindIndex::Sfixed32 => write!(f, "sfixed32"),
+            KindIndex::Sfixed64 => write!(f, "sfixed64"),
+            KindIndex::Bool => write!(f, "bool"),
+            KindIndex::String => write!(f, "string"),
+            KindIndex::Bytes => write!(f, "bytes"),
+            KindIndex::Message(_) | KindIndex::Group(_) => write!(f, "message"),
+            KindIndex::Enum(_) => write!(f, "enum"),
         }
-        Ok(())
-    }
-
-    /// Add a single file descriptor to the pool.
-    ///
-    /// All types referenced by the file must be defined either in the file itself, or in a file
-    /// previously added to the pool.
-    pub fn add_file_descriptor_proto(
-        &mut self,
-        file: FileDescriptorProto,
-    ) -> Result<(), DescriptorError> {
-        self.add_file_descriptor_protos(iter::once(file))
-    }
-
-    /// Gets an iterator over the file descriptors added to this pool.
-    pub fn files(&self) -> impl ExactSizeIterator<Item = FileDescriptor> + '_ {
-        FileDescriptor::iter(self)
-    }
-
-    /// Gets a file descriptor by its name, or `None` if no such file has been added.
-    pub fn get_file_by_name(&self, name: &str) -> Option<FileDescriptor> {
-        self.inner
-            .file_names
-            .get(name)
-            .map(|&index| FileDescriptor::new(self.clone(), index as _))
-    }
-
-    /// Gets a iterator over the raw [`FileDescriptorProto`] instances wrapped by this [`DescriptorPool`].
-    pub fn file_descriptor_protos(
-        &self,
-    ) -> impl ExactSizeIterator<Item = &FileDescriptorProto> + '_ {
-        self.inner.files.iter().map(|f| &f.raw)
-    }
-
-    /// Gets an iterator over the services defined in these protobuf files.
-    pub fn services(&self) -> impl ExactSizeIterator<Item = ServiceDescriptor> + '_ {
-        (0..self.inner.services.len()).map(move |index| ServiceDescriptor::new(self.clone(), index))
-    }
-
-    /// Gets an iterator over all message types defined in these protobuf files.
-    ///
-    /// The iterator includes nested messages defined in another message.
-    pub fn all_messages(&self) -> impl ExactSizeIterator<Item = MessageDescriptor> + '_ {
-        MessageDescriptor::iter(self)
-    }
-
-    /// Gets an iterator over all enum types defined in these protobuf files.
-    ///
-    /// The iterator includes nested enums defined in another message.
-    pub fn all_enums(&self) -> impl ExactSizeIterator<Item = EnumDescriptor> + '_ {
-        EnumDescriptor::iter(self)
-    }
-
-    /// Gets an iterator over all extension fields defined in these protobuf files.
-    ///
-    /// The iterator includes nested extension fields defined in another message.
-    pub fn all_extensions(&self) -> impl ExactSizeIterator<Item = ExtensionDescriptor> + '_ {
-        ExtensionDescriptor::iter(self)
-    }
-
-    /// Gets a [`MessageDescriptor`] by its fully qualified name, for example `my.package.MessageName`.
-    pub fn get_message_by_name(&self, name: &str) -> Option<MessageDescriptor> {
-        MessageDescriptor::try_get_by_name(self, name)
-    }
-
-    /// Gets an [`EnumDescriptor`] by its fully qualified name, for example `my.package.EnumName`.
-    pub fn get_enum_by_name(&self, name: &str) -> Option<EnumDescriptor> {
-        EnumDescriptor::try_get_by_name(self, name)
     }
 }
 
 impl DescriptorPoolInner {
-    fn build_files(
-        &mut self,
-        files: impl IntoIterator<Item = FileDescriptorProto>,
-    ) -> Result<Range<FileIndex>, DescriptorError> {
-        let start = self.files.len();
-
-        for file in files {
-            let syntax = match file.syntax.as_deref() {
-                None | Some("proto2") => Syntax::Proto2,
-                Some("proto3") => Syntax::Proto3,
-                Some(s) => return Err(DescriptorError::unknown_syntax(s)),
-            };
-
-            match self.files.iter().find(|f| f.raw.name() == file.name()) {
-                None => {
-                    let index = to_index(self.files.len());
-                    self.file_names.insert(file.name().into(), index);
-                    self.files.push(FileDescriptorInner {
-                        raw: file,
-                        syntax,
-                        services: Default::default(),
-                    });
-                }
-                // Skip duplicate files only if they match exactly
-                Some(existing_file) if existing_file.raw == file => continue,
-                Some(_) => return Err(DescriptorError::file_already_exists(file.name())),
-            }
-        }
-
-        let end = self.files.len();
-
-        for file in &self.files[start..end] {
-            for dependency in &file.raw.dependency {
-                if !self.file_names.contains_key(dependency.as_str()) {
-                    return Err(DescriptorError::file_not_found(file.raw.name(), dependency));
-                }
-            }
-            for &dependency_index in &file.raw.public_dependency {
-                if (dependency_index as usize) >= file.raw.dependency.len() {
-                    return Err(DescriptorError::file_not_found(
-                        file.raw.name(),
-                        dependency_index,
-                    ));
-                }
-            }
-        }
-
-        Ok(to_index(start)..to_index(end))
+    fn get_by_name(&self, name: &str) -> Option<&Definition> {
+        let name = name.strip_prefix('.').unwrap_or(name);
+        self.names.get(name)
     }
-}
-
-impl fmt::Debug for DescriptorPool {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("DescriptorPool")
-            .field("files", &debug_fmt_iter(self.files()))
-            .field("services", &debug_fmt_iter(self.services()))
-            .field("all_messages", &debug_fmt_iter(self.all_messages()))
-            .field("all_enums", &debug_fmt_iter(self.all_enums()))
-            .field("all_extensions", &debug_fmt_iter(self.all_extensions()))
-            .finish()
-    }
-}
-
-impl PartialEq for DescriptorPool {
-    fn eq(&self, other: &Self) -> bool {
-        Arc::ptr_eq(&self.inner, &other.inner)
-    }
-}
-
-impl Eq for DescriptorPool {}
-
-impl FileDescriptor {
-    /// Create a new [`FileDescriptor`] referencing the file at `index` within the given [`DescriptorPool`].
-    ///
-    /// # Panics
-    ///
-    /// Panics if `index` is out-of-bounds.
-    pub fn new(descriptor_pool: DescriptorPool, index: usize) -> Self {
-        debug_assert!(index < descriptor_pool.files().len());
-        FileDescriptor {
-            pool: descriptor_pool,
-            index: to_index(index),
-        }
-    }
-
-    fn iter(pool: &DescriptorPool) -> impl ExactSizeIterator<Item = Self> + '_ {
-        (0..pool.inner.files.len()).map(move |index| FileDescriptor::new(pool.clone(), index))
-    }
-
-    /// Gets a reference to the [`DescriptorPool`] this file is included in.
-    pub fn parent_pool(&self) -> &DescriptorPool {
-        &self.pool
-    }
-
-    /// Gets the unique name of this file relative to the root of the source tree,
-    /// e.g. `path/to/my_package.proto`.
-    pub fn name(&self) -> &str {
-        self.file_descriptor_proto().name()
-    }
-
-    /// Gets the name of the package specifier for a file, e.g. `my.package`.
-    ///
-    /// If no package name is set, an empty string is returned.
-    pub fn package_name(&self) -> &str {
-        self.file_descriptor_proto().package()
-    }
-
-    /// Gets the index of this file within the parent [`DescriptorPool`].
-    pub fn index(&self) -> usize {
-        self.index as usize
-    }
-
-    /// Gets the syntax of this protobuf file.
-    pub fn syntax(&self) -> Syntax {
-        self.file_inner().syntax
-    }
-
-    /// Gets the public dependencies of this file.
-    ///
-    /// This corresponds to the [`FileDescriptorProto::public_dependency`] field.
-    pub fn dependencies(&self) -> impl ExactSizeIterator<Item = FileDescriptor> + '_ {
-        let pool = self.parent_pool();
-        let raw = self.file_descriptor_proto();
-        raw.public_dependency.iter().map(move |&i| {
-            pool.get_file_by_name(&raw.dependency[i as usize])
-                .expect("dependency not found")
-        })
-    }
-
-    /// Gets the top-level message types defined within this file.
-    ///
-    /// This does not include nested messages defined within another message.
-    pub fn messages(&self) -> impl ExactSizeIterator<Item = MessageDescriptor> + '_ {
-        let pool = self.parent_pool();
-        let raw_file = self.file_descriptor_proto();
-        raw_file.message_type.iter().map(move |raw_message| {
-            pool.get_message_by_name(&make_full_name(raw_file.package(), raw_message.name()))
-                .expect("message not found")
-        })
-    }
-
-    /// Gets the top-level enum types defined within this file.
-    ///
-    /// This does not include nested enums defined within another message.
-    pub fn enums(&self) -> impl ExactSizeIterator<Item = EnumDescriptor> + '_ {
-        let pool = self.parent_pool();
-        let raw_file = self.file_descriptor_proto();
-        raw_file.enum_type.iter().map(move |raw_enum| {
-            pool.get_enum_by_name(&make_full_name(raw_file.package(), raw_enum.name()))
-                .expect("enum not found")
-        })
-    }
-
-    /// Gets the top-level extension fields defined within this file.
-    ///
-    /// This does not include nested extensions defined within another message.
-    pub fn extensions(&self) -> impl ExactSizeIterator<Item = ExtensionDescriptor> + '_ {
-        let pool = self.parent_pool();
-        let raw_file = self.file_descriptor_proto();
-        raw_file.extension.iter().map(move |raw_extension| {
-            let extendee = pool
-                .inner
-                .type_map
-                .resolve_type_name(raw_file.package(), raw_extension.extendee())
-                .expect("extendee not found");
-            MessageDescriptor::new(pool.clone(), extendee)
-                .get_extension(raw_extension.number() as u32)
-                .expect("extension not found")
-        })
-    }
-
-    /// Gets the services defined within this file.
-    pub fn services(&self) -> impl ExactSizeIterator<Item = ServiceDescriptor> + '_ {
-        let pool = self.parent_pool();
-        self.file_inner()
-            .services
-            .clone()
-            .map(move |index| ServiceDescriptor::new(pool.clone(), index as usize))
-    }
-
-    /// Gets a reference to the raw [`FileDescriptorProto`] wrapped by this [`FileDescriptor`].
-    pub fn file_descriptor_proto(&self) -> &FileDescriptorProto {
-        &self.file_inner().raw
-    }
-
-    fn file_inner(&self) -> &FileDescriptorInner {
-        &self.pool.inner.files[self.index as usize]
-    }
-}
-
-impl fmt::Debug for FileDescriptor {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("FileDescriptor")
-            .field("name", &self.name())
-            .field("package_name", &self.package_name())
-            .finish()
-    }
-}
-
-impl fmt::Debug for Syntax {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match *self {
-            Syntax::Proto2 => write!(f, "proto2"),
-            Syntax::Proto3 => write!(f, "proto3"),
-        }
-    }
-}
-
-fn make_full_name(namespace: &str, name: &str) -> Box<str> {
-    let namespace = namespace.trim_start_matches('.');
-    if namespace.is_empty() {
-        name.into()
-    } else {
-        let mut full_name = String::with_capacity(namespace.len() + 1 + name.len());
-        full_name.push_str(namespace);
-        full_name.push('.');
-        full_name.push_str(name);
-        full_name.into_boxed_str()
-    }
-}
-
-fn parse_namespace(full_name: &str) -> &str {
-    match full_name.rsplit_once('.') {
-        Some((namespace, _)) => namespace,
-        None => "",
-    }
-}
-
-fn parse_name(full_name: &str) -> &str {
-    match full_name.rsplit_once('.') {
-        Some((_, name)) => name,
-        None => full_name,
-    }
-}
-
-fn debug_fmt_iter<I>(i: I) -> impl fmt::Debug
-where
-    I: Iterator,
-    I::Item: fmt::Debug,
-{
-    struct Wrapper<T>(Vec<T>);
-
-    impl<T> fmt::Debug for Wrapper<T>
-    where
-        T: fmt::Debug,
-    {
-        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            f.debug_list().entries(&self.0).finish()
-        }
-    }
-
-    Wrapper(i.collect())
-}
-
-fn to_index(i: usize) -> u32 {
-    i.try_into().expect("index too large")
 }
 
 #[test]

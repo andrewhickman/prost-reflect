@@ -20,7 +20,7 @@ static TEST_MESSAGES_DESCRIPTOR_POOL: Lazy<DescriptorPool> =
 
 fn main() -> io::Result<()> {
     env_logger::init();
-    let mut bytes = Vec::new();
+    let mut bytes = vec![0; 4];
 
     loop {
         bytes.resize(4, 0);

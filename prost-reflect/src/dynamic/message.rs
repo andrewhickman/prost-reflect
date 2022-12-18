@@ -199,8 +199,8 @@ impl Value {
                             number,
                             values.iter().map(|v| v.as_u64().expect("expected u64")),
                             buf,
-                            |v, b| prost::encoding::encode_varint(v as u64, b),
-                            |v| prost::encoding::encoded_len_varint(v as u64),
+                            |v, b| prost::encoding::encode_varint(v, b),
+                            prost::encoding::encoded_len_varint,
                         ),
                         Kind::Sint32 => encode_packed_list(
                             number,
@@ -213,8 +213,8 @@ impl Value {
                             number,
                             values.iter().map(|v| v.as_i64().expect("expected i64")),
                             buf,
-                            |v, b| prost::encoding::encode_varint(from_sint64(v) as u64, b),
-                            |v| prost::encoding::encoded_len_varint(from_sint64(v) as u64),
+                            |v, b| prost::encoding::encode_varint(from_sint64(v), b),
+                            |v| prost::encoding::encoded_len_varint(from_sint64(v)),
                         ),
                         Kind::Fixed32 => encode_packed_list(
                             number,
@@ -485,7 +485,7 @@ impl Value {
                         Kind::Uint64 => packed_list_encoded_len(
                             number,
                             values.iter().map(|v| v.as_u64().expect("expected u64")),
-                            |v| prost::encoding::encoded_len_varint(v as u64),
+                            prost::encoding::encoded_len_varint,
                         ),
                         Kind::Sint32 => packed_list_encoded_len(
                             number,
@@ -495,7 +495,7 @@ impl Value {
                         Kind::Sint64 => packed_list_encoded_len(
                             number,
                             values.iter().map(|v| v.as_i64().expect("expected i64")),
-                            |v| prost::encoding::encoded_len_varint(from_sint64(v) as u64),
+                            |v| prost::encoding::encoded_len_varint(from_sint64(v)),
                         ),
                         Kind::Fixed32 => packed_list_encoded_len(
                             number,

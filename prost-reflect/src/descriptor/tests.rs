@@ -324,7 +324,7 @@ fn add_conflicting_duplicate_file() {
         .unwrap_err();
     assert_eq!(
         err.to_string(),
-        "a conflicting file named 'myfile.proto' is already added. Duplicate files must match exactly"
+        "a different file named 'myfile.proto' has already been added"
     );
 }
 
@@ -359,7 +359,7 @@ fn add_file_rollback_on_error() {
         .unwrap_err();
     assert_eq!(
         err.to_string(),
-        "the message or enum type 'my.package.NopeMessage' was not found"
+        "name '.my.package.NopeMessage' is not defined"
     );
     assert_eq!(pool.file_descriptor_protos().count(), 0);
     assert_eq!(pool.get_message_by_name(".my.package.MyMessage"), None);
@@ -384,7 +384,7 @@ fn add_file_missing_dependency() {
         .unwrap_err();
     assert_eq!(
         err.to_string(),
-        "the file 'notfound.proto' was not found while resolving dependencies for 'myfile.proto'"
+        "imported file 'notfound.proto' has not been added"
     );
 }
 
@@ -420,7 +420,7 @@ fn service_method_type_not_message() {
     let err = DescriptorPool::from_file_descriptor_set(file_descriptor_set).unwrap_err();
     assert_eq!(
         err.to_string(),
-        "invalid type '.my.package.MyMessage' for method 'my.package.MyService.my_method'"
+        "'.my.package.MyMessage' is not a message type"
     );
 }
 
@@ -455,6 +455,6 @@ fn extension_extendee_type_not_message() {
     let err = DescriptorPool::from_file_descriptor_set(file_descriptor_set).unwrap_err();
     assert_eq!(
         err.to_string(),
-        "invalid type 'my.package.MyMessage' for extension 'my.package.my_extension'"
+        "'my.package.MyMessage' is not a message type"
     );
 }
