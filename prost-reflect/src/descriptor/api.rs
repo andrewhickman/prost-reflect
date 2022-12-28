@@ -7,7 +7,11 @@ use std::{
     sync::Arc,
 };
 
-use prost::{bytes::Buf, encoding::WireType, Message};
+use prost::{
+    bytes::{Buf, BufMut},
+    encoding::{self, WireType},
+    DecodeError, EncodeError, Message,
+};
 use prost_types::{
     DescriptorProto, EnumDescriptorProto, EnumValueDescriptorProto, FieldDescriptorProto,
     FileDescriptorProto, FileDescriptorSet, MethodDescriptorProto, OneofDescriptorProto,
@@ -16,15 +20,18 @@ use prost_types::{
 
 use crate::{
     descriptor::{
-        error::DescriptorErrorKind, tag, to_index, Definition, DefinitionKind, DescriptorIndex,
-        EnumDescriptorInner, EnumValueDescriptorInner, ExtensionDescriptorInner,
-        FieldDescriptorInner, FileDescriptorInner, KindIndex, MessageDescriptorInner,
-        MethodDescriptorInner, OneofDescriptorInner, ServiceDescriptorInner, MAP_ENTRY_KEY_NUMBER,
-        MAP_ENTRY_VALUE_NUMBER,
+        error::DescriptorErrorKind,
+        tag, to_index,
+        types::{self, Options},
+        Definition, DefinitionKind, DescriptorIndex, EnumDescriptorInner, EnumValueDescriptorInner,
+        ExtensionDescriptorInner, FieldDescriptorInner, FileDescriptorInner, KindIndex,
+        MessageDescriptorInner, MethodDescriptorInner, OneofDescriptorInner,
+        ServiceDescriptorInner, MAP_ENTRY_KEY_NUMBER, MAP_ENTRY_VALUE_NUMBER,
     },
-    Cardinality, DescriptorError, DescriptorPool, EnumDescriptor, EnumValueDescriptor,
-    ExtensionDescriptor, FieldDescriptor, FileDescriptor, Kind, MessageDescriptor,
-    MethodDescriptor, OneofDescriptor, ServiceDescriptor, Syntax, Value,
+    reflect::WELL_KNOWN_TYPES,
+    Cardinality, DescriptorError, DescriptorPool, DynamicMessage, EnumDescriptor,
+    EnumValueDescriptor, ExtensionDescriptor, FieldDescriptor, FileDescriptor, Kind,
+    MessageDescriptor, MethodDescriptor, OneofDescriptor, ServiceDescriptor, Syntax, Value,
 };
 
 impl fmt::Debug for Syntax {
@@ -153,11 +160,13 @@ impl DescriptorPool {
     where
         B: Buf,
     {
-        let file_descriptor_set = FileDescriptorSet::decode(bytes).map_err(|err| {
+        let file_descriptor_set = types::FileDescriptorSet::decode(bytes).map_err(|err| {
             DescriptorError::new(vec![DescriptorErrorKind::DecodeFileDescriptorSet { err }])
         })?;
 
-        DescriptorPool::from_file_descriptor_set(file_descriptor_set)
+        let mut pool = DescriptorPool::new();
+        pool.build_files(file_descriptor_set.file.into_iter())?;
+        Ok(pool)
     }
 
     /// Adds a new [`FileDescriptorSet`] to this [`DescriptorPool`].
@@ -175,7 +184,7 @@ impl DescriptorPool {
         &mut self,
         file_descriptor_set: FileDescriptorSet,
     ) -> Result<(), DescriptorError> {
-        Arc::make_mut(&mut self.inner).build_files(file_descriptor_set.file)
+        self.add_file_descriptor_protos(file_descriptor_set.file)
     }
 
     /// Adds a collection of file descriptors to this pool.
@@ -189,7 +198,11 @@ impl DescriptorPool {
     where
         I: IntoIterator<Item = FileDescriptorProto>,
     {
-        Arc::make_mut(&mut self.inner).build_files(files)
+        self.build_files(
+            files
+                .into_iter()
+                .map(types::FileDescriptorProto::from_prost),
+        )
     }
 
     /// Add a single file descriptor to the pool.
@@ -200,7 +213,25 @@ impl DescriptorPool {
         &mut self,
         file: FileDescriptorProto,
     ) -> Result<(), DescriptorError> {
-        Arc::make_mut(&mut self.inner).build_files(iter::once(file))
+        self.add_file_descriptor_protos(iter::once(file))
+    }
+
+    /// Decode and add a single file descriptor to the pool.
+    ///
+    /// All types referenced by the file must be defined either in the file itself, or in a file
+    /// previously added to the pool.
+    ///
+    /// Unlike when using [`add_file_descriptor_proto()`][DescriptorPool::add_file_descriptor_proto], any extension options
+    /// defined in the file descriptor are preserved.
+    pub fn decode_file_descriptor_proto<B>(&mut self, bytes: B) -> Result<(), DescriptorError>
+    where
+        B: Buf,
+    {
+        let file = types::FileDescriptorProto::decode(bytes).map_err(|err| {
+            DescriptorError::new(vec![DescriptorErrorKind::DecodeFileDescriptorSet { err }])
+        })?;
+
+        self.build_files(iter::once(file))
     }
 
     /// Gets an iterator over the file descriptors added to this pool.
@@ -227,7 +258,79 @@ impl DescriptorPool {
     pub fn file_descriptor_protos(
         &self,
     ) -> impl ExactSizeIterator<Item = &FileDescriptorProto> + '_ {
-        indices(&self.inner.files).map(|index| &self.inner.files[index as usize].raw)
+        indices(&self.inner.files).map(|index| &self.inner.files[index as usize].prost)
+    }
+
+    /// Encodes the files contained within this [`DescriptorPool`] to their byte representation.
+    ///
+    /// The encoded message is equivalent to a [`FileDescriptorSet`], however also includes
+    /// any extension options that were defined.
+    pub fn encode<B>(&self, buf: B) -> Result<(), EncodeError>
+    where
+        B: BufMut,
+    {
+        use prost::encoding::{encoded_len_varint, DecodeContext};
+
+        struct FileDescriptorSet<'a> {
+            files: &'a [FileDescriptorInner],
+        }
+
+        impl<'a> fmt::Debug for FileDescriptorSet<'a> {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                f.debug_struct("FileDescriptorSet").finish_non_exhaustive()
+            }
+        }
+
+        impl<'a> Message for FileDescriptorSet<'a> {
+            fn encode_raw<B>(&self, buf: &mut B)
+            where
+                B: BufMut,
+                Self: Sized,
+            {
+                for file in self.files {
+                    encoding::message::encode(
+                        tag::file_descriptor_set::FILE as u32,
+                        &file.raw,
+                        buf,
+                    );
+                }
+            }
+
+            fn encoded_len(&self) -> usize {
+                encoding::key_len(tag::file_descriptor_set::FILE as u32) * self.files.len()
+                    + self
+                        .files
+                        .iter()
+                        .map(|f| &f.raw)
+                        .map(Message::encoded_len)
+                        .map(|len| len + encoded_len_varint(len as u64))
+                        .sum::<usize>()
+            }
+
+            fn merge_field<B>(
+                &mut self,
+                _: u32,
+                _: WireType,
+                _: &mut B,
+                _: DecodeContext,
+            ) -> Result<(), DecodeError>
+            where
+                B: Buf,
+                Self: Sized,
+            {
+                unimplemented!()
+            }
+
+            fn clear(&mut self) {
+                unimplemented!()
+            }
+        }
+
+        let mut buf = buf;
+        FileDescriptorSet {
+            files: &self.inner.files,
+        }
+        .encode(&mut buf)
     }
 
     /// Gets an iterator over the services defined in these protobuf files.
@@ -367,14 +470,14 @@ impl FileDescriptor {
     /// Gets the unique name of this file relative to the root of the source tree,
     /// e.g. `path/to/my_package.proto`.
     pub fn name(&self) -> &str {
-        self.inner().raw.name()
+        self.inner().prost.name()
     }
 
     /// Gets the name of the package specifier for a file, e.g. `my.package`.
     ///
     /// If no package name is set, an empty string is returned.
     pub fn package_name(&self) -> &str {
-        self.inner().raw.package()
+        self.inner().prost.package()
     }
 
     /// Gets the index of this file within the parent [`DescriptorPool`].
@@ -458,7 +561,28 @@ impl FileDescriptor {
 
     /// Gets a reference to the raw [`FileDescriptorProto`] wrapped by this [`FileDescriptor`].
     pub fn file_descriptor_proto(&self) -> &FileDescriptorProto {
-        &self.inner().raw
+        &self.inner().prost
+    }
+
+    /// Encodes this file descriptor to its byte representation.
+    ///
+    /// The encoded message is equivalent to a [`FileDescriptorProto`], however also includes
+    /// any extension options that were defined.
+    pub fn encode<B>(&self, buf: B) -> Result<(), EncodeError>
+    where
+        B: BufMut,
+    {
+        let mut buf = buf;
+        self.inner().raw.encode(&mut buf)
+    }
+
+    /// Decodes the options defined for this [`FileDescriptor`], including any extension options.
+    pub fn options(&self) -> DynamicMessage {
+        decode_options(
+            self.parent_pool(),
+            "google.protobuf.FileOptions",
+            &self.inner().raw.options,
+        )
     }
 
     fn inner(&self) -> &FileDescriptorInner {
@@ -511,7 +635,7 @@ impl MessageDescriptor {
     ///
     /// If no package name is set, an empty string is returned.
     pub fn package_name(&self) -> &str {
-        self.parent_file_descriptor_proto().package()
+        self.raw_file().package()
     }
 
     /// Gets the path where this message is defined within the [`FileDescriptorProto`][FileDescriptorProto], e.g. `[4, 0]`.
@@ -523,12 +647,21 @@ impl MessageDescriptor {
 
     /// Gets a reference to the [`FileDescriptorProto`] in which this message is defined.
     pub fn parent_file_descriptor_proto(&self) -> &FileDescriptorProto {
-        &self.pool.inner.files[self.inner().id.file as usize].raw
+        &self.pool.inner.files[self.inner().id.file as usize].prost
     }
 
     /// Gets a reference to the raw [`DescriptorProto`] wrapped by this [`MessageDescriptor`].
     pub fn descriptor_proto(&self) -> &DescriptorProto {
-        find_message_proto(self.parent_file_descriptor_proto(), self.path())
+        find_message_proto_prost(self.parent_file_descriptor_proto(), self.path())
+    }
+
+    /// Decodes the options defined for this [`MessageDescriptor`], including any extension options.
+    pub fn options(&self) -> DynamicMessage {
+        decode_options(
+            self.parent_pool(),
+            "google.protobuf.MessageOptions",
+            &self.raw().options,
+        )
     }
 
     /// Gets an iterator yielding a [`FieldDescriptor`] for each field defined in this message.
@@ -646,10 +779,10 @@ impl MessageDescriptor {
     /// [`map_entry_value_field`][MessageDescriptor::map_entry_value_field] for more a convenient way
     /// to get these fields.
     pub fn is_map_entry(&self) -> bool {
-        self.descriptor_proto()
+        self.raw()
             .options
             .as_ref()
-            .map(|o| o.map_entry())
+            .map(|o| o.value.map_entry())
             .unwrap_or(false)
     }
 
@@ -677,7 +810,7 @@ impl MessageDescriptor {
 
     /// Gets an iterator over reserved field number ranges in this message.
     pub fn reserved_ranges(&self) -> impl ExactSizeIterator<Item = Range<u32>> + '_ {
-        self.descriptor_proto()
+        self.raw()
             .reserved_range
             .iter()
             .map(|n| (n.start() as u32)..(n.end() as u32))
@@ -685,15 +818,12 @@ impl MessageDescriptor {
 
     /// Gets an iterator over reserved field names in this message.
     pub fn reserved_names(&self) -> impl ExactSizeIterator<Item = &str> + '_ {
-        self.descriptor_proto()
-            .reserved_name
-            .iter()
-            .map(|n| n.as_ref())
+        self.raw().reserved_name.iter().map(|n| n.as_ref())
     }
 
     /// Gets an iterator over extension field number ranges in this message.
     pub fn extension_ranges(&self) -> impl ExactSizeIterator<Item = Range<u32>> + '_ {
-        self.descriptor_proto()
+        self.raw()
             .extension_range
             .iter()
             .map(|n| (n.start() as u32)..(n.end() as u32))
@@ -716,6 +846,14 @@ impl MessageDescriptor {
 
     fn inner(&self) -> &MessageDescriptorInner {
         &self.pool.inner.messages[self.index as usize]
+    }
+
+    fn raw(&self) -> &types::DescriptorProto {
+        find_message_proto(self.raw_file(), self.path())
+    }
+
+    fn raw_file(&self) -> &types::FileDescriptorProto {
+        &self.pool.inner.files[self.inner().id.file as usize].raw
     }
 }
 
@@ -769,6 +907,15 @@ impl FieldDescriptor {
         &self.parent_message().descriptor_proto().field[*self.path().last().unwrap() as usize]
     }
 
+    /// Decodes the options defined for this [`FieldDescriptor`], including any extension options.
+    pub fn options(&self) -> DynamicMessage {
+        decode_options(
+            self.parent_pool(),
+            "google.protobuf.FieldOptions",
+            &self.raw().options,
+        )
+    }
+
     /// Gets the unique number for this message field.
     pub fn number(&self) -> u32 {
         self.inner().number
@@ -779,7 +926,7 @@ impl FieldDescriptor {
     /// This is usually the camel-cased form of the field name, unless
     /// another value is set in the proto file.
     pub fn json_name(&self) -> &str {
-        self.field_descriptor_proto().json_name()
+        self.raw().json_name()
     }
 
     /// Whether this field is encoded using the proto2 group encoding.
@@ -853,6 +1000,10 @@ impl FieldDescriptor {
     fn inner(&self) -> &FieldDescriptorInner {
         &self.message.inner().fields[self.index as usize]
     }
+
+    fn raw(&self) -> &types::FieldDescriptorProto {
+        &self.message.raw().field[self.index as usize]
+    }
 }
 
 impl fmt::Debug for FieldDescriptor {
@@ -919,7 +1070,7 @@ impl ExtensionDescriptor {
     ///
     /// If no package name is set, an empty string is returned.
     pub fn package_name(&self) -> &str {
-        self.parent_file_descriptor_proto().package()
+        self.raw_file().package()
     }
 
     /// Gets the path where this extension field is defined within the [`FileDescriptorProto`][FileDescriptorProto], e.g. `[7, 0]`.
@@ -931,7 +1082,7 @@ impl ExtensionDescriptor {
 
     /// Gets a reference to the [`FileDescriptorProto`] in which this extension is defined.
     pub fn parent_file_descriptor_proto(&self) -> &FileDescriptorProto {
-        &self.pool.inner.files[self.inner().id.file as usize].raw
+        &self.pool.inner.files[self.inner().id.file as usize].prost
     }
 
     /// Gets a reference to the raw [`FieldDescriptorProto`] wrapped by this [`ExtensionDescriptor`].
@@ -944,10 +1095,19 @@ impl ExtensionDescriptor {
             debug_assert_eq!(path[0], tag::file::EXTENSION);
             &file.extension[path[1] as usize]
         } else {
-            let message = find_message_proto(file, &path[..path.len() - 2]);
+            let message = find_message_proto_prost(file, &path[..path.len() - 2]);
             debug_assert_eq!(path[path.len() - 2], tag::message::EXTENSION);
             &message.extension[path[path.len() - 1] as usize]
         }
+    }
+
+    /// Decodes the options defined for this [`ExtensionDescriptor`], including any extension options.
+    pub fn options(&self) -> DynamicMessage {
+        decode_options(
+            self.parent_pool(),
+            "google.protobuf.FieldOptions",
+            &self.raw().options,
+        )
     }
 
     /// Gets the number for this extension field.
@@ -1030,6 +1190,25 @@ impl ExtensionDescriptor {
     fn inner(&self) -> &ExtensionDescriptorInner {
         &self.pool.inner.extensions[self.index as usize]
     }
+
+    fn raw(&self) -> &types::FieldDescriptorProto {
+        let file = self.raw_file();
+        let path = self.path();
+        debug_assert_ne!(path.len(), 0);
+        debug_assert_eq!(path.len() % 2, 0);
+        if path.len() == 2 {
+            debug_assert_eq!(path[0], tag::file::EXTENSION);
+            &file.extension[path[1] as usize]
+        } else {
+            let message = find_message_proto(file, &path[..path.len() - 2]);
+            debug_assert_eq!(path[path.len() - 2], tag::message::EXTENSION);
+            &message.extension[path[path.len() - 1] as usize]
+        }
+    }
+
+    fn raw_file(&self) -> &types::FileDescriptorProto {
+        &self.pool.inner.files[self.inner().id.file as usize].raw
+    }
 }
 
 impl fmt::Debug for ExtensionDescriptor {
@@ -1091,7 +1270,7 @@ impl EnumDescriptor {
     ///
     /// If no package name is set, an empty string is returned.
     pub fn package_name(&self) -> &str {
-        self.parent_file_descriptor_proto().package()
+        self.raw_file().package()
     }
 
     /// Gets the path where this enum type is defined within the [`FileDescriptorProto`][FileDescriptorProto], e.g. `[5, 0]`.
@@ -1103,7 +1282,7 @@ impl EnumDescriptor {
 
     /// Gets a reference to the [`FileDescriptorProto`] in which this enum is defined.
     pub fn parent_file_descriptor_proto(&self) -> &FileDescriptorProto {
-        &self.pool.inner.files[self.inner().id.file as usize].raw
+        &self.pool.inner.files[self.inner().id.file as usize].prost
     }
 
     /// Gets a reference to the raw [`EnumDescriptorProto`] wrapped by this [`EnumDescriptor`].
@@ -1116,10 +1295,19 @@ impl EnumDescriptor {
             debug_assert_eq!(path[0], tag::file::ENUM_TYPE);
             &file.enum_type[path[1] as usize]
         } else {
-            let message = find_message_proto(file, &path[..path.len() - 2]);
+            let message = find_message_proto_prost(file, &path[..path.len() - 2]);
             debug_assert_eq!(path[path.len() - 2], tag::message::ENUM_TYPE);
             &message.enum_type[path[path.len() - 1] as usize]
         }
+    }
+
+    /// Decodes the options defined for this [`EnumDescriptor`], including any extension options.
+    pub fn options(&self) -> DynamicMessage {
+        decode_options(
+            self.parent_pool(),
+            "google.protobuf.EnumOptions",
+            &self.raw().options,
+        )
     }
 
     /// Gets the default value for the enum type.
@@ -1169,7 +1357,7 @@ impl EnumDescriptor {
 
     /// Gets an iterator over reserved value number ranges in this enum.
     pub fn reserved_ranges(&self) -> impl ExactSizeIterator<Item = RangeInclusive<i32>> + '_ {
-        self.enum_descriptor_proto()
+        self.raw()
             .reserved_range
             .iter()
             .map(|n| n.start()..=n.end())
@@ -1177,14 +1365,30 @@ impl EnumDescriptor {
 
     /// Gets an iterator over reserved value names in this enum.
     pub fn reserved_names(&self) -> impl ExactSizeIterator<Item = &str> + '_ {
-        self.enum_descriptor_proto()
-            .reserved_name
-            .iter()
-            .map(|n| n.as_ref())
+        self.raw().reserved_name.iter().map(|n| n.as_ref())
     }
 
     fn inner(&self) -> &EnumDescriptorInner {
         &self.pool.inner.enums[self.index as usize]
+    }
+
+    fn raw(&self) -> &types::EnumDescriptorProto {
+        let file = self.raw_file();
+        let path = self.path();
+        debug_assert_ne!(path.len(), 0);
+        debug_assert_eq!(path.len() % 2, 0);
+        if path.len() == 2 {
+            debug_assert_eq!(path[0], tag::file::ENUM_TYPE);
+            &file.enum_type[path[1] as usize]
+        } else {
+            let message = find_message_proto(file, &path[..path.len() - 2]);
+            debug_assert_eq!(path[path.len() - 2], tag::message::ENUM_TYPE);
+            &message.enum_type[path[path.len() - 1] as usize]
+        }
+    }
+
+    fn raw_file(&self) -> &types::FileDescriptorProto {
+        &self.pool.inner.files[self.inner().id.file as usize].raw
     }
 }
 
@@ -1237,6 +1441,15 @@ impl EnumValueDescriptor {
         &self.parent.enum_descriptor_proto().value[self.index as usize]
     }
 
+    /// Decodes the options defined for this [`EnumValueDescriptor`], including any extension options.
+    pub fn options(&self) -> DynamicMessage {
+        decode_options(
+            self.parent_pool(),
+            "google.protobuf.EnumValueOptions",
+            &self.raw().options,
+        )
+    }
+
     /// Gets the number representing this enum value.
     pub fn number(&self) -> i32 {
         self.inner().number
@@ -1244,6 +1457,10 @@ impl EnumValueDescriptor {
 
     fn inner(&self) -> &EnumValueDescriptorInner {
         &self.parent.inner().values[self.index as usize]
+    }
+
+    fn raw(&self) -> &types::EnumValueDescriptorProto {
+        &self.parent.raw().value[self.index as usize]
     }
 }
 
@@ -1295,6 +1512,15 @@ impl OneofDescriptor {
         &self.message.descriptor_proto().oneof_decl[self.index as usize]
     }
 
+    /// Decodes the options defined for this [`OneofDescriptorProto`], including any extension options.
+    pub fn options(&self) -> DynamicMessage {
+        decode_options(
+            self.parent_pool(),
+            "google.protobuf.OneofOptions",
+            &self.raw().options,
+        )
+    }
+
     /// Gets an iterator yielding a [`FieldDescriptor`] for each field of the parent message this oneof contains.
     pub fn fields(&self) -> impl ExactSizeIterator<Item = FieldDescriptor> + '_ {
         self.inner().fields.iter().map(|&index| FieldDescriptor {
@@ -1305,6 +1531,10 @@ impl OneofDescriptor {
 
     fn inner(&self) -> &OneofDescriptorInner {
         &self.message.inner().oneofs[self.index as usize]
+    }
+
+    fn raw(&self) -> &types::OneofDescriptorProto {
+        &self.message.raw().oneof_decl[self.index as usize]
     }
 }
 
@@ -1364,9 +1594,7 @@ impl ServiceDescriptor {
     ///
     /// If no package name is set, an empty string is returned.
     pub fn package_name(&self) -> &str {
-        self.pool.inner.files[self.inner().id.file as usize]
-            .raw
-            .package()
+        self.raw_file().package()
     }
 
     /// Gets the path where this service is defined within the [`FileDescriptorProto`][FileDescriptorProto], e.g. `[6, 0]`.
@@ -1376,13 +1604,25 @@ impl ServiceDescriptor {
         &self.inner().id.path
     }
 
+    /// Gets a reference to the [`FileDescriptorProto`] in which this service is defined.
+    pub fn parent_file_descriptor_proto(&self) -> &FileDescriptorProto {
+        &self.pool.inner.files[self.inner().id.file as usize].prost
+    }
+
     /// Gets a reference to the raw [`ServiceDescriptorProto`] wrapped by this [`ServiceDescriptor`].
     pub fn service_descriptor_proto(&self) -> &ServiceDescriptorProto {
         let path = self.path();
         debug_assert!(!path.is_empty());
-        &self.pool.inner.files[self.inner().id.file as usize]
-            .raw
-            .service[*path.last().unwrap() as usize]
+        &self.parent_file_descriptor_proto().service[*path.last().unwrap() as usize]
+    }
+
+    /// Decodes the options defined for this [`ServiceDescriptorProto`], including any extension options.
+    pub fn options(&self) -> DynamicMessage {
+        decode_options(
+            self.parent_pool(),
+            "google.protobuf.ServiceOptions",
+            &self.raw().options,
+        )
     }
 
     /// Gets an iterator yielding a [`MethodDescriptor`] for each method defined in this service.
@@ -1395,6 +1635,16 @@ impl ServiceDescriptor {
 
     fn inner(&self) -> &ServiceDescriptorInner {
         &self.pool.inner.services[self.index as usize]
+    }
+
+    fn raw(&self) -> &types::ServiceDescriptorProto {
+        let path = self.path();
+        debug_assert!(!path.is_empty());
+        &self.raw_file().service[*path.last().unwrap() as usize]
+    }
+
+    fn raw_file(&self) -> &types::FileDescriptorProto {
+        &self.pool.inner.files[self.inner().id.file as usize].raw
     }
 }
 
@@ -1465,6 +1715,15 @@ impl MethodDescriptor {
         &self.service.service_descriptor_proto().method[self.index as usize]
     }
 
+    /// Decodes the options defined for this [`MethodDescriptorProto`], including any extension options.
+    pub fn options(&self) -> DynamicMessage {
+        decode_options(
+            self.parent_pool(),
+            "google.protobuf.MethodOptions",
+            &self.raw().options,
+        )
+    }
+
     /// Gets the [`MessageDescriptor`] for the input type of this method.
     pub fn input(&self) -> MessageDescriptor {
         MessageDescriptor {
@@ -1483,16 +1742,20 @@ impl MethodDescriptor {
 
     /// Returns `true` if the client streams multiple messages.
     pub fn is_client_streaming(&self) -> bool {
-        self.method_descriptor_proto().client_streaming()
+        self.raw().client_streaming()
     }
 
     /// Returns `true` if the server streams multiple messages.
     pub fn is_server_streaming(&self) -> bool {
-        self.method_descriptor_proto().server_streaming()
+        self.raw().server_streaming()
     }
 
     fn inner(&self) -> &MethodDescriptorInner {
         &self.service.inner().methods[self.index as usize]
+    }
+
+    fn raw(&self) -> &types::MethodDescriptorProto {
+        &self.service.raw().method[self.index as usize]
     }
 }
 
@@ -1541,11 +1804,51 @@ fn join_name<'a>(namespace: &str, name: &'a str) -> Cow<'a, str> {
     }
 }
 
-fn find_message_proto<'a>(file: &'a FileDescriptorProto, path: &[i32]) -> &'a DescriptorProto {
+fn decode_options<T>(
+    pool: &DescriptorPool,
+    name: &str,
+    option: &Option<Options<T>>,
+) -> DynamicMessage {
+    let message_desc = pool
+        .get_message_by_name(name)
+        .unwrap_or_else(|| WELL_KNOWN_TYPES.get_message_by_name(name).unwrap());
+
+    let bytes = option
+        .as_ref()
+        .map(|o| o.encoded.as_slice())
+        .unwrap_or_default();
+    DynamicMessage::decode(message_desc, bytes).unwrap()
+}
+
+fn find_message_proto_prost<'a>(
+    file: &'a FileDescriptorProto,
+    path: &[i32],
+) -> &'a DescriptorProto {
     debug_assert_ne!(path.len(), 0);
     debug_assert_eq!(path.len() % 2, 0);
 
     let mut message: Option<&'a DescriptorProto> = None;
+    for part in path.chunks(2) {
+        match part[0] {
+            tag::file::MESSAGE_TYPE => message = Some(&file.message_type[part[1] as usize]),
+            tag::message::NESTED_TYPE => {
+                message = Some(&message.unwrap().nested_type[part[1] as usize])
+            }
+            _ => panic!("invalid message path"),
+        }
+    }
+
+    message.unwrap()
+}
+
+fn find_message_proto<'a>(
+    file: &'a types::FileDescriptorProto,
+    path: &[i32],
+) -> &'a types::DescriptorProto {
+    debug_assert_ne!(path.len(), 0);
+    debug_assert_eq!(path.len() % 2, 0);
+
+    let mut message: Option<&'a types::DescriptorProto> = None;
     for part in path.chunks(2) {
         match part[0] {
             tag::file::MESSAGE_TYPE => message = Some(&file.message_type[part[1] as usize]),

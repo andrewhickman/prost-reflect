@@ -1,11 +1,12 @@
-use prost_types::{
-    DescriptorProto, EnumDescriptorProto, EnumValueDescriptorProto, FieldDescriptorProto,
-    FileDescriptorProto, MethodDescriptorProto, OneofDescriptorProto, ServiceDescriptorProto,
-};
-
 use crate::descriptor::{
-    build::DescriptorPoolOffsets, tag, to_index, EnumIndex, EnumValueIndex, ExtensionIndex,
-    FieldIndex, FileIndex, MessageIndex, MethodIndex, OneofIndex, ServiceIndex,
+    build::DescriptorPoolOffsets,
+    tag, to_index,
+    types::{
+        DescriptorProto, EnumDescriptorProto, EnumValueDescriptorProto, FieldDescriptorProto,
+        FileDescriptorProto, MethodDescriptorProto, OneofDescriptorProto, ServiceDescriptorProto,
+    },
+    EnumIndex, EnumValueIndex, ExtensionIndex, FieldIndex, FileIndex, MessageIndex, MethodIndex,
+    OneofIndex, ServiceIndex,
 };
 
 pub(super) trait Visitor {

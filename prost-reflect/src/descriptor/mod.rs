@@ -4,10 +4,7 @@ mod error;
 mod tag;
 #[cfg(test)]
 mod tests;
-
-use prost_types::FileDescriptorProto;
-
-use crate::Value;
+mod types;
 
 pub use self::error::DescriptorError;
 
@@ -17,6 +14,8 @@ use std::{
     fmt,
     sync::Arc,
 };
+
+use crate::{descriptor::types::FileDescriptorProto, Value};
 
 pub(crate) const MAP_ENTRY_KEY_NUMBER: u32 = 1;
 pub(crate) const MAP_ENTRY_VALUE_NUMBER: u32 = 2;
@@ -180,6 +179,7 @@ pub struct FileDescriptor {
 struct FileDescriptorInner {
     syntax: Syntax,
     raw: FileDescriptorProto,
+    prost: prost_types::FileDescriptorProto,
     dependencies: Vec<FileIndex>,
 }
 
@@ -362,10 +362,6 @@ impl KindIndex {
     }
 }
 
-fn to_index(i: usize) -> DescriptorIndex {
-    i.try_into().expect("index too large")
-}
-
 impl fmt::Debug for KindIndex {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -395,6 +391,10 @@ impl DescriptorPoolInner {
         let name = name.strip_prefix('.').unwrap_or(name);
         self.names.get(name)
     }
+}
+
+fn to_index(i: usize) -> DescriptorIndex {
+    i.try_into().expect("index too large")
 }
 
 #[test]

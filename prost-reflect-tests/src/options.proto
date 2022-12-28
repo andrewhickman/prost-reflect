@@ -1,0 +1,67 @@
+syntax = 'proto3';
+
+import 'google/protobuf/descriptor.proto';
+
+package custom.options;
+
+extend google.protobuf.FileOptions {
+    int32 file = 1001;
+}
+
+extend google.protobuf.MessageOptions {
+    string message = 1001;
+}
+
+extend google.protobuf.FieldOptions {
+    bytes field = 1001 [(field) = "extension"];
+}
+
+extend google.protobuf.OneofOptions {
+    repeated float oneof = 1001;
+}
+
+extend google.protobuf.EnumOptions {
+    Aggregate enum = 1001;
+}
+
+extend google.protobuf.EnumValueOptions {
+    Enum value = 1001;
+}
+
+extend google.protobuf.ServiceOptions {
+    bool service = 1001;
+}
+
+extend google.protobuf.MethodOptions {
+    uint64 method = 1001;
+}
+
+option (file) = -1;
+
+message Aggregate {
+    option (message) = "abc";
+
+    int32 a = 1 [(field) = "\010"];
+    oneof O {
+        option (oneof) = 5.5;
+        option (oneof) = -5;
+        option (oneof) = 5;
+
+        string b = 2;
+    }
+}
+
+enum Enum {
+    option (enum) = { a: 32, b: "abc" };
+
+    VALUE = 0 [(value) = VALUE2];
+    VALUE2 = 1 [(value) = VALUE];
+}
+
+service Service {
+    option (service) = true;
+
+    rpc rpc(Aggregate) returns (Aggregate) {
+        option (method) = 6;
+    }
+}

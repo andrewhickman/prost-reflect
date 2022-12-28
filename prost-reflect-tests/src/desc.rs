@@ -1,7 +1,7 @@
 use prost::Message;
-use prost_reflect::{DescriptorPool, Syntax, Value};
+use prost_reflect::{DescriptorPool, ReflectMessage, Syntax, Value};
 
-use crate::{test_file_descriptor, DESCRIPTOR_POOL_BYTES};
+use crate::{proto, test_file_descriptor, DESCRIPTOR_POOL_BYTES};
 
 #[test]
 fn test_descriptor_methods() {
@@ -120,26 +120,38 @@ fn test_descriptor_methods_proto2() {
         vec![100, 110, 111, 112, 113, 114, 115],
     );
 
-    let mut extensions: Vec<_> = test_file_descriptor().all_extensions().collect();
+    let mut extensions: Vec<_> = test_file_descriptor()
+        .all_extensions()
+        .filter(|ext| ext.parent_file() == file_desc)
+        .collect();
     extensions.sort_by_key(|e| e.full_name().to_owned());
-    assert_eq!(extensions.len(), 4);
-
-    assert_eq!(extensions[0].full_name(), "demo.len");
-    assert_eq!(extensions[0].parent_message(), None);
-    assert_eq!(extensions[0].parent_file().name(), "ext.proto");
-    assert_eq!(
-        extensions[0].containing_message().full_name(),
-        "google.protobuf.EnumValueOptions"
-    );
-    assert_eq!(extensions[0].json_name(), "[demo.len]");
+    assert_eq!(extensions.len(), 3);
 
     assert_eq!(
-        extensions[1].full_name(),
+        extensions[0].full_name(),
         "my.package2.MyMessage.in_extendee"
     );
     assert_eq!(
-        extensions[1].parent_message().unwrap().full_name(),
+        extensions[0].parent_message().unwrap().full_name(),
         "my.package2.MyMessage"
+    );
+    assert_eq!(extensions[0].parent_file(), file_desc);
+    assert_eq!(
+        extensions[0].containing_message().full_name(),
+        "my.package2.MyMessage"
+    );
+    assert_eq!(
+        extensions[0].json_name(),
+        "[my.package2.MyMessage.in_extendee]"
+    );
+
+    assert_eq!(
+        extensions[1].full_name(),
+        "my.package2.OtherMessage.in_other"
+    );
+    assert_eq!(
+        extensions[1].parent_message().unwrap().full_name(),
+        "my.package2.OtherMessage"
     );
     assert_eq!(extensions[1].parent_file(), file_desc);
     assert_eq!(
@@ -148,35 +160,17 @@ fn test_descriptor_methods_proto2() {
     );
     assert_eq!(
         extensions[1].json_name(),
-        "[my.package2.MyMessage.in_extendee]"
+        "[my.package2.OtherMessage.in_other]"
     );
 
-    assert_eq!(
-        extensions[2].full_name(),
-        "my.package2.OtherMessage.in_other"
-    );
-    assert_eq!(
-        extensions[2].parent_message().unwrap().full_name(),
-        "my.package2.OtherMessage"
-    );
+    assert_eq!(extensions[2].full_name(), "my.package2.in_file");
+    assert!(extensions[2].parent_message().is_none());
     assert_eq!(extensions[2].parent_file(), file_desc);
     assert_eq!(
         extensions[2].containing_message().full_name(),
         "my.package2.MyMessage"
     );
-    assert_eq!(
-        extensions[2].json_name(),
-        "[my.package2.OtherMessage.in_other]"
-    );
-
-    assert_eq!(extensions[3].full_name(), "my.package2.in_file");
-    assert!(extensions[3].parent_message().is_none());
-    assert_eq!(extensions[3].parent_file(), file_desc);
-    assert_eq!(
-        extensions[3].containing_message().full_name(),
-        "my.package2.MyMessage"
-    );
-    assert_eq!(extensions[3].json_name(), "[my.package2.in_file]");
+    assert_eq!(extensions[2].json_name(), "[my.package2.in_file]");
 }
 
 #[test]
@@ -278,7 +272,6 @@ fn test_debug_impls() {
 
 #[test]
 fn test_raw_getters() {
-    // Check none of the debug impls accidentally recurse infinitely
     let _ = format!("{:?}", test_file_descriptor());
 
     for file in test_file_descriptor().files() {
@@ -445,5 +438,133 @@ fn test_get_extension() {
             .get_extension(&extension)
             .as_ref(),
         &Value::U32(1)
+    );
+
+    let e = test_file_descriptor().get_enum_by_name("demo.Foo").unwrap();
+    assert!(e.get_value(0).unwrap().options().has_extension(&extension));
+    assert_eq!(
+        e.get_value(0)
+            .unwrap()
+            .options()
+            .get_extension(&extension)
+            .as_ref(),
+        &Value::U32(0)
+    );
+    assert!(e.get_value(1).unwrap().options().has_extension(&extension));
+    assert_eq!(
+        e.get_value(1)
+            .unwrap()
+            .options()
+            .get_extension(&extension)
+            .as_ref(),
+        &Value::U32(1)
+    );
+    assert!(e.get_value(2).unwrap().options().has_extension(&extension));
+    assert_eq!(
+        e.get_value(2)
+            .unwrap()
+            .options()
+            .get_extension(&extension)
+            .as_ref(),
+        &Value::U32(2)
+    );
+}
+
+#[test]
+fn test_file_extension_options() {
+    let pool = test_file_descriptor();
+
+    let file = pool.get_file_by_name("options.proto").unwrap();
+    let file_ext = pool.get_extension_by_name("custom.options.file").unwrap();
+    assert_eq!(
+        file.options().get_extension(&file_ext).as_ref(),
+        &Value::I32(-1)
+    );
+}
+
+#[test]
+fn test_message_extension_options() {
+    let pool = test_file_descriptor();
+
+    let message = pool
+        .get_message_by_name("custom.options.Aggregate")
+        .unwrap();
+    let message_ext = pool
+        .get_extension_by_name("custom.options.message")
+        .unwrap();
+    assert_eq!(
+        message.options().get_extension(&message_ext).as_ref(),
+        &Value::String("abc".into())
+    );
+
+    let field = message.get_field_by_name("a").unwrap();
+    let field_ext = pool.get_extension_by_name("custom.options.field").unwrap();
+    assert_eq!(
+        field.options().get_extension(&field_ext).as_ref(),
+        &Value::Bytes(b"\x08".as_ref().into())
+    );
+
+    let oneof = message.oneofs().find(|o| o.name() == "O").unwrap();
+    let oneof_ext = pool.get_extension_by_name("custom.options.oneof").unwrap();
+    assert_eq!(
+        oneof.options().get_extension(&oneof_ext).as_ref(),
+        &Value::List(vec![Value::F32(5.5), Value::F32(-5.0), Value::F32(5.0)]),
+    );
+}
+
+#[test]
+fn test_extension_extension_options() {
+    let pool = test_file_descriptor();
+
+    let ext = pool.get_extension_by_name("custom.options.field").unwrap();
+    assert_eq!(
+        ext.options().get_extension(&ext).as_ref(),
+        &Value::Bytes("extension".into())
+    );
+}
+
+#[test]
+fn test_service_extension_options() {
+    let pool = test_file_descriptor();
+
+    let service = pool.get_service_by_name("custom.options.Service").unwrap();
+    let service_ext = pool
+        .get_extension_by_name("custom.options.service")
+        .unwrap();
+    assert_eq!(
+        service.options().get_extension(&service_ext).as_ref(),
+        &Value::Bool(true)
+    );
+
+    let method = service.methods().next().unwrap();
+    let method_ext = pool.get_extension_by_name("custom.options.method").unwrap();
+    assert_eq!(
+        method.options().get_extension(&method_ext).as_ref(),
+        &Value::U64(6)
+    );
+}
+
+#[test]
+fn test_enum_extension_options() {
+    let pool = test_file_descriptor();
+
+    let enum_ = pool.get_enum_by_name("custom.options.Enum").unwrap();
+    let enum_ext = pool.get_extension_by_name("custom.options.enum").unwrap();
+    assert_eq!(
+        enum_.options().get_extension(&enum_ext).as_ref(),
+        &Value::Message(
+            proto::options::Aggregate {
+                a: 32,
+                o: Some(proto::options::aggregate::O::B("abc".into()))
+            }
+            .transcode_to_dynamic()
+        ),
+    );
+
+    let value = enum_.get_value_by_name("VALUE").unwrap();
+    let value_ext = pool.get_extension_by_name("custom.options.value").unwrap();
+    assert_eq!(
+        value.options().get_extension(&value_ext).as_ref(),
+        &Value::EnumNumber(1)
     );
 }

@@ -1,5 +1,6 @@
-#[cfg(feature = "reflect-well-known-types")]
 mod wkt;
+
+pub(crate) use wkt::WELL_KNOWN_TYPES;
 
 use prost::Message;
 

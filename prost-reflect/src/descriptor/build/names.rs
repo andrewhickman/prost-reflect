@@ -1,22 +1,24 @@
 use std::collections::{hash_map, BTreeMap, HashMap};
 
-use prost_types::{
-    DescriptorProto, EnumDescriptorProto, EnumValueDescriptorProto, FieldDescriptorProto,
-    FileDescriptorProto, MethodDescriptorProto, OneofDescriptorProto, ServiceDescriptorProto,
-};
-
 use crate::{
     descriptor::{
         build::{
             join_path,
+            options::option_to_bool,
             visit::{visit, Visitor},
             DescriptorPoolOffsets,
         },
         error::{DescriptorError, DescriptorErrorKind, Label},
-        tag, to_index, Definition, DefinitionKind, DescriptorPoolInner, EnumDescriptorInner,
-        EnumIndex, EnumValueDescriptorInner, EnumValueIndex, ExtensionIndex, FieldIndex,
-        FileDescriptorInner, FileIndex, Identity, MessageDescriptorInner, MessageIndex,
-        MethodIndex, OneofDescriptorInner, OneofIndex, ServiceIndex,
+        tag, to_index,
+        types::{
+            DescriptorProto, EnumDescriptorProto, EnumValueDescriptorProto, FieldDescriptorProto,
+            FileDescriptorProto, MethodDescriptorProto, OneofDescriptorProto,
+            ServiceDescriptorProto,
+        },
+        Definition, DefinitionKind, DescriptorPoolInner, EnumDescriptorInner, EnumIndex,
+        EnumValueDescriptorInner, EnumValueIndex, ExtensionIndex, FieldIndex, FileDescriptorInner,
+        FileIndex, Identity, MessageDescriptorInner, MessageIndex, MethodIndex,
+        OneofDescriptorInner, OneofIndex, ServiceIndex,
     },
     Syntax,
 };
@@ -79,6 +81,7 @@ impl<'a> Visitor for NameVisitor<'a> {
         self.pool.files.push(FileDescriptorInner {
             syntax,
             raw: file.clone(),
+            prost: Default::default(), // the prost descriptor is initialized from the internal descriptor once resolution is complete, to avoid needing to duplicate all modifications
             dependencies: Vec::with_capacity(file.dependency.len()),
         });
 
@@ -238,12 +241,12 @@ impl<'a> Visitor for NameVisitor<'a> {
         }
 
         let allow_alias = enum_.options.as_ref().map_or(false, |o| {
-            o.allow_alias()
-                || o.uninterpreted_option.iter().any(|u| {
+            o.value.allow_alias()
+                || o.value.uninterpreted_option.iter().any(|u| {
                     u.name.len() == 1
                         && u.name[0].name_part == "allow_alias"
                         && !u.name[0].is_extension
-                        && u.positive_int_value() != 0
+                        && option_to_bool(u).unwrap_or(false)
                 })
         });
 

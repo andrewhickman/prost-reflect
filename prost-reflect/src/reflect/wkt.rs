@@ -2,15 +2,13 @@ use once_cell::sync::Lazy;
 
 use crate::{DescriptorPool, MessageDescriptor, ReflectMessage};
 
-static WELL_KNOWN_TYPES_BYTES: &[u8] =
-    include_bytes!(concat!(env!("OUT_DIR"), "/well_known_types.bin"));
-static WELL_KNOWN_TYPES: Lazy<DescriptorPool> =
+static WELL_KNOWN_TYPES_BYTES: &[u8] = include_bytes!("../well_known_types.bin");
+pub(crate) static WELL_KNOWN_TYPES: Lazy<DescriptorPool> =
     Lazy::new(|| DescriptorPool::decode(WELL_KNOWN_TYPES_BYTES).unwrap());
 
 macro_rules! impl_reflect_message {
     ($($ty:ty => $name:literal;)*) => {
         $(
-            #[cfg_attr(docsrs, doc(cfg(feature = "reflect-well-known-types")))]
             impl ReflectMessage for $ty {
                 #[doc = concat!("Returns a descriptor for the `", $name, "` message type.")]
                 fn descriptor(&self) -> MessageDescriptor {

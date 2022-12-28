@@ -1,8 +1,6 @@
+use std::{borrow::Cow, collections::HashMap};
+
 use prost::bytes::Bytes;
-use prost_types::{
-    field_descriptor_proto, EnumValueDescriptorProto, FieldDescriptorProto, FileDescriptorProto,
-    MethodDescriptorProto, ServiceDescriptorProto,
-};
 
 use crate::{
     descriptor::{
@@ -12,7 +10,13 @@ use crate::{
             DescriptorPoolOffsets,
         },
         error::{DescriptorError, DescriptorErrorKind, Label},
-        tag, to_index, Definition, DefinitionKind, DescriptorPoolInner, EnumIndex, EnumValueIndex,
+        tag, to_index,
+        types::{
+            field_descriptor_proto, DescriptorProto, EnumValueDescriptorProto,
+            FieldDescriptorProto, FileDescriptorProto, MethodDescriptorProto,
+            ServiceDescriptorProto,
+        },
+        Definition, DefinitionKind, DescriptorPoolInner, EnumIndex, EnumValueIndex,
         ExtensionDescriptorInner, ExtensionIndex, FieldDescriptorInner, FieldIndex, FileIndex,
         Identity, KindIndex, MessageIndex, MethodDescriptorInner, MethodIndex, OneofIndex,
         ServiceDescriptorInner, ServiceIndex,
@@ -104,7 +108,7 @@ impl<'a> Visitor for ResolveVisitor<'a> {
             && (field
                 .options
                 .as_ref()
-                .map_or(syntax == Syntax::Proto3, |options| options.packed()));
+                .map_or(syntax == Syntax::Proto3, |o| o.value.packed()));
 
         let supports_presence = field.proto3_optional()
             || field.oneof_index.is_some()
@@ -239,7 +243,7 @@ impl<'a> Visitor for ResolveVisitor<'a> {
                 method.input_type(),
                 file,
                 path,
-                &[tag::method::INPUT_TYPE],
+                tag::method::INPUT_TYPE,
             )
             .unwrap_or(MessageIndex::MAX);
         let output = self
@@ -248,7 +252,7 @@ impl<'a> Visitor for ResolveVisitor<'a> {
                 method.output_type(),
                 file,
                 path,
-                &[tag::method::OUTPUT_TYPE],
+                tag::method::OUTPUT_TYPE,
             )
             .unwrap_or(MessageIndex::MAX);
 
@@ -343,7 +347,7 @@ impl<'a> Visitor for ResolveVisitor<'a> {
             extension.extendee(),
             file,
             path,
-            &[tag::field::EXTENDEE],
+            tag::field::EXTENDEE,
         );
         if let Some(extendee) = extendee {
             self.pool.messages[extendee as usize].extensions.push(index);
@@ -370,7 +374,7 @@ impl<'a> Visitor for ResolveVisitor<'a> {
             && (extension
                 .options
                 .as_ref()
-                .map_or(syntax == Syntax::Proto3, |options| options.packed()));
+                .map_or(syntax == Syntax::Proto3, |o| o.value.packed()));
 
         let supports_presence = extension.proto3_optional()
             || extension.oneof_index.is_some()
@@ -444,7 +448,7 @@ impl<'a> ResolveVisitor<'a> {
                 }
             }
         } else {
-            match self.resolve_name(scope, ty_name) {
+            match self.resolve_name(scope, ty_name, file, path, tag::field::TYPE_NAME) {
                 Some(Definition {
                     kind: DefinitionKind::Message(message),
                     ..
@@ -460,6 +464,9 @@ impl<'a> ResolveVisitor<'a> {
                     ..
                 }) => Ok(KindIndex::Enum(*enum_)),
                 Some(def) => {
+                    let def_file = def.file;
+                    let def_path = def.path.clone();
+
                     self.errors.push(DescriptorErrorKind::InvalidType {
                         name: ty_name.to_owned(),
                         expected: "a message or enum type".to_owned(),
@@ -469,12 +476,7 @@ impl<'a> ResolveVisitor<'a> {
                             file,
                             join_path(path, &[tag::field::TYPE_NAME]),
                         ),
-                        defined: Label::new(
-                            &self.pool.files,
-                            "defined here",
-                            def.file,
-                            def.path.clone(),
-                        ),
+                        defined: Label::new(&self.pool.files, "defined here", def_file, def_path),
                     });
                     Err(())
                 }
@@ -580,14 +582,17 @@ impl<'a> ResolveVisitor<'a> {
         name: &str,
         file: FileIndex,
         path1: &[i32],
-        path2: &[i32],
+        path2: i32,
     ) -> Option<MessageIndex> {
-        match self.resolve_name(scope, name) {
+        match self.resolve_name(scope, name, file, path1, path2) {
             Some(Definition {
                 kind: DefinitionKind::Message(message),
                 ..
             }) => Some(*message),
             Some(def) => {
+                let def_file = def.file;
+                let def_path = def.path.clone();
+
                 self.errors.push(DescriptorErrorKind::InvalidType {
                     name: name.to_owned(),
                     expected: "a message type".to_owned(),
@@ -595,14 +600,9 @@ impl<'a> ResolveVisitor<'a> {
                         &self.pool.files,
                         "found here",
                         file,
-                        join_path(path1, path2),
+                        join_path(path1, &[path2]),
                     ),
-                    defined: Label::new(
-                        &self.pool.files,
-                        "defined here",
-                        def.file,
-                        def.path.clone(),
-                    ),
+                    defined: Label::new(&self.pool.files, "defined here", def_file, def_path),
                 });
                 None
             }
@@ -613,7 +613,7 @@ impl<'a> ResolveVisitor<'a> {
                         &self.pool.files,
                         "found here",
                         file,
-                        join_path(path1, path2),
+                        join_path(path1, &[path2]),
                     ),
                 });
                 None
@@ -621,30 +621,64 @@ impl<'a> ResolveVisitor<'a> {
         }
     }
 
-    fn resolve_name(&self, scope: &str, name: &str) -> Option<&Definition> {
-        match name.strip_prefix('.') {
-            Some(full_name) => self.pool.names.get(full_name),
-            None => self.resolve_relative_name(scope, name),
+    fn resolve_name(
+        &mut self,
+        scope: &str,
+        name: &str,
+        file: FileIndex,
+        path: &[i32],
+        tag: i32,
+    ) -> Option<&Definition> {
+        let result = match name.strip_prefix('.') {
+            Some(full_name) => self
+                .pool
+                .names
+                .get(full_name)
+                .map(|def| (Cow::Borrowed(name), def)),
+            None => Self::resolve_relative_name(&self.pool.names, scope, name)
+                .map(|(resolved_name, def)| (Cow::Owned(resolved_name), def)),
+        };
+
+        if let Some((type_name, def)) = result {
+            set_file_type_name(
+                &mut self.pool.files[file as usize].raw,
+                path,
+                tag,
+                type_name.into_owned(),
+            );
+            Some(def)
+        } else {
+            None
         }
     }
 
-    fn resolve_relative_name(&self, scope: &str, relative_name: &str) -> Option<&Definition> {
-        let mut buf = format!("{}.{}", scope, relative_name);
+    fn resolve_relative_name<'b>(
+        names: &'b HashMap<Box<str>, Definition>,
+        scope: &str,
+        relative_name: &str,
+    ) -> Option<(String, &'b Definition)> {
+        let mut buf = format!(".{}.{}", scope, relative_name);
 
-        if let Some(def) = self.pool.names.get(buf.as_str()) {
-            return Some(def);
+        if let Some(def) = names.get(&buf[1..]) {
+            return Some((buf, def));
         }
 
         for (i, _) in scope.rmatch_indices('.') {
-            buf.truncate(i + 1);
+            buf.truncate(i + 2);
             buf.push_str(relative_name);
 
-            if let Some(def) = self.pool.names.get(buf.as_str()) {
-                return Some(def);
+            if let Some(def) = names.get(&buf[1..]) {
+                return Some((buf, def));
             }
         }
 
-        self.pool.names.get(relative_name)
+        buf.truncate(1);
+        buf.push_str(relative_name);
+        if let Some(def) = names.get(&buf[1..]) {
+            return Some((buf, def));
+        }
+
+        None
     }
 
     fn add_missing_required_field_error(&mut self, file: FileIndex, path: Box<[i32]>) {
@@ -766,6 +800,60 @@ fn unescape_c_escape_string(s: &str) -> Result<Bytes, &'static str> {
         }
     }
     Ok(dst.into())
+}
+
+fn set_file_type_name(file: &mut FileDescriptorProto, path: &[i32], tag: i32, type_name: String) {
+    match path[0] {
+        tag::file::MESSAGE_TYPE => {
+            let message = &mut file.message_type[path[1] as usize];
+            set_message_type_name(message, &path[2..], tag, type_name);
+        }
+        tag::file::SERVICE => {
+            debug_assert_eq!(path.len(), 4);
+            let service = &mut file.service[path[1] as usize];
+            debug_assert_eq!(path[2], tag::service::METHOD);
+            let method = &mut service.method[path[3] as usize];
+            match tag {
+                tag::method::INPUT_TYPE => method.input_type = Some(type_name),
+                tag::method::OUTPUT_TYPE => method.output_type = Some(type_name),
+                p => panic!("unknown path element {}", p),
+            }
+        }
+        tag::file::EXTENSION => {
+            debug_assert_eq!(path.len(), 2);
+            let extension = &mut file.extension[path[1] as usize];
+            set_field_type_name(extension, tag, type_name);
+        }
+        p => panic!("unknown path element {}", p),
+    }
+}
+
+fn set_message_type_name(message: &mut DescriptorProto, path: &[i32], tag: i32, type_name: String) {
+    match path[0] {
+        tag::message::FIELD => {
+            debug_assert_eq!(path.len(), 2);
+            let field = &mut message.field[path[1] as usize];
+            set_field_type_name(field, tag, type_name);
+        }
+        tag::message::EXTENSION => {
+            debug_assert_eq!(path.len(), 2);
+            let extension = &mut message.extension[path[1] as usize];
+            set_field_type_name(extension, tag, type_name);
+        }
+        tag::message::NESTED_TYPE => {
+            let nested_message = &mut message.nested_type[path[1] as usize];
+            set_message_type_name(nested_message, &path[2..], tag, type_name);
+        }
+        p => panic!("unknown path element {}", p),
+    }
+}
+
+fn set_field_type_name(field: &mut FieldDescriptorProto, tag: i32, type_name: String) {
+    match tag {
+        tag::field::TYPE_NAME => field.type_name = Some(type_name),
+        tag::field::EXTENDEE => field.extendee = Some(type_name),
+        p => panic!("unknown path element {}", p),
+    }
 }
 
 #[test]

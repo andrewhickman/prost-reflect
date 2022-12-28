@@ -71,6 +71,21 @@ pub(super) enum DescriptorErrorKind {
         first: Label,
         second: Label,
     },
+    OptionNotFound {
+        name: String,
+        found: Label,
+    },
+    InvalidOptionType {
+        name: String,
+        ty: String,
+        value: String,
+        is_last: bool,
+        found: Label,
+    },
+    DuplicateOption {
+        name: String,
+        found: Label,
+    },
     DecodeFileDescriptorSet {
         err: prost::DecodeError,
     },
@@ -224,6 +239,9 @@ impl DescriptorErrorKind {
             DescriptorErrorKind::InvalidFieldDefault { found, .. } => Some(found),
             DescriptorErrorKind::EmptyEnum { found } => Some(found),
             DescriptorErrorKind::DuplicateEnumNumber { second, .. } => Some(second),
+            DescriptorErrorKind::OptionNotFound { found, .. } => Some(found),
+            DescriptorErrorKind::InvalidOptionType { found, .. } => Some(found),
+            DescriptorErrorKind::DuplicateOption { found, .. } => Some(found),
             DescriptorErrorKind::DecodeFileDescriptorSet { .. } => None,
         }
     }
@@ -271,6 +289,15 @@ impl DescriptorErrorKind {
             DescriptorErrorKind::DuplicateEnumNumber { first, second, .. } => {
                 first.resolve_span(file, source);
                 second.resolve_span(file, source);
+            }
+            DescriptorErrorKind::OptionNotFound { found, .. } => {
+                found.resolve_span(file, source);
+            }
+            DescriptorErrorKind::InvalidOptionType { found, .. } => {
+                found.resolve_span(file, source);
+            }
+            DescriptorErrorKind::DuplicateOption { found, .. } => {
+                found.resolve_span(file, source);
             }
             DescriptorErrorKind::DecodeFileDescriptorSet { .. } => {}
         }
@@ -348,6 +375,33 @@ impl fmt::Display for DescriptorErrorKind {
             DescriptorErrorKind::DuplicateEnumNumber { number, .. } => {
                 write!(f, "enum number '{}' has already been used", number)
             }
+            DescriptorErrorKind::OptionNotFound { name, .. } => {
+                write!(f, "option field '{}' is not defined", name)
+            }
+            DescriptorErrorKind::InvalidOptionType {
+                name,
+                ty,
+                value,
+                is_last,
+                ..
+            } => {
+                if *is_last {
+                    write!(
+                        f,
+                        "expected a value of type '{}' for option '{}', but found '{}'",
+                        ty, name, value
+                    )
+                } else {
+                    write!(
+                        f,
+                        "cannot set field for option '{} 'value of type '{}'",
+                        ty, name
+                    )
+                }
+            }
+            DescriptorErrorKind::DuplicateOption { name, .. } => {
+                write!(f, "option field '{}' has already been set", name)
+            }
             DescriptorErrorKind::DecodeFileDescriptorSet { .. } => {
                 write!(f, "failed to decode file descriptor set")
             }
@@ -378,6 +432,9 @@ impl miette::Diagnostic for DescriptorErrorKind {
             DescriptorErrorKind::DuplicateEnumNumber { .. } => Some(Box::new(
                 "set the 'allow_alias' option allow re-using enum numbers",
             )),
+            DescriptorErrorKind::OptionNotFound { .. } => None,
+            DescriptorErrorKind::InvalidOptionType { .. } => None,
+            DescriptorErrorKind::DuplicateOption { .. } => None,
             DescriptorErrorKind::DecodeFileDescriptorSet { .. } => None,
         }
     }
@@ -424,6 +481,15 @@ impl miette::Diagnostic for DescriptorErrorKind {
                 spans.extend(first.to_span());
                 spans.extend(second.to_span());
             }
+            DescriptorErrorKind::OptionNotFound { found, .. } => {
+                spans.extend(found.to_span());
+            }
+            DescriptorErrorKind::InvalidOptionType { found, .. } => {
+                spans.extend(found.to_span());
+            }
+            DescriptorErrorKind::DuplicateOption { found, .. } => {
+                spans.extend(found.to_span());
+            }
             DescriptorErrorKind::DecodeFileDescriptorSet { .. } => {}
         }
         if spans.is_empty() {
@@ -441,7 +507,7 @@ impl Label {
         file: FileIndex,
         path: Box<[i32]>,
     ) -> Self {
-        let file = &files[file as usize].raw;
+        let file = &files[file as usize].prost;
 
         let span = file
             .source_code_info

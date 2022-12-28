@@ -5,12 +5,13 @@ use std::{
 };
 
 use crate::{
-    ExtensionDescriptor, FieldDescriptor, Kind, MessageDescriptor, OneofDescriptor, Value,
+    Cardinality, ExtensionDescriptor, FieldDescriptor, Kind, MessageDescriptor, OneofDescriptor,
+    Value,
 };
 
 use super::unknown::UnknownField;
 
-pub(super) trait FieldDescriptorLike: fmt::Debug {
+pub(crate) trait FieldDescriptorLike: fmt::Debug {
     fn text_name(&self) -> &str;
     fn number(&self) -> u32;
     fn default_value(&self) -> Value;
@@ -20,6 +21,7 @@ pub(super) trait FieldDescriptorLike: fmt::Debug {
     fn supports_presence(&self) -> bool;
     fn kind(&self) -> Kind;
     fn is_group(&self) -> bool;
+    fn cardinality(&self) -> Cardinality;
     fn is_list(&self) -> bool;
     fn is_map(&self) -> bool;
     fn is_packed(&self) -> bool;
@@ -243,6 +245,10 @@ impl FieldDescriptorLike for FieldDescriptor {
         self.is_group()
     }
 
+    fn cardinality(&self) -> Cardinality {
+        self.cardinality()
+    }
+
     fn is_list(&self) -> bool {
         self.is_list()
     }
@@ -295,6 +301,10 @@ impl FieldDescriptorLike for ExtensionDescriptor {
 
     fn is_group(&self) -> bool {
         self.is_group()
+    }
+
+    fn cardinality(&self) -> Cardinality {
+        self.cardinality()
     }
 
     fn is_list(&self) -> bool {

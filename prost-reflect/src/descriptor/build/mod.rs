@@ -3,14 +3,14 @@ mod options;
 mod resolve;
 mod visit;
 
-use prost_types::FileDescriptorProto;
+use std::sync::Arc;
 
 use crate::{
     descriptor::{
-        to_index, DefinitionKind, DescriptorPoolInner, EnumIndex, ExtensionIndex, FileIndex,
-        MessageIndex, ServiceIndex,
+        to_index, types::FileDescriptorProto, DefinitionKind, DescriptorPoolInner, EnumIndex,
+        ExtensionIndex, FileIndex, MessageIndex, ServiceIndex,
     },
-    DescriptorError,
+    DescriptorError, DescriptorPool,
 };
 
 #[derive(Clone, Copy)]
@@ -41,9 +41,9 @@ impl DescriptorPoolOffsets {
         pool.services.truncate(self.service as usize);
         pool.names.retain(|name, definition| match definition.kind {
             DefinitionKind::Package => pool.files.iter().any(|f| {
-                f.raw.package().starts_with(name.as_ref())
+                f.prost.package().starts_with(name.as_ref())
                     && matches!(
-                        f.raw.package().as_bytes().get(name.len()),
+                        f.prost.package().as_bytes().get(name.len()),
                         None | Some(&b'.')
                     )
             }),
@@ -63,16 +63,17 @@ impl DescriptorPoolOffsets {
     }
 }
 
-impl DescriptorPoolInner {
+impl DescriptorPool {
     pub(super) fn build_files<I>(&mut self, files: I) -> Result<(), DescriptorError>
     where
-        I: IntoIterator<Item = FileDescriptorProto>, // todo: use custom FileDescriptorProto type to preserve extension options
+        I: IntoIterator<Item = FileDescriptorProto>,
     {
-        let offsets = DescriptorPoolOffsets::new(self);
+        let offsets = DescriptorPoolOffsets::new(&self.inner);
 
         let result = self.build_files_inner(offsets, files);
         if result.is_err() {
-            offsets.rollback(self);
+            debug_assert_eq!(Arc::strong_count(&self.inner), 1);
+            offsets.rollback(Arc::get_mut(&mut self.inner).unwrap());
         }
 
         result
@@ -84,21 +85,28 @@ impl DescriptorPoolInner {
         files: I,
     ) -> Result<(), DescriptorError>
     where
-        I: IntoIterator<Item = FileDescriptorProto>, // todo: use custom FileDescriptorProto type to preserve extension options
+        I: IntoIterator<Item = FileDescriptorProto>,
     {
+        let inner = Arc::make_mut(&mut self.inner);
         let deduped_files: Vec<_> = files
             .into_iter()
-            .filter(|f| match self.file_names.get(f.name()) {
-                Some(&index) => self.files[index as usize].raw != *f,
+            .filter(|f| match inner.file_names.get(f.name()) {
+                Some(&index) => &inner.files[index as usize].raw != f,
                 None => true,
             })
             .collect();
 
-        self.collect_names(offsets, deduped_files.iter())?;
+        inner.collect_names(offsets, deduped_files.iter())?;
 
-        self.resolve_names(offsets, deduped_files.iter())?;
+        inner.resolve_names(offsets, deduped_files.iter())?;
 
-        self.resolve_options(offsets, deduped_files.iter());
+        self.resolve_options(offsets, deduped_files.iter())?;
+
+        debug_assert_eq!(Arc::strong_count(&self.inner), 1);
+        let inner = Arc::get_mut(&mut self.inner).unwrap();
+        for file in &mut inner.files[offsets.file as usize..] {
+            file.prost = file.raw.to_prost();
+        }
 
         Ok(())
     }

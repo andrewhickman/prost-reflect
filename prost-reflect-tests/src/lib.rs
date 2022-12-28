@@ -16,6 +16,10 @@ pub mod proto {
     #![allow(clippy::all)]
     include!(concat!(env!("OUT_DIR"), "/test.rs"));
     include!(concat!(env!("OUT_DIR"), "/test2.rs"));
+
+    pub mod options {
+        include!(concat!(env!("OUT_DIR"), "/custom.options.rs"));
+    }
 }
 
 const DESCRIPTOR_POOL_BYTES: &[u8] =

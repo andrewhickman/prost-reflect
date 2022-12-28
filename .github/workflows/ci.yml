@@ -49,7 +49,6 @@ jobs:
       - run: cargo check --package prost-reflect --no-default-features
       - run: cargo check --package prost-reflect --no-default-features --features=text-format
       - run: cargo check --package prost-reflect --no-default-features --features=serde
-      - run: cargo check --package prost-reflect --no-default-features --features=reflect-well-known-types
       - run: cargo check --package prost-reflect --all-features
       - name: Check README.md is up-to-date
         shell: pwsh

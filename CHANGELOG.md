@@ -11,11 +11,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Added the [`path()`](https://docs.rs/prost-reflect/latest/prost_reflect/struct.MessageDescriptor.html#method.path) method to all descriptor types, which returns a path that can be used to get source code info by comparing against [`Location::path`](https://docs.rs/prost-types/latest/prost_types/source_code_info/struct.Location.html#structfield.path).
+- Added the [`options()`](https://docs.rs/prost-reflect/latest/prost_reflect/struct.MessageDescriptor.html#method.options) method to all descriptor types, which returns a message containing the options defined for the descriptor, including custom options.
+- The `uninterpreted_options` field of options is now used to populate options if it is present.
+  - Note that if the `text-format` feature flag is not enabled, then options set through the [`aggregate_value`](https://docs.rs/prost-types/latest/prost_types/struct.UninterpretedOption.html#method.aggregate_value) field will be ignored.
 
 ### Changed
 
 - The minimum supported rust version is now **1.57.0**.
 - **Breaking** The [`FileDescriptor::dependencies`](https://docs.rs/prost-reflect/latest/prost_reflect/struct.FileDescriptor.html#method.dependencies) now returns all imported files, instead of just those imported with `import public`. The new `public_dependencies` method preserves the old behaviour ([#19]).
+- **Breaking** The `reflect-well-known-types` feature flag has been removed, and the functionality is now always available.
 - Updated the base64 dependency to version [0.20.0](https://crates.io/crates/base64/0.20.0).
 
 ## [0.9.2] - 2022-08-14

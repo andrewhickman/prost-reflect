@@ -6,6 +6,7 @@ use crate::{
     descriptor::{GOOGLE_APIS_DOMAIN, GOOGLE_PROD_DOMAIN},
     dynamic::{
         fields::ValueAndDescriptor,
+        fmt_string,
         text_format::FormatOptions,
         unknown::{UnknownField, UnknownFieldSet},
     },
@@ -230,22 +231,7 @@ where
     }
 
     fn fmt_string(&mut self, bytes: &[u8]) -> fmt::Result {
-        self.f.write_char('"')?;
-        for &ch in bytes {
-            match ch {
-                b'\t' => self.f.write_str("\\t")?,
-                b'\r' => self.f.write_str("\\r")?,
-                b'\n' => self.f.write_str("\\n")?,
-                b'\\' => self.f.write_str("\\\\")?,
-                b'\'' => self.f.write_str("\\'")?,
-                b'"' => self.f.write_str("\\\"")?,
-                b'\x20'..=b'\x7e' => self.f.write_char(ch as char)?,
-                _ => {
-                    write!(self.f, "\\{:03o}", ch)?;
-                }
-            }
-        }
-        self.f.write_char('"')
+        fmt_string(&mut self.f, bytes)
     }
 
     fn fmt_delimited<T>(

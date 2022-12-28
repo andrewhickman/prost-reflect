@@ -19,6 +19,8 @@ use std::{borrow::Cow, collections::HashMap, error::Error, fmt};
 #[cfg(feature = "serde")]
 pub use self::serde::{DeserializeOptions, SerializeOptions};
 
+pub(crate) use self::fields::FieldDescriptorLike;
+
 use prost::{
     bytes::{Buf, Bytes},
     DecodeError, Message,
@@ -1031,6 +1033,25 @@ impl fmt::Display for SetFieldError {
 }
 
 impl Error for SetFieldError {}
+
+pub(crate) fn fmt_string(f: &mut impl fmt::Write, bytes: &[u8]) -> fmt::Result {
+    f.write_char('"')?;
+    for &ch in bytes {
+        match ch {
+            b'\t' => f.write_str("\\t")?,
+            b'\r' => f.write_str("\\r")?,
+            b'\n' => f.write_str("\\n")?,
+            b'\\' => f.write_str("\\\\")?,
+            b'\'' => f.write_str("\\'")?,
+            b'"' => f.write_str("\\\"")?,
+            b'\x20'..=b'\x7e' => f.write_char(ch as char)?,
+            _ => {
+                write!(f, "\\{:03o}", ch)?;
+            }
+        }
+    }
+    f.write_char('"')
+}
 
 #[test]
 fn type_sizes() {

@@ -45,6 +45,7 @@ fn main() -> io::Result<()> {
                 "src/desc_no_package.proto",
                 "src/imports.proto",
                 "src/ext.proto",
+                "src/options.proto",
             ],
             &["src/"],
         )?;
