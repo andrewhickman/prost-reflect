@@ -59,7 +59,6 @@ pub(super) enum DescriptorErrorKind {
     InvalidFieldDefault {
         value: String,
         kind: String,
-        err: Option<Box<dyn std::error::Error>>,
         found: Label,
     },
     EmptyEnum {
@@ -308,7 +307,6 @@ impl std::error::Error for DescriptorErrorKind {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             DescriptorErrorKind::DecodeFileDescriptorSet { err } => Some(err),
-            DescriptorErrorKind::InvalidFieldDefault { err, .. } => err.as_deref(),
             _ => None,
         }
     }

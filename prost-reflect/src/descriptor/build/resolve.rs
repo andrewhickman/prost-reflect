@@ -525,11 +525,10 @@ impl<'a> ResolveVisitor<'a> {
             | KindIndex::String
             | KindIndex::Bytes => match parse_simple_value(kind, default_value) {
                 Ok(value) => Some(value),
-                Err(err) => {
+                Err(_) => {
                     self.errors.push(DescriptorErrorKind::InvalidFieldDefault {
                         value: default_value.to_owned(),
                         kind: format!("{:?}", kind),
-                        err: Some(err),
                         found: Label::new(
                             &self.pool.files,
                             "found here",
@@ -548,7 +547,6 @@ impl<'a> ResolveVisitor<'a> {
                     self.errors.push(DescriptorErrorKind::InvalidFieldDefault {
                         value: default_value.to_owned(),
                         kind: enum_.id.full_name().to_owned(),
-                        err: None,
                         found: Label::new(
                             &self.pool.files,
                             "found here",
@@ -563,7 +561,6 @@ impl<'a> ResolveVisitor<'a> {
                 self.errors.push(DescriptorErrorKind::InvalidFieldDefault {
                     value: default_value.to_owned(),
                     kind: "message type".to_owned(),
-                    err: None,
                     found: Label::new(
                         &self.pool.files,
                         "found here",
@@ -688,7 +685,10 @@ impl<'a> ResolveVisitor<'a> {
     }
 }
 
-fn parse_simple_value(kind: KindIndex, value: &str) -> Result<Value, Box<dyn std::error::Error>> {
+fn parse_simple_value(
+    kind: KindIndex,
+    value: &str,
+) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
     let value = match kind {
         KindIndex::Double => value.parse().map(Value::F64)?,
         KindIndex::Float => value.parse().map(Value::F32)?,

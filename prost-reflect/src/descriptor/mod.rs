@@ -399,7 +399,9 @@ fn to_index(i: usize) -> DescriptorIndex {
 
 #[test]
 fn assert_descriptor_send_sync() {
-    fn foo<T: Send + Sync>() {}
+    fn test_send_sync<T: Send + Sync>() {}
 
-    foo::<DescriptorPool>();
+    test_send_sync::<DescriptorPool>();
+    test_send_sync::<Kind>();
+    test_send_sync::<DescriptorError>();
 }
