@@ -13,7 +13,7 @@ use crate::{
     DynamicMessage, Kind, MapKey, Value,
 };
 
-pub(in crate::dynamic::text_format) struct Writer<'a, W> {
+pub(in crate::dynamic) struct Writer<'a, W> {
     options: FormatOptions,
     f: &'a mut W,
     indent_level: u32,

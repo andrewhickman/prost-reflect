@@ -2,14 +2,12 @@ mod format;
 #[cfg(feature = "text-format")]
 mod parse;
 
-use std::fmt;
-
 #[cfg(feature = "text-format")]
 pub use self::parse::ParseError;
 #[cfg(feature = "text-format")]
-use crate::MessageDescriptor;
+use crate::{DynamicMessage, MessageDescriptor};
 
-use crate::{DynamicMessage, Value};
+pub(super) use self::format::Writer;
 
 /// Options to control printing of the protobuf text format.
 ///
@@ -196,45 +194,5 @@ impl Default for FormatOptions {
             skip_unknown_fields: true,
             expand_any: true,
         }
-    }
-}
-
-impl fmt::Display for DynamicMessage {
-    /// Formats this message using the protobuf text format.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # use prost::Message;
-    /// # use prost_types::FileDescriptorSet;
-    /// # use prost_reflect::{DynamicMessage, DescriptorPool, Value};
-    /// # let pool = DescriptorPool::decode(include_bytes!("../../file_descriptor_set.bin").as_ref()).unwrap();
-    /// # let message_descriptor = pool.get_message_by_name("package.MyMessage").unwrap();
-    /// let dynamic_message = DynamicMessage::decode(message_descriptor, b"\x08\x96\x01\x1a\x02\x10\x42".as_ref()).unwrap();
-    /// assert_eq!(format!("{}", dynamic_message), "foo:150,nested{bar:66}");
-    /// // The alternate format specifier may be used to pretty-print the output
-    /// assert_eq!(format!("{:#}", dynamic_message), "foo: 150\nnested {\n  bar: 66\n}");
-    /// ```
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        format::Writer::new(FormatOptions::new().pretty(f.alternate()), f).fmt_message(self)
-    }
-}
-
-impl fmt::Display for Value {
-    /// Formats this value using the protobuf text format.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # use std::{collections::HashMap, iter::FromIterator};
-    /// # use prost_reflect::{MapKey, Value};
-    /// assert_eq!(format!("{}", Value::String("hello".to_owned())), "\"hello\"");
-    /// assert_eq!(format!("{}", Value::List(vec![Value::I32(1), Value::I32(2)])), "[1,2]");
-    /// assert_eq!(format!("{}", Value::Map(HashMap::from_iter([(MapKey::I32(1), Value::U32(2))]))), "[{key:1,value:2}]");
-    /// // The alternate format specifier may be used to indent the output
-    /// assert_eq!(format!("{:#}", Value::Map(HashMap::from_iter([(MapKey::I32(1), Value::U32(2))]))), "[{\n  key: 1\n  value: 2\n}]");
-    /// ```
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        format::Writer::new(FormatOptions::new().pretty(f.alternate()), f).fmt_value(self, None)
     }
 }
