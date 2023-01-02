@@ -1,0 +1,17 @@
+file:
+- name: dep.proto
+  package: foo.bar
+  messageType:
+  - name: FooBar
+- name: root.proto
+  dependency:
+  - dep.proto
+  messageType:
+  - name: Foo
+    field:
+    - name: foobar
+      number: 1
+      label: LABEL_OPTIONAL
+      typeName: .foo.FooBar
+      jsonName: foobar
+  syntax: proto3

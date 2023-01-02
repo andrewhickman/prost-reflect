@@ -1,0 +1,11 @@
+file:
+- name: test.proto
+  messageType:
+  - name: Message
+    field:
+    - name: foo
+      number: 1
+      label: LABEL_OPTIONAL
+      typeName: Message
+      defaultValue: '""'
+      jsonName: foo

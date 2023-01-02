@@ -1,0 +1,14 @@
+---
+source: prost-reflect/tests/main.rs
+expression: actual
+---
+file:
+  - messageType:
+      - extensionRange:
+          - end: 2147483647
+            start: 1
+        name: Foo
+        options:
+          messageSetWireFormat: true
+    name: test.proto
+

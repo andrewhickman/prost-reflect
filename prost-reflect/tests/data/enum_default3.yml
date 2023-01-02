@@ -1,0 +1,8 @@
+file:
+- name: test.proto
+  enumType:
+  - name: Foo
+    value:
+    - name: DEFAULT
+      number: 0
+  syntax: proto3

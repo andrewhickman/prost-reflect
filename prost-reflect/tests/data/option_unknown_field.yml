@@ -1,0 +1,8 @@
+file:
+- name: test.proto
+  options:
+    uninterpretedOption:
+    - name:
+      - namePart: unknown
+        isExtension: false
+      positiveIntValue: '1'

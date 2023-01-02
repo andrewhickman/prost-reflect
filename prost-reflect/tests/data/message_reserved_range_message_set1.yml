@@ -1,0 +1,13 @@
+file:
+- name: test.proto
+  messageType:
+  - name: Foo
+    options:
+      uninterpretedOption:
+      - name:
+        - namePart: message_set_wire_format
+          isExtension: false
+        identifierValue: 'true'
+    reservedRange:
+    - start: 1
+      end: 2147483647

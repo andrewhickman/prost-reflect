@@ -1,0 +1,28 @@
+file:
+- name: test.proto
+  dependency:
+  - google/protobuf/descriptor.proto
+  messageType:
+  - name: Foo
+    field:
+    - name: foo
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_GROUP
+      typeName: Foo
+      jsonName: foo
+    nestedType:
+    - name: Foo
+  extension:
+  - name: a
+    extendee: google.protobuf.FileOptions
+    number: 1001
+    label: LABEL_REPEATED
+    typeName: Foo
+    jsonName: a
+  options:
+    uninterpretedOption:
+    - name:
+      - namePart: a
+        isExtension: true
+      aggregateValue: Foo { }

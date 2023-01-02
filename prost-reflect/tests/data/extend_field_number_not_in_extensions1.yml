@@ -1,0 +1,20 @@
+file:
+- name: test.proto
+  messageType:
+  - name: Message
+    extensionRange:
+    - start: 2
+      end: 6
+  extension:
+  - name: a
+    extendee: Message
+    number: 1
+    label: LABEL_OPTIONAL
+    type: TYPE_INT32
+    jsonName: a
+  - name: b
+    extendee: Message
+    number: 6
+    label: LABEL_REPEATED
+    type: TYPE_INT32
+    jsonName: b

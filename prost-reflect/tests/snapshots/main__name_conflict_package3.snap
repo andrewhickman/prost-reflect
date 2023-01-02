@@ -1,0 +1,12 @@
+---
+source: prost-reflect/tests/main.rs
+expression: actual
+---
+file:
+  - name: dep.proto
+    package: foo
+  - dependency:
+      - dep.proto
+    name: root.proto
+    package: foo
+

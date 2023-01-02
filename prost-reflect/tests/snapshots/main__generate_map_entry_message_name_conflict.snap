@@ -1,0 +1,10 @@
+---
+source: prost-reflect/tests/main.rs
+expression: actual
+---
+causes: []
+labels: []
+message: "name 'Foo.BazEntry' is defined twice"
+related: []
+severity: error
+

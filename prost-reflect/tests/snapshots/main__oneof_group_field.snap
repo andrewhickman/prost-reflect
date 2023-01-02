@@ -1,0 +1,27 @@
+---
+source: prost-reflect/tests/main.rs
+expression: actual
+---
+file:
+  - messageType:
+      - field:
+          - jsonName: group
+            label: LABEL_OPTIONAL
+            name: group
+            number: 1
+            oneofIndex: 0
+            type: TYPE_GROUP
+            typeName: ".Message.Group"
+        name: Message
+        nestedType:
+          - field:
+              - jsonName: bar
+                label: LABEL_REPEATED
+                name: bar
+                number: 1
+                type: TYPE_FLOAT
+            name: Group
+        oneofDecl:
+          - name: oneof
+    name: test.proto
+

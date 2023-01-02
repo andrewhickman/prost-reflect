@@ -1,0 +1,52 @@
+---
+source: prost-reflect/tests/main.rs
+expression: actual
+---
+file:
+  - dependency:
+      - google/protobuf/descriptor.proto
+    extension:
+      - extendee: ".exttest.Message"
+        jsonName: c
+        label: LABEL_OPTIONAL
+        name: c
+        number: 5
+        type: TYPE_INT32
+      - extendee: ".exttest.Message"
+        jsonName: d
+        label: LABEL_OPTIONAL
+        name: d
+        number: 6
+        type: TYPE_MESSAGE
+        typeName: ".exttest.Message"
+      - extendee: ".google.protobuf.FileOptions"
+        jsonName: foo
+        label: LABEL_OPTIONAL
+        name: foo
+        number: 50000
+        type: TYPE_MESSAGE
+        typeName: ".exttest.Message"
+    messageType:
+      - extensionRange:
+          - end: 7
+            start: 5
+        field:
+          - jsonName: a
+            label: LABEL_OPTIONAL
+            name: a
+            number: 1
+            type: TYPE_INT32
+          - jsonName: b
+            label: LABEL_OPTIONAL
+            name: b
+            number: 3
+            type: TYPE_MESSAGE
+            typeName: ".exttest.Message"
+        name: Message
+    name: test.proto
+    options:
+      "[exttest.foo]":
+        "[exttest.d]":
+          a: 1
+    package: exttest
+

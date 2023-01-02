@@ -1,0 +1,10 @@
+---
+source: prost-reflect/tests/main.rs
+expression: actual
+---
+causes: []
+labels: []
+message: "name 'Foo' is already defined in file 'dep1.proto'"
+related: []
+severity: error
+

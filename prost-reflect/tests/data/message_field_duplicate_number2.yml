@@ -1,0 +1,17 @@
+file:
+- name: test.proto
+  messageType:
+  - name: Message
+    nestedType:
+    - name: Nested
+      field:
+      - name: foo
+        number: 1
+        label: LABEL_OPTIONAL
+        type: TYPE_INT32
+        jsonName: foo
+      - name: bar
+        number: 1
+        label: LABEL_OPTIONAL
+        type: TYPE_INT32
+        jsonName: bar

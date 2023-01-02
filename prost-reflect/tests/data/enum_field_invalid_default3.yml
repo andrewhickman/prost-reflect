@@ -1,0 +1,20 @@
+file:
+- name: dep.proto
+  package: foo
+  enumType:
+  - name: Foo
+    value:
+    - name: ZERO
+      number: 1
+- name: root.proto
+  dependency:
+  - dep.proto
+  messageType:
+  - name: Bar
+    field:
+    - name: foo
+      number: 1
+      label: LABEL_OPTIONAL
+      typeName: foo.Foo
+      defaultValue: ONE
+      jsonName: foo

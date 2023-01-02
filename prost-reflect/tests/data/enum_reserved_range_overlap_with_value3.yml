@@ -1,0 +1,13 @@
+file:
+- name: test.proto
+  enumType:
+  - name: Enum
+    value:
+    - name: ZERO
+      number: 0
+    - name: FIVE
+      number: 5
+    reservedRange:
+    - start: 5
+      end: 5
+  syntax: proto3

@@ -1,0 +1,10 @@
+---
+source: prost-reflect/tests/main.rs
+expression: actual
+---
+causes: []
+labels: []
+message: "invalid default value '\"\"' for type 'message type'"
+related: []
+severity: error
+

@@ -1,0 +1,18 @@
+file:
+- name: test.proto
+  package: foo
+  messageType:
+  - name: Message
+    field:
+    - name: foo
+      number: 1
+      label: LABEL_OPTIONAL
+      typeName: Parent.Foo
+      defaultValue: ONE
+      jsonName: foo
+  - name: Parent
+    enumType:
+    - name: Foo
+      value:
+      - name: ZERO
+        number: 0

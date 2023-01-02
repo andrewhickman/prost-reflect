@@ -1,0 +1,15 @@
+file:
+- name: test.proto
+  messageType:
+  - name: Message
+    field:
+    - name: foo
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_INT32
+      jsonName: foo
+    enumType:
+    - name: foo
+      value:
+      - name: ZERO
+        number: 1

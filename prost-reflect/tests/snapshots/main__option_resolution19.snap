@@ -1,0 +1,28 @@
+---
+source: prost-reflect/tests/main.rs
+expression: actual
+---
+file:
+  - messageType:
+      - field:
+          - jsonName: javaOuterClassname
+            label: LABEL_OPTIONAL
+            name: java_outer_classname
+            number: 1
+            oneofIndex: 0
+            proto3Optional: true
+            type: TYPE_STRING
+        name: FileOptions
+        oneofDecl:
+          - name: _java_outer_classname
+    name: test.proto
+    options:
+      javaPackage: ClassName
+      uninterpretedOption:
+        - name:
+            - isExtension: false
+              namePart: java_outer_classname
+          stringValue: Q2xhc3NOYW1l
+    package: google.protobuf
+    syntax: proto3
+

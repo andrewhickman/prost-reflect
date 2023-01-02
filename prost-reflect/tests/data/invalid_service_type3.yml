@@ -1,0 +1,11 @@
+file:
+- name: test.proto
+  messageType:
+  - name: Message
+  service:
+  - name: Service
+    method:
+    - name: rpc
+      inputType: .Message
+      outputType: .Service
+  syntax: proto3

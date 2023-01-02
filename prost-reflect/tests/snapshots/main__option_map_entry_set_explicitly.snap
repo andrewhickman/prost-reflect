@@ -1,0 +1,11 @@
+---
+source: prost-reflect/tests/main.rs
+expression: actual
+---
+file:
+  - messageType:
+      - name: Foo
+        options:
+          mapEntry: true
+    name: test.proto
+

@@ -1,0 +1,22 @@
+file:
+- name: test.proto
+  package: google.protobuf
+  messageType:
+  - name: FileOptions
+    field:
+    - name: java_outer_classname
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_STRING
+      oneofIndex: 0
+      jsonName: javaOuterClassname
+      proto3Optional: true
+    oneofDecl:
+    - name: _java_outer_classname
+  options:
+    uninterpretedOption:
+    - name:
+      - namePart: java_outer_classname
+        isExtension: false
+      stringValue: Q2xhc3NOYW1l
+  syntax: proto3

@@ -1,0 +1,42 @@
+file:
+- name: dep.proto
+  package: dep
+  dependency:
+  - google/protobuf/descriptor.proto
+  extension:
+  - name: ext
+    extendee: google.protobuf.FileOptions
+    number: 1001
+    label: LABEL_REPEATED
+    type: TYPE_INT32
+    jsonName: ext
+  options:
+    uninterpretedOption:
+    - name:
+      - namePart: ext
+        isExtension: true
+      positiveIntValue: '1'
+    - name:
+      - namePart: dep.ext
+        isExtension: true
+      positiveIntValue: '2'
+    - name:
+      - namePart: .dep.ext
+        isExtension: true
+      positiveIntValue: '3'
+  syntax: proto3
+- name: root.proto
+  dependency:
+  - dep.proto
+  - google/protobuf/descriptor.proto
+  options:
+    uninterpretedOption:
+    - name:
+      - namePart: dep.ext
+        isExtension: true
+      positiveIntValue: '4'
+    - name:
+      - namePart: .dep.ext
+        isExtension: true
+      positiveIntValue: '5'
+  syntax: proto3

@@ -1,0 +1,8 @@
+file:
+- name: dep.proto
+  package: foo.bar
+- name: root.proto
+  dependency:
+  - dep.proto
+  messageType:
+  - name: foo

@@ -1,0 +1,42 @@
+file:
+- name: test.proto
+  dependency:
+  - google/protobuf/descriptor.proto
+  messageType:
+  - name: Foo
+    field:
+    - name: a
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_INT32
+      jsonName: a
+    - name: b
+      number: 2
+      label: LABEL_OPTIONAL
+      type: TYPE_INT32
+      jsonName: b
+  extension:
+  - name: foo
+    extendee: google.protobuf.FileOptions
+    number: 1001
+    label: LABEL_OPTIONAL
+    typeName: Foo
+    jsonName: foo
+  options:
+    uninterpretedOption:
+    - name:
+      - namePart: foo
+        isExtension: true
+      - namePart: a
+        isExtension: false
+      positiveIntValue: '1'
+    - name:
+      - namePart: optimize_for
+        isExtension: false
+      identifierValue: SPEED
+    - name:
+      - namePart: foo
+        isExtension: true
+      - namePart: b
+        isExtension: false
+      positiveIntValue: '1'

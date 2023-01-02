@@ -1,0 +1,11 @@
+---
+source: prost-reflect/tests/main.rs
+expression: actual
+---
+causes: []
+help: "set the 'allow_alias' option allow re-using enum numbers"
+labels: []
+message: "enum number '0' has already been used"
+related: []
+severity: error
+

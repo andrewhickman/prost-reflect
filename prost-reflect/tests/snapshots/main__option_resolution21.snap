@@ -1,0 +1,25 @@
+---
+source: prost-reflect/tests/main.rs
+expression: actual
+---
+file:
+  - dependency:
+      - google/protobuf/descriptor.proto
+    messageType:
+      - extension:
+          - extendee: ".google.protobuf.MessageOptions"
+            jsonName: ext
+            label: LABEL_OPTIONAL
+            name: ext
+            number: 1001
+            proto3Optional: true
+            type: TYPE_STRING
+        name: Foo
+        options:
+          "[Foo.ext]": foo
+      - name: Bar
+        options:
+          "[Foo.ext]": bar
+    name: test.proto
+    syntax: proto3
+

@@ -1,0 +1,26 @@
+file:
+- name: test.proto
+  dependency:
+  - google/protobuf/any.proto
+  - google/protobuf/descriptor.proto
+  messageType:
+  - name: Foo
+    field:
+    - name: foo
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_STRING
+      jsonName: foo
+  extension:
+  - name: a
+    extendee: google.protobuf.FileOptions
+    number: 1001
+    label: LABEL_REPEATED
+    typeName: google.protobuf.Any
+    jsonName: a
+  options:
+    uninterpretedOption:
+    - name:
+      - namePart: a
+        isExtension: true
+      aggregateValue: '[ type . googleapis . com / Foo ] { foo : "bar" }'

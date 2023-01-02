@@ -1,0 +1,11 @@
+---
+source: prost-reflect/tests/main.rs
+expression: actual
+---
+causes: []
+help: message numbers 19000 to 19999 are reserved
+labels: []
+message: "invalid field number '19999'"
+related: []
+severity: error
+

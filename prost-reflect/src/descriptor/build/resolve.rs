@@ -1,16 +1,14 @@
-use std::{borrow::Cow, collections::HashMap};
-
 use prost::bytes::Bytes;
 
 use crate::{
     descriptor::{
         build::{
-            join_path,
+            join_path, resolve_name,
             visit::{visit, Visitor},
             DescriptorPoolOffsets,
         },
         error::{DescriptorError, DescriptorErrorKind, Label},
-        tag, to_index,
+        find_enum_proto, find_message_proto, tag, to_index,
         types::{
             field_descriptor_proto, DescriptorProto, EnumValueDescriptorProto,
             FieldDescriptorProto, FileDescriptorProto, MethodDescriptorProto,
@@ -19,7 +17,8 @@ use crate::{
         Definition, DefinitionKind, DescriptorPoolInner, EnumIndex, EnumValueIndex,
         ExtensionDescriptorInner, ExtensionIndex, FieldDescriptorInner, FieldIndex, FileIndex,
         Identity, KindIndex, MessageIndex, MethodDescriptorInner, MethodIndex, OneofIndex,
-        ServiceDescriptorInner, ServiceIndex,
+        ServiceDescriptorInner, ServiceIndex, RESERVED_MESSAGE_FIELD_NUMBERS,
+        VALID_MESSAGE_FIELD_NUMBERS,
     },
     Cardinality, Syntax, Value,
 };
@@ -94,6 +93,8 @@ impl<'a> Visitor for ResolveVisitor<'a> {
         );
 
         let syntax = self.pool.files[file as usize].syntax;
+
+        self.check_field_number(message, field, file, path);
 
         let cardinality = match field.label() {
             field_descriptor_proto::Label::Optional => Cardinality::Optional,
@@ -274,7 +275,10 @@ impl<'a> Visitor for ResolveVisitor<'a> {
         index: EnumValueIndex,
         value: &EnumValueDescriptorProto,
     ) {
+        self.check_enum_number(enum_index, value, file, path);
+
         let enum_ = &mut self.pool.enums[enum_index as usize];
+
         let value_numbers_index = match enum_
             .value_numbers
             .binary_search_by(|(number, _)| number.cmp(&value.number()))
@@ -351,6 +355,8 @@ impl<'a> Visitor for ResolveVisitor<'a> {
         );
         if let Some(extendee) = extendee {
             self.pool.messages[extendee as usize].extensions.push(index);
+
+            self.check_field_number(extendee, extension, file, path);
         }
 
         let syntax = self.pool.files[file as usize].syntax;
@@ -401,6 +407,129 @@ impl<'a> Visitor for ResolveVisitor<'a> {
 }
 
 impl<'a> ResolveVisitor<'a> {
+    fn check_field_number(
+        &mut self,
+        message: MessageIndex,
+        field: &FieldDescriptorProto,
+        file: FileIndex,
+        path: &[i32],
+    ) {
+        if !VALID_MESSAGE_FIELD_NUMBERS.contains(&field.number())
+            || RESERVED_MESSAGE_FIELD_NUMBERS.contains(&field.number())
+        {
+            self.errors.push(DescriptorErrorKind::InvalidFieldNumber {
+                number: field.number(),
+                found: Label::new(
+                    &self.pool.files,
+                    "defined here",
+                    file,
+                    join_path(path, &[tag::field::NUMBER]),
+                ),
+            });
+        }
+
+        let message = &self.pool.messages[message as usize];
+        let message_proto = find_message_proto(
+            &self.pool.files[message.id.file as usize].raw,
+            &message.id.path,
+        );
+        for (i, range) in message_proto.reserved_range.iter().enumerate() {
+            if range.start() <= field.number() && field.number() < range.end() {
+                self.errors
+                    .push(DescriptorErrorKind::FieldNumberInReservedRange {
+                        number: field.number(),
+                        range: range.start()..range.end(),
+                        defined: Label::new(
+                            &self.pool.files,
+                            "reserved range defined here",
+                            message.id.file,
+                            join_path(&message.id.path, &[tag::message::RESERVED_RANGE, i as i32]),
+                        ),
+                        found: Label::new(
+                            &self.pool.files,
+                            "defined here",
+                            file,
+                            join_path(path, &[tag::field::NUMBER]),
+                        ),
+                    });
+            }
+        }
+
+        let extension_range = message_proto
+            .extension_range
+            .iter()
+            .enumerate()
+            .find(|(_, range)| range.start() <= field.number() && field.number() < range.end());
+        match (&field.extendee, extension_range) {
+            (None, None) | (Some(_), Some(_)) => (),
+            (None, Some((i, range))) => {
+                self.errors
+                    .push(DescriptorErrorKind::FieldNumberInExtensionRange {
+                        number: field.number(),
+                        range: range.start()..range.end(),
+                        defined: Label::new(
+                            &self.pool.files,
+                            "extension range defined here",
+                            message.id.file,
+                            join_path(&message.id.path, &[tag::message::EXTENSION_RANGE, i as i32]),
+                        ),
+                        found: Label::new(
+                            &self.pool.files,
+                            "defined here",
+                            file,
+                            join_path(path, &[tag::field::NUMBER]),
+                        ),
+                    });
+            }
+            (Some(_), None) => {
+                self.errors
+                    .push(DescriptorErrorKind::ExtensionNumberOutOfRange {
+                        number: field.number(),
+                        message: message.id.full_name().to_owned(),
+                        found: Label::new(
+                            &self.pool.files,
+                            "defined here",
+                            file,
+                            join_path(path, &[tag::field::NUMBER]),
+                        ),
+                    });
+            }
+        }
+    }
+
+    fn check_enum_number(
+        &mut self,
+        enum_: EnumIndex,
+        value: &EnumValueDescriptorProto,
+        file: FileIndex,
+        path: &[i32],
+    ) {
+        let enum_ = &self.pool.enums[enum_ as usize];
+        let enum_proto =
+            find_enum_proto(&self.pool.files[enum_.id.file as usize].raw, &enum_.id.path);
+        for (i, range) in enum_proto.reserved_range.iter().enumerate() {
+            if range.start() <= value.number() && value.number() <= range.end() {
+                self.errors
+                    .push(DescriptorErrorKind::EnumNumberInReservedRange {
+                        number: value.number(),
+                        range: range.start()..=range.end(),
+                        defined: Label::new(
+                            &self.pool.files,
+                            "reserved range defined here",
+                            enum_.id.file,
+                            join_path(&enum_.id.path, &[tag::enum_::RESERVED_RANGE, i as i32]),
+                        ),
+                        found: Label::new(
+                            &self.pool.files,
+                            "defined here",
+                            file,
+                            join_path(path, &[tag::field::NUMBER]),
+                        ),
+                    });
+            }
+        }
+    }
+
     fn resolve_field_type(
         &mut self,
         ty: Option<i32>,
@@ -626,56 +755,29 @@ impl<'a> ResolveVisitor<'a> {
         path: &[i32],
         tag: i32,
     ) -> Option<&Definition> {
-        let result = match name.strip_prefix('.') {
-            Some(full_name) => self
-                .pool
-                .names
-                .get(full_name)
-                .map(|def| (Cow::Borrowed(name), def)),
-            None => Self::resolve_relative_name(&self.pool.names, scope, name)
-                .map(|(resolved_name, def)| (Cow::Owned(resolved_name), def)),
-        };
-
-        if let Some((type_name, def)) = result {
+        if let Some((type_name, def)) = resolve_name(&self.pool.names, scope, name) {
+            let ty = if matches!(
+                def,
+                Definition {
+                    kind: DefinitionKind::Message(_),
+                    ..
+                }
+            ) {
+                field_descriptor_proto::Type::Message
+            } else {
+                field_descriptor_proto::Type::Enum
+            };
             set_file_type_name(
                 &mut self.pool.files[file as usize].raw,
                 path,
                 tag,
                 type_name.into_owned(),
+                ty,
             );
             Some(def)
         } else {
             None
         }
-    }
-
-    fn resolve_relative_name<'b>(
-        names: &'b HashMap<Box<str>, Definition>,
-        scope: &str,
-        relative_name: &str,
-    ) -> Option<(String, &'b Definition)> {
-        let mut buf = format!(".{}.{}", scope, relative_name);
-
-        if let Some(def) = names.get(&buf[1..]) {
-            return Some((buf, def));
-        }
-
-        for (i, _) in scope.rmatch_indices('.') {
-            buf.truncate(i + 2);
-            buf.push_str(relative_name);
-
-            if let Some(def) = names.get(&buf[1..]) {
-                return Some((buf, def));
-            }
-        }
-
-        buf.truncate(1);
-        buf.push_str(relative_name);
-        if let Some(def) = names.get(&buf[1..]) {
-            return Some((buf, def));
-        }
-
-        None
     }
 
     fn add_missing_required_field_error(&mut self, file: FileIndex, path: Box<[i32]>) {
@@ -802,11 +904,17 @@ fn unescape_c_escape_string(s: &str) -> Result<Bytes, &'static str> {
     Ok(dst.into())
 }
 
-fn set_file_type_name(file: &mut FileDescriptorProto, path: &[i32], tag: i32, type_name: String) {
+fn set_file_type_name(
+    file: &mut FileDescriptorProto,
+    path: &[i32],
+    tag: i32,
+    type_name: String,
+    ty: field_descriptor_proto::Type,
+) {
     match path[0] {
         tag::file::MESSAGE_TYPE => {
             let message = &mut file.message_type[path[1] as usize];
-            set_message_type_name(message, &path[2..], tag, type_name);
+            set_message_type_name(message, &path[2..], tag, type_name, ty);
         }
         tag::file::SERVICE => {
             debug_assert_eq!(path.len(), 4);
@@ -822,35 +930,51 @@ fn set_file_type_name(file: &mut FileDescriptorProto, path: &[i32], tag: i32, ty
         tag::file::EXTENSION => {
             debug_assert_eq!(path.len(), 2);
             let extension = &mut file.extension[path[1] as usize];
-            set_field_type_name(extension, tag, type_name);
+            set_field_type_name(extension, tag, type_name, ty);
         }
         p => panic!("unknown path element {}", p),
     }
 }
 
-fn set_message_type_name(message: &mut DescriptorProto, path: &[i32], tag: i32, type_name: String) {
+fn set_message_type_name(
+    message: &mut DescriptorProto,
+    path: &[i32],
+    tag: i32,
+    type_name: String,
+    ty: field_descriptor_proto::Type,
+) {
     match path[0] {
         tag::message::FIELD => {
             debug_assert_eq!(path.len(), 2);
             let field = &mut message.field[path[1] as usize];
-            set_field_type_name(field, tag, type_name);
+            set_field_type_name(field, tag, type_name, ty);
         }
         tag::message::EXTENSION => {
             debug_assert_eq!(path.len(), 2);
             let extension = &mut message.extension[path[1] as usize];
-            set_field_type_name(extension, tag, type_name);
+            set_field_type_name(extension, tag, type_name, ty);
         }
         tag::message::NESTED_TYPE => {
             let nested_message = &mut message.nested_type[path[1] as usize];
-            set_message_type_name(nested_message, &path[2..], tag, type_name);
+            set_message_type_name(nested_message, &path[2..], tag, type_name, ty);
         }
         p => panic!("unknown path element {}", p),
     }
 }
 
-fn set_field_type_name(field: &mut FieldDescriptorProto, tag: i32, type_name: String) {
+fn set_field_type_name(
+    field: &mut FieldDescriptorProto,
+    tag: i32,
+    type_name: String,
+    ty: field_descriptor_proto::Type,
+) {
     match tag {
-        tag::field::TYPE_NAME => field.type_name = Some(type_name),
+        tag::field::TYPE_NAME => {
+            field.type_name = Some(type_name);
+            if field.r#type() != field_descriptor_proto::Type::Group {
+                field.set_type(ty);
+            }
+        }
         tag::field::EXTENDEE => field.extendee = Some(type_name),
         p => panic!("unknown path element {}", p),
     }

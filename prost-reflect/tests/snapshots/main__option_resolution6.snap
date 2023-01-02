@@ -1,0 +1,34 @@
+---
+source: prost-reflect/tests/main.rs
+expression: actual
+---
+file:
+  - dependency:
+      - google/protobuf/descriptor.proto
+    enumType:
+      - name: Foo
+        value:
+          - name: None
+            number: 0
+            options:
+              "[demo.len]": 0
+          - name: One
+            number: 1
+            options:
+              "[demo.len]": 1
+          - name: Two
+            number: 2
+            options:
+              "[demo.len]": 2
+    extension:
+      - extendee: ".google.protobuf.EnumValueOptions"
+        jsonName: len
+        label: LABEL_OPTIONAL
+        name: len
+        number: 50000
+        proto3Optional: true
+        type: TYPE_UINT32
+    name: test.proto
+    package: demo
+    syntax: proto3
+

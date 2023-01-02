@@ -1,0 +1,17 @@
+file:
+- name: test.proto
+  messageType:
+  - name: Foo
+    field:
+    - name: val
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_FIXED64
+      oneofIndex: 0
+      jsonName: val
+      proto3Optional: true
+    nestedType:
+    - name: _val
+    oneofDecl:
+    - name: _val
+  syntax: proto3

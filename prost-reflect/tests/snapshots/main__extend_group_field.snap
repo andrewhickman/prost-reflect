@@ -1,0 +1,27 @@
+---
+source: prost-reflect/tests/main.rs
+expression: actual
+---
+file:
+  - extension:
+      - extendee: ".Message"
+        jsonName: foo
+        label: LABEL_REPEATED
+        name: foo
+        number: 1
+        type: TYPE_GROUP
+        typeName: ".Foo"
+    messageType:
+      - extensionRange:
+          - end: 2
+            start: 1
+        name: Message
+      - field:
+          - jsonName: bar
+            label: LABEL_REQUIRED
+            name: bar
+            number: 1
+            type: TYPE_INT32
+        name: Foo
+    name: test.proto
+

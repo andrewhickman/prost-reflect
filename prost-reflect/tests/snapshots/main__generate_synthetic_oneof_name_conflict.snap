@@ -1,0 +1,10 @@
+---
+source: prost-reflect/tests/main.rs
+expression: actual
+---
+causes: []
+labels: []
+message: "name 'Foo._val' is defined twice"
+related: []
+severity: error
+

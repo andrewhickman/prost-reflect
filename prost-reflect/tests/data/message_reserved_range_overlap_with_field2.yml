@@ -1,0 +1,13 @@
+file:
+- name: test.proto
+  messageType:
+  - name: Message
+    field:
+    - name: field
+      number: 2
+      label: LABEL_OPTIONAL
+      type: TYPE_INT32
+      jsonName: field
+    extensionRange:
+    - start: 1
+      end: 6

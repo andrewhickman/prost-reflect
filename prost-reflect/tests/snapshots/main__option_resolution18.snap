@@ -1,0 +1,10 @@
+---
+source: prost-reflect/tests/main.rs
+expression: actual
+---
+causes: []
+labels: []
+message: "cannot set field for option '(a)' value of type 'repeated Foo'"
+related: []
+severity: error
+

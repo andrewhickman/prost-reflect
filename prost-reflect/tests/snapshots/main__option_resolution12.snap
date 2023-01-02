@@ -1,0 +1,29 @@
+---
+source: prost-reflect/tests/main.rs
+expression: actual
+---
+file:
+  - dependency:
+      - google/protobuf/descriptor.proto
+    extension:
+      - extendee: ".google.protobuf.FileOptions"
+        jsonName: a
+        label: LABEL_REPEATED
+        name: a
+        number: 1001
+        type: TYPE_MESSAGE
+        typeName: ".Foo"
+    messageType:
+      - field:
+          - jsonName: foo
+            label: LABEL_OPTIONAL
+            name: foo
+            number: 1
+            type: TYPE_MESSAGE
+            typeName: ".Foo"
+        name: Foo
+    name: test.proto
+    options:
+      "[a]":
+        - foo: {}
+

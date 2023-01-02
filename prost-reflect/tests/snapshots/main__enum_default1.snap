@@ -1,0 +1,12 @@
+---
+source: prost-reflect/tests/main.rs
+expression: actual
+---
+file:
+  - enumType:
+      - name: Foo
+        value:
+          - name: DEFAULT
+            number: 1
+    name: test.proto
+

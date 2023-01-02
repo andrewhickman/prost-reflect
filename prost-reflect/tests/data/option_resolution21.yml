@@ -1,0 +1,28 @@
+file:
+- name: test.proto
+  dependency:
+  - google/protobuf/descriptor.proto
+  messageType:
+  - name: Foo
+    extension:
+    - name: ext
+      extendee: google.protobuf.MessageOptions
+      number: 1001
+      label: LABEL_OPTIONAL
+      type: TYPE_STRING
+      jsonName: ext
+      proto3Optional: true
+    options:
+      uninterpretedOption:
+      - name:
+        - namePart: ext
+          isExtension: true
+        stringValue: Zm9v
+  - name: Bar
+    options:
+      uninterpretedOption:
+      - name:
+        - namePart: Foo.ext
+          isExtension: true
+        stringValue: YmFy
+  syntax: proto3

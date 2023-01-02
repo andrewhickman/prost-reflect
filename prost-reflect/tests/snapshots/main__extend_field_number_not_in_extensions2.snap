@@ -1,0 +1,15 @@
+---
+source: prost-reflect/tests/main.rs
+expression: actual
+---
+causes: []
+labels: []
+message: "message 'Message' does not define '1' as an extension number"
+related:
+  - causes: []
+    labels: []
+    message: "message 'Message' does not define '6' as an extension number"
+    related: []
+    severity: error
+severity: error
+

@@ -1,0 +1,9 @@
+file:
+- name: test.proto
+  messageType:
+  - name: Message
+  enumType:
+  - name: Message
+    value:
+    - name: ZERO
+      number: 1

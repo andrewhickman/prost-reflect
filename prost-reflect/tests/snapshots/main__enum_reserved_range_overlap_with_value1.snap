@@ -1,0 +1,10 @@
+---
+source: prost-reflect/tests/main.rs
+expression: actual
+---
+causes: []
+labels: []
+message: "enum number '0' conflicts with reserved range '-5 to 5'"
+related: []
+severity: error
+

@@ -1,0 +1,10 @@
+file:
+- name: test.proto
+  messageType:
+  - name: Foo
+    options:
+      uninterpretedOption:
+      - name:
+        - namePart: map_entry
+          isExtension: false
+        identifierValue: 'true'

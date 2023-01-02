@@ -1,0 +1,23 @@
+file:
+- name: test.proto
+  syntax: proto3
+  messageType:
+  - name: Foo
+    field:
+    - name: foo
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_INT32
+      oneofIndex: 0
+      jsonName: foo
+      proto3Optional: true
+    - name: FOO
+      number: 2
+      label: LABEL_OPTIONAL
+      type: TYPE_INT32
+      oneofIndex: 1
+      jsonName: FOO
+      proto3Optional: true
+    oneofDecl:
+    - name: _foo
+    - name: _FOO

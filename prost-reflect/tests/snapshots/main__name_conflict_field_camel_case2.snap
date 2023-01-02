@@ -1,0 +1,10 @@
+---
+source: prost-reflect/tests/main.rs
+expression: actual
+---
+causes: []
+labels: []
+message: "camel-case name of field 'foo' conflicts with field 'FOO'"
+related: []
+severity: error
+

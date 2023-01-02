@@ -7,11 +7,13 @@ mod tests;
 mod types;
 
 pub use self::error::DescriptorError;
+use self::types::{DescriptorProto, EnumDescriptorProto};
 
 use std::{
     collections::{BTreeMap, HashMap},
     convert::TryInto,
     fmt,
+    ops::Range,
     sync::Arc,
 };
 
@@ -22,6 +24,9 @@ pub(crate) const MAP_ENTRY_VALUE_NUMBER: u32 = 2;
 
 pub(crate) const GOOGLE_APIS_DOMAIN: &str = "type.googleapis.com/";
 pub(crate) const GOOGLE_PROD_DOMAIN: &str = "type.googleprod.com/";
+
+pub(crate) const RESERVED_MESSAGE_FIELD_NUMBERS: Range<i32> = 19_000..20_000;
+pub(crate) const VALID_MESSAGE_FIELD_NUMBERS: Range<i32> = 1..536_870_912;
 
 /// Cardinality determines whether a field is optional, required, or repeated.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -395,6 +400,37 @@ impl DescriptorPoolInner {
 
 fn to_index(i: usize) -> DescriptorIndex {
     i.try_into().expect("index too large")
+}
+
+fn find_message_proto<'a>(file: &'a FileDescriptorProto, path: &[i32]) -> &'a DescriptorProto {
+    debug_assert_ne!(path.len(), 0);
+    debug_assert_eq!(path.len() % 2, 0);
+
+    let mut message: Option<&'a types::DescriptorProto> = None;
+    for part in path.chunks(2) {
+        match part[0] {
+            tag::file::MESSAGE_TYPE => message = Some(&file.message_type[part[1] as usize]),
+            tag::message::NESTED_TYPE => {
+                message = Some(&message.unwrap().nested_type[part[1] as usize])
+            }
+            _ => panic!("invalid message path"),
+        }
+    }
+
+    message.unwrap()
+}
+
+fn find_enum_proto<'a>(file: &'a FileDescriptorProto, path: &[i32]) -> &'a EnumDescriptorProto {
+    debug_assert_ne!(path.len(), 0);
+    debug_assert_eq!(path.len() % 2, 0);
+    if path.len() == 2 {
+        debug_assert_eq!(path[0], tag::file::ENUM_TYPE);
+        &file.enum_type[path[1] as usize]
+    } else {
+        let message = find_message_proto(file, &path[..path.len() - 2]);
+        debug_assert_eq!(path[path.len() - 2], tag::message::ENUM_TYPE);
+        &message.enum_type[path[path.len() - 1] as usize]
+    }
 }
 
 #[test]

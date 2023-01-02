@@ -16,14 +16,17 @@ use crate::{
             FieldDescriptorProto, FileDescriptorProto, MethodDescriptorProto, OneofDescriptorProto,
             Options, ServiceDescriptorProto, UninterpretedOption,
         },
-        EnumIndex, EnumValueIndex, ExtensionIndex, FieldIndex, FileIndex, MessageIndex,
-        MethodIndex, OneofIndex, ServiceIndex, MAP_ENTRY_KEY_NUMBER, MAP_ENTRY_VALUE_NUMBER,
+        Definition, DefinitionKind, EnumIndex, EnumValueIndex, ExtensionIndex, FieldIndex,
+        FileIndex, MessageIndex, MethodIndex, OneofIndex, ServiceIndex, MAP_ENTRY_KEY_NUMBER,
+        MAP_ENTRY_VALUE_NUMBER,
     },
     dynamic::{fmt_string, FieldDescriptorLike},
     reflect::WELL_KNOWN_TYPES,
-    Cardinality, DescriptorError, DescriptorPool, DynamicMessage, EnumDescriptor, MapKey,
-    MessageDescriptor, ReflectMessage, Value,
+    Cardinality, DescriptorError, DescriptorPool, DynamicMessage, EnumDescriptor,
+    ExtensionDescriptor, MapKey, MessageDescriptor, ReflectMessage, Value,
 };
+
+use super::resolve_name;
 
 impl DescriptorPool {
     pub(super) fn resolve_options<'a>(
@@ -36,6 +39,7 @@ impl DescriptorPool {
             pool: self,
             errors: Vec::new(),
             options: Vec::new(),
+            locations: Vec::new(),
         };
         visit(offsets, files, &mut visitor);
 
@@ -50,6 +54,17 @@ impl DescriptorPool {
             set_file_option(file, &path, &encoded);
         }
 
+        for (file, from, to) in visitor.locations {
+            let file = &mut inner.files[file as usize].raw;
+            if let Some(source_code_info) = &mut file.source_code_info {
+                for location in &mut source_code_info.location {
+                    if location.path.starts_with(&from) {
+                        location.path.splice(..from.len(), to.iter().copied());
+                    }
+                }
+            }
+        }
+
         Ok(())
     }
 }
@@ -58,6 +73,8 @@ struct OptionsVisitor<'a> {
     pool: &'a mut DescriptorPool,
     errors: Vec<DescriptorErrorKind>,
     options: Vec<(FileIndex, Box<[i32]>, Vec<u8>)>,
+    #[allow(clippy::type_complexity)]
+    locations: Vec<(FileIndex, Box<[i32]>, Box<[i32]>)>,
 }
 
 impl<'a> Visitor for OptionsVisitor<'a> {
@@ -68,6 +85,7 @@ impl<'a> Visitor for OptionsVisitor<'a> {
                 "google.protobuf.FileOptions",
                 options,
                 &options.value.uninterpreted_option,
+                file.package(),
                 index,
                 &path,
             );
@@ -78,7 +96,7 @@ impl<'a> Visitor for OptionsVisitor<'a> {
     fn visit_message(
         &mut self,
         path: &[i32],
-        _: &str,
+        full_name: &str,
         file: FileIndex,
         _: Option<MessageIndex>,
         _: MessageIndex,
@@ -90,6 +108,7 @@ impl<'a> Visitor for OptionsVisitor<'a> {
                 "google.protobuf.MessageOptions",
                 options,
                 &options.value.uninterpreted_option,
+                full_name,
                 file,
                 &path,
             );
@@ -110,6 +129,7 @@ impl<'a> Visitor for OptionsVisitor<'a> {
                     "google.protobuf.ExtensionRangeOptions",
                     options,
                     &options.value.uninterpreted_option,
+                    full_name,
                     file,
                     &path,
                 );
@@ -121,7 +141,7 @@ impl<'a> Visitor for OptionsVisitor<'a> {
     fn visit_field(
         &mut self,
         path: &[i32],
-        _: &str,
+        full_name: &str,
         file: FileIndex,
         _: MessageIndex,
         _: FieldIndex,
@@ -133,6 +153,7 @@ impl<'a> Visitor for OptionsVisitor<'a> {
                 "google.protobuf.FieldOptions",
                 options,
                 &options.value.uninterpreted_option,
+                full_name,
                 file,
                 &path,
             );
@@ -143,7 +164,7 @@ impl<'a> Visitor for OptionsVisitor<'a> {
     fn visit_oneof(
         &mut self,
         path: &[i32],
-        _: &str,
+        full_name: &str,
         file: FileIndex,
         _: MessageIndex,
         _: OneofIndex,
@@ -155,6 +176,7 @@ impl<'a> Visitor for OptionsVisitor<'a> {
                 "google.protobuf.OneofOptions",
                 options,
                 &options.value.uninterpreted_option,
+                full_name,
                 file,
                 &path,
             );
@@ -165,7 +187,7 @@ impl<'a> Visitor for OptionsVisitor<'a> {
     fn visit_service(
         &mut self,
         path: &[i32],
-        _: &str,
+        full_name: &str,
         file: FileIndex,
         _: ServiceIndex,
         service: &ServiceDescriptorProto,
@@ -176,6 +198,7 @@ impl<'a> Visitor for OptionsVisitor<'a> {
                 "google.protobuf.ServiceOptions",
                 options,
                 &options.value.uninterpreted_option,
+                full_name,
                 file,
                 &path,
             );
@@ -186,7 +209,7 @@ impl<'a> Visitor for OptionsVisitor<'a> {
     fn visit_method(
         &mut self,
         path: &[i32],
-        _: &str,
+        full_name: &str,
         file: FileIndex,
         _: ServiceIndex,
         _: MethodIndex,
@@ -198,6 +221,7 @@ impl<'a> Visitor for OptionsVisitor<'a> {
                 "google.protobuf.MethodOptions",
                 options,
                 &options.value.uninterpreted_option,
+                full_name,
                 file,
                 &path,
             );
@@ -208,7 +232,7 @@ impl<'a> Visitor for OptionsVisitor<'a> {
     fn visit_enum(
         &mut self,
         path: &[i32],
-        _: &str,
+        full_name: &str,
         file: FileIndex,
         _: Option<MessageIndex>,
         _: EnumIndex,
@@ -220,6 +244,7 @@ impl<'a> Visitor for OptionsVisitor<'a> {
                 "google.protobuf.EnumOptions",
                 options,
                 &options.value.uninterpreted_option,
+                full_name,
                 file,
                 &path,
             );
@@ -230,7 +255,7 @@ impl<'a> Visitor for OptionsVisitor<'a> {
     fn visit_enum_value(
         &mut self,
         path: &[i32],
-        _: &str,
+        full_name: &str,
         file: FileIndex,
         _: EnumIndex,
         _: EnumValueIndex,
@@ -242,6 +267,7 @@ impl<'a> Visitor for OptionsVisitor<'a> {
                 "google.protobuf.EnumValueOptions",
                 options,
                 &options.value.uninterpreted_option,
+                full_name,
                 file,
                 &path,
             );
@@ -252,7 +278,7 @@ impl<'a> Visitor for OptionsVisitor<'a> {
     fn visit_extension(
         &mut self,
         path: &[i32],
-        _: &str,
+        full_name: &str,
         file: FileIndex,
         _: Option<MessageIndex>,
         _: ExtensionIndex,
@@ -264,6 +290,7 @@ impl<'a> Visitor for OptionsVisitor<'a> {
                 "google.protobuf.FieldOptions",
                 options,
                 &options.value.uninterpreted_option,
+                full_name,
                 file,
                 &path,
             );
@@ -278,6 +305,7 @@ impl<'a> OptionsVisitor<'a> {
         desc_name: &str,
         options: &Options<T>,
         uninterpreted: &[UninterpretedOption],
+        scope: &str,
         file: FileIndex,
         path: &[i32],
     ) -> Vec<u8> {
@@ -296,30 +324,43 @@ impl<'a> OptionsVisitor<'a> {
         };
 
         for (i, option) in uninterpreted.iter().enumerate() {
-            if let Err(err) = self.set_option(&mut message, option, file, path, &[i as i32]) {
+            if let Err(err) = self.set_option(
+                &mut message,
+                option,
+                scope,
+                file,
+                join_path(path, &[tag::UNINTERPRETED_OPTION, i as i32]),
+            ) {
                 self.errors.push(err);
             }
         }
+
+        message.clear_field_by_number(tag::UNINTERPRETED_OPTION as u32);
 
         message.encode_to_vec()
     }
 
     #[allow(clippy::result_large_err)]
     fn set_option(
-        &self,
+        &mut self,
         mut message: &mut DynamicMessage,
         option: &UninterpretedOption,
+        scope: &str,
         file: FileIndex,
-        path1: &[i32],
-        path2: &[i32],
+        path: Box<[i32]>,
     ) -> Result<(), DescriptorErrorKind> {
+        let mut resolved_path = Vec::with_capacity(path.len() - 2 + option.name.len());
+        resolved_path.extend_from_slice(&path[..path.len() - 2]);
+
         for (i, part) in option.name.iter().enumerate() {
             let is_last = i == option.name.len() - 1;
 
             let desc = message.descriptor();
             if part.is_extension {
-                match desc.get_extension_by_full_name(&part.name_part) {
+                match self.find_extension(scope, &part.name_part) {
                     Some(extension_desc) => {
+                        resolved_path.push(extension_desc.number() as i32);
+
                         if is_last {
                             if extension_desc.cardinality() != Cardinality::Repeated
                                 && message.has_extension(&extension_desc)
@@ -330,7 +371,7 @@ impl<'a> OptionsVisitor<'a> {
                                         &self.pool.inner.files,
                                         "found here",
                                         file,
-                                        join_path(path1, path2),
+                                        path,
                                     ),
                                 });
                             } else {
@@ -339,8 +380,7 @@ impl<'a> OptionsVisitor<'a> {
                                     &extension_desc,
                                     option,
                                     file,
-                                    path1,
-                                    path2,
+                                    &path,
                                 )?;
                             }
                         } else if let Value::Message(submessage) =
@@ -353,30 +393,22 @@ impl<'a> OptionsVisitor<'a> {
                                 ty: fmt_field_ty(&extension_desc),
                                 value: fmt_value(option),
                                 is_last,
-                                found: Label::new(
-                                    &self.pool.inner.files,
-                                    "found here",
-                                    file,
-                                    join_path(path1, path2),
-                                ),
+                                found: Label::new(&self.pool.inner.files, "found here", file, path),
                             });
                         }
                     }
                     None => {
                         return Err(DescriptorErrorKind::OptionNotFound {
                             name: fmt_option_name(&option.name[..i + 1]),
-                            found: Label::new(
-                                &self.pool.inner.files,
-                                "found here",
-                                file,
-                                join_path(path1, path2),
-                            ),
+                            found: Label::new(&self.pool.inner.files, "found here", file, path),
                         })
                     }
                 }
             } else {
                 match desc.get_field_by_name(&part.name_part) {
                     Some(field_desc) => {
+                        resolved_path.push(field_desc.number() as i32);
+
                         if is_last {
                             if field_desc.cardinality() != Cardinality::Repeated
                                 && message.has_field(&field_desc)
@@ -387,7 +419,7 @@ impl<'a> OptionsVisitor<'a> {
                                         &self.pool.inner.files,
                                         "found here",
                                         file,
-                                        join_path(path1, path2),
+                                        path,
                                     ),
                                 });
                             } else {
@@ -396,8 +428,7 @@ impl<'a> OptionsVisitor<'a> {
                                     &field_desc,
                                     option,
                                     file,
-                                    path1,
-                                    path2,
+                                    &path,
                                 )?;
                             }
                         } else if let Value::Message(submessage) =
@@ -410,29 +441,21 @@ impl<'a> OptionsVisitor<'a> {
                                 ty: fmt_field_ty(&field_desc),
                                 value: fmt_value(option),
                                 is_last,
-                                found: Label::new(
-                                    &self.pool.inner.files,
-                                    "found here",
-                                    file,
-                                    join_path(path1, path2),
-                                ),
+                                found: Label::new(&self.pool.inner.files, "found here", file, path),
                             });
                         }
                     }
                     None => {
                         return Err(DescriptorErrorKind::OptionNotFound {
                             name: fmt_option_name(&option.name[..i + 1]),
-                            found: Label::new(
-                                &self.pool.inner.files,
-                                "found here",
-                                file,
-                                join_path(path1, path2),
-                            ),
+                            found: Label::new(&self.pool.inner.files, "found here", file, path),
                         })
                     }
                 }
             }
         }
+
+        self.locations.push((file, path, resolved_path.into()));
 
         Ok(())
     }
@@ -444,20 +467,14 @@ impl<'a> OptionsVisitor<'a> {
         desc: &impl FieldDescriptorLike,
         option: &UninterpretedOption,
         file: FileIndex,
-        path1: &[i32],
-        path2: &[i32],
+        path: &[i32],
     ) -> Result<(), DescriptorErrorKind> {
         let err = |()| DescriptorErrorKind::InvalidOptionType {
             name: fmt_option_name(&option.name),
             ty: fmt_field_ty(desc),
             value: fmt_value(option),
             is_last: true,
-            found: Label::new(
-                &self.pool.inner.files,
-                "found here",
-                file,
-                join_path(path1, path2),
-            ),
+            found: Label::new(&self.pool.inner.files, "found here", file, path.into()),
         };
 
         match value {
@@ -479,7 +496,7 @@ impl<'a> OptionsVisitor<'a> {
             }
             Value::List(value) => {
                 let mut entry = Value::default_value(&desc.kind());
-                self.set_field_value(&mut entry, desc, option, file, path1, path2)?;
+                self.set_field_value(&mut entry, desc, option, file, path)?;
                 value.push(entry);
             }
             Value::Map(value) => {
@@ -490,6 +507,22 @@ impl<'a> OptionsVisitor<'a> {
         }
 
         Ok(())
+    }
+
+    fn find_extension(&self, scope: &str, name: &str) -> Option<ExtensionDescriptor> {
+        match resolve_name(&self.pool.inner.names, scope, name) {
+            Some((
+                _,
+                &Definition {
+                    kind: DefinitionKind::Extension(index),
+                    ..
+                },
+            )) => Some(ExtensionDescriptor {
+                pool: self.pool.clone(),
+                index,
+            }),
+            _ => None,
+        }
     }
 }
 

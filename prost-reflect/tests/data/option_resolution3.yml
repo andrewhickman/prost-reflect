@@ -1,0 +1,50 @@
+file:
+- name: test.proto
+  package: exttest
+  dependency:
+  - google/protobuf/descriptor.proto
+  messageType:
+  - name: Message
+    field:
+    - name: a
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_INT32
+      jsonName: a
+    - name: b
+      number: 3
+      label: LABEL_OPTIONAL
+      typeName: Message
+      jsonName: b
+    extensionRange:
+    - start: 5
+      end: 7
+  extension:
+  - name: c
+    extendee: Message
+    number: 5
+    label: LABEL_OPTIONAL
+    type: TYPE_INT32
+    jsonName: c
+  - name: d
+    extendee: Message
+    number: 6
+    label: LABEL_OPTIONAL
+    typeName: Message
+    jsonName: d
+  - name: foo
+    extendee: google.protobuf.FileOptions
+    number: 50000
+    label: LABEL_OPTIONAL
+    typeName: Message
+    jsonName: foo
+  options:
+    uninterpretedOption:
+    - name:
+      - namePart: exttest.foo
+        isExtension: true
+      - namePart: exttest.d
+        isExtension: true
+      - namePart: a
+        isExtension: false
+      positiveIntValue: '1'

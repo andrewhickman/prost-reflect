@@ -1,0 +1,10 @@
+---
+source: prost-reflect/tests/main.rs
+expression: actual
+---
+causes: []
+labels: []
+message: "field number '2' conflicts with extension range '1 to 5'"
+related: []
+severity: error
+

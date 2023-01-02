@@ -1,0 +1,22 @@
+file:
+- name: test.proto
+  messageType:
+  - name: Message
+    field:
+    - name: group
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_GROUP
+      typeName: Group
+      oneofIndex: 0
+      jsonName: group
+    nestedType:
+    - name: Group
+      field:
+      - name: bar
+        number: 1
+        label: LABEL_REPEATED
+        type: TYPE_FLOAT
+        jsonName: bar
+    oneofDecl:
+    - name: oneof

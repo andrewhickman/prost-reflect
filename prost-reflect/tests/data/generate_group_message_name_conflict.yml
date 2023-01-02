@@ -1,0 +1,18 @@
+file:
+- name: test.proto
+  messageType:
+  - name: Foo
+    field:
+    - name: baz
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_GROUP
+      typeName: Baz
+      jsonName: baz
+    nestedType:
+    - name: Baz
+    enumType:
+    - name: Baz
+      value:
+      - name: ZERO
+        number: 0

@@ -21,7 +21,7 @@ use prost_types::{
 use crate::{
     descriptor::{
         error::DescriptorErrorKind,
-        tag, to_index,
+        find_enum_proto, find_message_proto, tag, to_index,
         types::{self, Options},
         Definition, DefinitionKind, DescriptorIndex, EnumDescriptorInner, EnumValueDescriptorInner,
         ExtensionDescriptorInner, FieldDescriptorInner, FileDescriptorInner, KindIndex,
@@ -234,6 +234,24 @@ impl DescriptorPool {
         self.build_files(iter::once(file))
     }
 
+    /// Decode and add a set of file descriptors to the pool.
+    ///
+    /// The file descriptors may be provided in any order, however all types referenced must be defined
+    /// either in one of the files provided, or in a file previously added to the pool.
+    ///
+    /// Unlike when using [`add_file_descriptor_set()`][DescriptorPool::add_file_descriptor_set], any extension options
+    /// defined in the file descriptors are preserved.
+    pub fn decode_file_descriptor_set<B>(&mut self, bytes: B) -> Result<(), DescriptorError>
+    where
+        B: Buf,
+    {
+        let file = types::FileDescriptorSet::decode(bytes).map_err(|err| {
+            DescriptorError::new(vec![DescriptorErrorKind::DecodeFileDescriptorSet { err }])
+        })?;
+
+        self.build_files(file.file)
+    }
+
     /// Gets an iterator over the file descriptors added to this pool.
     pub fn files(&self) -> impl ExactSizeIterator<Item = FileDescriptor> + '_ {
         indices(&self.inner.files).map(|index| FileDescriptor {
@@ -331,6 +349,16 @@ impl DescriptorPool {
             files: &self.inner.files,
         }
         .encode(&mut buf)
+    }
+
+    /// Encodes the files contained within this [`DescriptorPool`] to a newly allocated buffer.
+    ///
+    /// The encoded message is equivalent to a [`FileDescriptorSet`], however also includes
+    /// any extension options that were defined.
+    pub fn encode_to_vec(&self) -> Vec<u8> {
+        let mut buf = Vec::new();
+        self.encode(&mut buf).expect("vec should have capacity");
+        buf
     }
 
     /// Gets an iterator over the services defined in these protobuf files.
@@ -574,6 +602,16 @@ impl FileDescriptor {
     {
         let mut buf = buf;
         self.inner().raw.encode(&mut buf)
+    }
+
+    /// Encodes this file descriptor to a newly allocated buffer.
+    ///
+    /// The encoded message is equivalent to a [`FileDescriptorProto`], however also includes
+    /// any extension options that were defined.
+    pub fn encode_to_vec(&self) -> Vec<u8> {
+        let mut buf = Vec::new();
+        self.encode(&mut buf).expect("vec should have capacity");
+        buf
     }
 
     /// Decodes the options defined for this [`FileDescriptor`], including any extension options.
@@ -1373,18 +1411,7 @@ impl EnumDescriptor {
     }
 
     fn raw(&self) -> &types::EnumDescriptorProto {
-        let file = self.raw_file();
-        let path = self.path();
-        debug_assert_ne!(path.len(), 0);
-        debug_assert_eq!(path.len() % 2, 0);
-        if path.len() == 2 {
-            debug_assert_eq!(path[0], tag::file::ENUM_TYPE);
-            &file.enum_type[path[1] as usize]
-        } else {
-            let message = find_message_proto(file, &path[..path.len() - 2]);
-            debug_assert_eq!(path[path.len() - 2], tag::message::ENUM_TYPE);
-            &message.enum_type[path[path.len() - 1] as usize]
-        }
+        find_enum_proto(self.raw_file(), self.path())
     }
 
     fn raw_file(&self) -> &types::FileDescriptorProto {
@@ -1828,27 +1855,6 @@ fn find_message_proto_prost<'a>(
     debug_assert_eq!(path.len() % 2, 0);
 
     let mut message: Option<&'a DescriptorProto> = None;
-    for part in path.chunks(2) {
-        match part[0] {
-            tag::file::MESSAGE_TYPE => message = Some(&file.message_type[part[1] as usize]),
-            tag::message::NESTED_TYPE => {
-                message = Some(&message.unwrap().nested_type[part[1] as usize])
-            }
-            _ => panic!("invalid message path"),
-        }
-    }
-
-    message.unwrap()
-}
-
-fn find_message_proto<'a>(
-    file: &'a types::FileDescriptorProto,
-    path: &[i32],
-) -> &'a types::DescriptorProto {
-    debug_assert_ne!(path.len(), 0);
-    debug_assert_eq!(path.len() % 2, 0);
-
-    let mut message: Option<&'a types::DescriptorProto> = None;
     for part in path.chunks(2) {
         match part[0] {
             tag::file::MESSAGE_TYPE => message = Some(&file.message_type[part[1] as usize]),

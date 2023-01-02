@@ -1,0 +1,16 @@
+---
+source: prost-reflect/tests/main.rs
+expression: actual
+---
+file:
+  - enumType:
+      - name: Enum
+        options:
+          allowAlias: true
+        value:
+          - name: ZERO
+            number: 0
+          - name: ZERO2
+            number: 0
+    name: test.proto
+

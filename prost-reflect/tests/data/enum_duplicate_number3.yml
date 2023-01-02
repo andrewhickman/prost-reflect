@@ -1,0 +1,15 @@
+file:
+- name: test.proto
+  enumType:
+  - name: Enum
+    value:
+    - name: ZERO
+      number: 0
+    - name: ZERO2
+      number: 0
+    options:
+      uninterpretedOption:
+      - name:
+        - namePart: allow_alias
+          isExtension: false
+        identifierValue: 'true'

@@ -1,0 +1,10 @@
+file:
+- name: test.proto
+  enumType:
+  - name: Enum
+    value:
+    - name: ZERO
+      number: 0
+    - name: ZERO2
+      number: 0
+  syntax: proto3

@@ -1,13 +1,16 @@
-use std::fmt;
+use std::{
+    fmt,
+    ops::{Range, RangeInclusive},
+};
 
 use crate::descriptor::{FileDescriptorInner, FileIndex};
 
 /// An error that may occur while creating a [`DescriptorPool`][crate::DescriptorPool].
 #[derive(Debug)]
 pub struct DescriptorError {
-    inner: Box<[DescriptorErrorKind]>,
+    errors: Box<[DescriptorErrorKind]>,
     #[cfg(feature = "miette")]
-    source: Option<String>,
+    source: Option<miette::NamedSource>,
 }
 
 #[derive(Debug)]
@@ -45,6 +48,36 @@ pub(super) enum DescriptorErrorKind {
         first: Label,
         second: Label,
     },
+    DuplicateFieldCamelCaseName {
+        first_name: String,
+        second_name: String,
+        #[cfg_attr(not(feature = "miette"), allow(dead_code))]
+        first: Label,
+        second: Label,
+    },
+    InvalidFieldNumber {
+        number: i32,
+        found: Label,
+    },
+    FieldNumberInReservedRange {
+        number: i32,
+        range: Range<i32>,
+        #[cfg_attr(not(feature = "miette"), allow(dead_code))]
+        defined: Label,
+        found: Label,
+    },
+    FieldNumberInExtensionRange {
+        number: i32,
+        range: Range<i32>,
+        #[cfg_attr(not(feature = "miette"), allow(dead_code))]
+        defined: Label,
+        found: Label,
+    },
+    ExtensionNumberOutOfRange {
+        number: i32,
+        message: String,
+        found: Label,
+    },
     NameNotFound {
         name: String,
         found: Label,
@@ -64,11 +97,21 @@ pub(super) enum DescriptorErrorKind {
     EmptyEnum {
         found: Label,
     },
+    InvalidProto3EnumDefault {
+        found: Label,
+    },
     DuplicateEnumNumber {
         number: i32,
         #[cfg_attr(not(feature = "miette"), allow(dead_code))]
         first: Label,
         second: Label,
+    },
+    EnumNumberInReservedRange {
+        number: i32,
+        range: RangeInclusive<i32>,
+        #[cfg_attr(not(feature = "miette"), allow(dead_code))]
+        defined: Label,
+        found: Label,
     },
     OptionNotFound {
         name: String,
@@ -105,7 +148,7 @@ impl DescriptorError {
     pub(super) fn new(errors: Vec<DescriptorErrorKind>) -> DescriptorError {
         debug_assert!(!errors.is_empty());
         DescriptorError {
-            inner: errors.into(),
+            errors: errors.into(),
             #[cfg(feature = "miette")]
             source: None,
         }
@@ -148,8 +191,8 @@ impl DescriptorError {
         if let Some(file) = self.file() {
             let file = file.to_owned();
 
-            self.source = Some(source.into());
-            for error in self.inner.as_mut() {
+            self.source = Some(miette::NamedSource::new(&file, source.to_owned()));
+            for error in self.errors.as_mut() {
                 error.add_source_code(&file, source);
             }
         }
@@ -157,7 +200,7 @@ impl DescriptorError {
     }
 
     fn first(&self) -> &DescriptorErrorKind {
-        &self.inner[0]
+        &self.errors[0]
     }
 }
 
@@ -204,9 +247,9 @@ impl miette::Diagnostic for DescriptorError {
     }
 
     fn related<'a>(&'a self) -> Option<Box<dyn Iterator<Item = &'a dyn miette::Diagnostic> + 'a>> {
-        if self.inner.len() > 1 {
+        if self.errors.len() > 1 {
             Some(Box::new(
-                self.inner
+                self.errors
                     .iter()
                     .map(|e| e as &dyn miette::Diagnostic)
                     .skip(1),
@@ -233,11 +276,18 @@ impl DescriptorErrorKind {
             DescriptorErrorKind::DuplicateName { second, .. } => Some(second),
             DescriptorErrorKind::DuplicateFieldNumber { second, .. } => Some(second),
             DescriptorErrorKind::DuplicateFieldJsonName { second, .. } => Some(second),
+            DescriptorErrorKind::DuplicateFieldCamelCaseName { second, .. } => Some(second),
+            DescriptorErrorKind::InvalidFieldNumber { found, .. } => Some(found),
+            DescriptorErrorKind::FieldNumberInReservedRange { found, .. } => Some(found),
+            DescriptorErrorKind::FieldNumberInExtensionRange { found, .. } => Some(found),
+            DescriptorErrorKind::ExtensionNumberOutOfRange { found, .. } => Some(found),
             DescriptorErrorKind::NameNotFound { found, .. } => Some(found),
             DescriptorErrorKind::InvalidType { found, .. } => Some(found),
             DescriptorErrorKind::InvalidFieldDefault { found, .. } => Some(found),
             DescriptorErrorKind::EmptyEnum { found } => Some(found),
+            DescriptorErrorKind::InvalidProto3EnumDefault { found } => Some(found),
             DescriptorErrorKind::DuplicateEnumNumber { second, .. } => Some(second),
+            DescriptorErrorKind::EnumNumberInReservedRange { found, .. } => Some(found),
             DescriptorErrorKind::OptionNotFound { found, .. } => Some(found),
             DescriptorErrorKind::InvalidOptionType { found, .. } => Some(found),
             DescriptorErrorKind::DuplicateOption { found, .. } => Some(found),
@@ -272,6 +322,24 @@ impl DescriptorErrorKind {
                 first.resolve_span(file, source);
                 second.resolve_span(file, source);
             }
+            DescriptorErrorKind::DuplicateFieldCamelCaseName { first, second, .. } => {
+                first.resolve_span(file, source);
+                second.resolve_span(file, source);
+            }
+            DescriptorErrorKind::InvalidFieldNumber { found, .. } => {
+                found.resolve_span(file, source);
+            }
+            DescriptorErrorKind::FieldNumberInReservedRange { defined, found, .. } => {
+                defined.resolve_span(file, source);
+                found.resolve_span(file, source);
+            }
+            DescriptorErrorKind::FieldNumberInExtensionRange { defined, found, .. } => {
+                defined.resolve_span(file, source);
+                found.resolve_span(file, source);
+            }
+            DescriptorErrorKind::ExtensionNumberOutOfRange { found, .. } => {
+                found.resolve_span(file, source);
+            }
             DescriptorErrorKind::NameNotFound { found, .. } => {
                 found.resolve_span(file, source);
             }
@@ -285,9 +353,16 @@ impl DescriptorErrorKind {
             DescriptorErrorKind::EmptyEnum { found } => {
                 found.resolve_span(file, source);
             }
+            DescriptorErrorKind::InvalidProto3EnumDefault { found } => {
+                found.resolve_span(file, source);
+            }
             DescriptorErrorKind::DuplicateEnumNumber { first, second, .. } => {
                 first.resolve_span(file, source);
                 second.resolve_span(file, source);
+            }
+            DescriptorErrorKind::EnumNumberInReservedRange { defined, found, .. } => {
+                found.resolve_span(file, source);
+                defined.resolve_span(file, source);
             }
             DescriptorErrorKind::OptionNotFound { found, .. } => {
                 found.resolve_span(file, source);
@@ -347,7 +422,7 @@ impl fmt::Display for DescriptorErrorKind {
                 } else {
                     write!(
                         f,
-                        "name '{}' is already defined file '{}'",
+                        "name '{}' is already defined in file '{}'",
                         name, first.file
                     )
                 }
@@ -357,6 +432,46 @@ impl fmt::Display for DescriptorErrorKind {
             }
             DescriptorErrorKind::DuplicateFieldJsonName { name, .. } => {
                 write!(f, "a field with JSON name '{}' is already defined", name)
+            }
+            DescriptorErrorKind::DuplicateFieldCamelCaseName {
+                first_name,
+                second_name,
+                ..
+            } => {
+                write!(
+                    f,
+                    "camel-case name of field '{first_name}' conflicts with field '{second_name}'"
+                )
+            }
+            DescriptorErrorKind::InvalidFieldNumber { number, .. } => {
+                write!(f, "invalid field number '{}'", number)
+            }
+            DescriptorErrorKind::FieldNumberInReservedRange { number, range, .. } => {
+                write!(
+                    f,
+                    "field number '{}' conflicts with reserved range '{} to {}'",
+                    number,
+                    range.start,
+                    range.end - 1
+                )
+            }
+            DescriptorErrorKind::FieldNumberInExtensionRange { number, range, .. } => {
+                write!(
+                    f,
+                    "field number '{}' conflicts with extension range '{} to {}'",
+                    number,
+                    range.start,
+                    range.end - 1
+                )
+            }
+            DescriptorErrorKind::ExtensionNumberOutOfRange {
+                number, message, ..
+            } => {
+                write!(
+                    f,
+                    "message '{}' does not define '{}' as an extension number",
+                    message, number
+                )
             }
             DescriptorErrorKind::NameNotFound { name, .. } => {
                 write!(f, "name '{}' is not defined", name)
@@ -370,8 +485,20 @@ impl fmt::Display for DescriptorErrorKind {
             DescriptorErrorKind::EmptyEnum { .. } => {
                 write!(f, "enums must have at least one value")
             }
+            DescriptorErrorKind::InvalidProto3EnumDefault { .. } => {
+                write!(f, "the first value for proto3 enums must be 0")
+            }
             DescriptorErrorKind::DuplicateEnumNumber { number, .. } => {
                 write!(f, "enum number '{}' has already been used", number)
+            }
+            DescriptorErrorKind::EnumNumberInReservedRange { number, range, .. } => {
+                write!(
+                    f,
+                    "enum number '{}' conflicts with reserved range '{} to {}'",
+                    number,
+                    range.start(),
+                    range.end()
+                )
             }
             DescriptorErrorKind::OptionNotFound { name, .. } => {
                 write!(f, "option field '{}' is not defined", name)
@@ -392,8 +519,8 @@ impl fmt::Display for DescriptorErrorKind {
                 } else {
                     write!(
                         f,
-                        "cannot set field for option '{} 'value of type '{}'",
-                        ty, name
+                        "cannot set field for option '{}' value of type '{}'",
+                        name, ty
                     )
                 }
             }
@@ -411,6 +538,8 @@ impl fmt::Display for DescriptorErrorKind {
 #[cfg_attr(docsrs, doc(cfg(feature = "miette")))]
 impl miette::Diagnostic for DescriptorErrorKind {
     fn help<'a>(&'a self) -> Option<Box<dyn fmt::Display + 'a>> {
+        use crate::descriptor::{RESERVED_MESSAGE_FIELD_NUMBERS, VALID_MESSAGE_FIELD_NUMBERS};
+
         match self {
             DescriptorErrorKind::MissingRequiredField { .. } => None,
             DescriptorErrorKind::UnknownSyntax { .. } => {
@@ -422,18 +551,41 @@ impl miette::Diagnostic for DescriptorErrorKind {
             DescriptorErrorKind::InvalidOneofIndex => None,
             DescriptorErrorKind::DuplicateName { .. } => None,
             DescriptorErrorKind::DuplicateFieldNumber { .. } => None,
+            DescriptorErrorKind::InvalidFieldNumber { number, .. } => {
+                if !VALID_MESSAGE_FIELD_NUMBERS.contains(number) {
+                    Some(Box::new(format!(
+                        "message numbers must be between {} and {}",
+                        VALID_MESSAGE_FIELD_NUMBERS.start,
+                        VALID_MESSAGE_FIELD_NUMBERS.end - 1
+                    )))
+                } else if RESERVED_MESSAGE_FIELD_NUMBERS.contains(number) {
+                    Some(Box::new(format!(
+                        "message numbers {} to {} are reserved",
+                        RESERVED_MESSAGE_FIELD_NUMBERS.start,
+                        RESERVED_MESSAGE_FIELD_NUMBERS.end - 1
+                    )))
+                } else {
+                    None
+                }
+            }
+            DescriptorErrorKind::FieldNumberInReservedRange { .. } => None,
+            DescriptorErrorKind::FieldNumberInExtensionRange { .. } => None,
             DescriptorErrorKind::DuplicateFieldJsonName { .. } => None,
+            DescriptorErrorKind::DuplicateFieldCamelCaseName { .. } => None,
             DescriptorErrorKind::NameNotFound { .. } => None,
             DescriptorErrorKind::InvalidType { .. } => None,
             DescriptorErrorKind::InvalidFieldDefault { .. } => None,
             DescriptorErrorKind::EmptyEnum { .. } => None,
+            DescriptorErrorKind::InvalidProto3EnumDefault { .. } => None,
             DescriptorErrorKind::DuplicateEnumNumber { .. } => Some(Box::new(
                 "set the 'allow_alias' option allow re-using enum numbers",
             )),
+            DescriptorErrorKind::EnumNumberInReservedRange { .. } => None,
             DescriptorErrorKind::OptionNotFound { .. } => None,
             DescriptorErrorKind::InvalidOptionType { .. } => None,
             DescriptorErrorKind::DuplicateOption { .. } => None,
             DescriptorErrorKind::DecodeFileDescriptorSet { .. } => None,
+            DescriptorErrorKind::ExtensionNumberOutOfRange { .. } => None,
         }
     }
 
@@ -462,7 +614,25 @@ impl miette::Diagnostic for DescriptorErrorKind {
                 spans.extend(first.to_span());
                 spans.extend(second.to_span());
             }
+            DescriptorErrorKind::DuplicateFieldCamelCaseName { first, second, .. } => {
+                spans.extend(first.to_span());
+                spans.extend(second.to_span());
+            }
             DescriptorErrorKind::NameNotFound { found, .. } => {
+                spans.extend(found.to_span());
+            }
+            DescriptorErrorKind::InvalidFieldNumber { found, .. } => {
+                spans.extend(found.to_span());
+            }
+            DescriptorErrorKind::FieldNumberInReservedRange { defined, found, .. } => {
+                spans.extend(defined.to_span());
+                spans.extend(found.to_span());
+            }
+            DescriptorErrorKind::FieldNumberInExtensionRange { defined, found, .. } => {
+                spans.extend(defined.to_span());
+                spans.extend(found.to_span());
+            }
+            DescriptorErrorKind::ExtensionNumberOutOfRange { found, .. } => {
                 spans.extend(found.to_span());
             }
             DescriptorErrorKind::InvalidType { found, defined, .. } => {
@@ -475,9 +645,16 @@ impl miette::Diagnostic for DescriptorErrorKind {
             DescriptorErrorKind::EmptyEnum { found } => {
                 spans.extend(found.to_span());
             }
+            DescriptorErrorKind::InvalidProto3EnumDefault { found, .. } => {
+                spans.extend(found.to_span());
+            }
             DescriptorErrorKind::DuplicateEnumNumber { first, second, .. } => {
                 spans.extend(first.to_span());
                 spans.extend(second.to_span());
+            }
+            DescriptorErrorKind::EnumNumberInReservedRange { defined, found, .. } => {
+                spans.extend(found.to_span());
+                spans.extend(defined.to_span());
             }
             DescriptorErrorKind::OptionNotFound { found, .. } => {
                 spans.extend(found.to_span());
@@ -505,7 +682,7 @@ impl Label {
         file: FileIndex,
         path: Box<[i32]>,
     ) -> Self {
-        let file = &files[file as usize].prost;
+        let file = &files[file as usize].raw;
 
         let span = file
             .source_code_info

@@ -1,0 +1,42 @@
+file:
+- name: test.proto
+  dependency:
+  - google/protobuf/descriptor.proto
+  messageType:
+  - name: Map
+    field:
+    - name: map
+      number: 1
+      label: LABEL_REPEATED
+      type: TYPE_MESSAGE
+      typeName: MapEntry
+      jsonName: map
+    nestedType:
+    - name: MapEntry
+      field:
+      - name: key
+        number: 1
+        label: LABEL_OPTIONAL
+        type: TYPE_STRING
+        jsonName: key
+      - name: value
+        number: 2
+        label: LABEL_OPTIONAL
+        type: TYPE_INT32
+        jsonName: value
+      options:
+        mapEntry: true
+  extension:
+  - name: ext
+    extendee: google.protobuf.FileOptions
+    number: 1001
+    label: LABEL_OPTIONAL
+    typeName: Map
+    jsonName: ext
+  options:
+    uninterpretedOption:
+    - name:
+      - namePart: ext
+        isExtension: true
+      aggregateValue: 'map : { key : "a" , value : 1 } map : { key : "b" , value : 2 } map : { key : "c" , value : 3 }'
+  syntax: proto3

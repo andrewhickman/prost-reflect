@@ -3,12 +3,12 @@ mod options;
 mod resolve;
 mod visit;
 
-use std::sync::Arc;
+use std::{borrow::Cow, collections::HashMap, sync::Arc};
 
 use crate::{
     descriptor::{
-        to_index, types::FileDescriptorProto, DefinitionKind, DescriptorPoolInner, EnumIndex,
-        ExtensionIndex, FileIndex, MessageIndex, ServiceIndex,
+        to_index, types::FileDescriptorProto, Definition, DefinitionKind, DescriptorPoolInner,
+        EnumIndex, ExtensionIndex, FileIndex, MessageIndex, ServiceIndex,
     },
     DescriptorError, DescriptorPool,
 };
@@ -110,6 +110,47 @@ impl DescriptorPool {
 
         Ok(())
     }
+}
+
+fn resolve_name<'a, 'b>(
+    names: &'a HashMap<Box<str>, Definition>,
+    scope: &str,
+    name: &'b str,
+) -> Option<(Cow<'b, str>, &'a Definition)> {
+    match name.strip_prefix('.') {
+        Some(full_name) => names.get(full_name).map(|def| (Cow::Borrowed(name), def)),
+        None => resolve_relative_name(names, scope, name)
+            .map(|(resolved_name, def)| (Cow::Owned(resolved_name), def)),
+    }
+}
+
+fn resolve_relative_name<'a>(
+    names: &'a HashMap<Box<str>, Definition>,
+    scope: &str,
+    relative_name: &str,
+) -> Option<(String, &'a Definition)> {
+    let mut buf = format!(".{}.{}", scope, relative_name);
+
+    if let Some(def) = names.get(&buf[1..]) {
+        return Some((buf, def));
+    }
+
+    for (i, _) in scope.rmatch_indices('.') {
+        buf.truncate(i + 2);
+        buf.push_str(relative_name);
+
+        if let Some(def) = names.get(&buf[1..]) {
+            return Some((buf, def));
+        }
+    }
+
+    buf.truncate(1);
+    buf.push_str(relative_name);
+    if let Some(def) = names.get(&buf[1..]) {
+        return Some((buf, def));
+    }
+
+    None
 }
 
 fn join_path(path1: &[i32], path2: &[i32]) -> Box<[i32]> {

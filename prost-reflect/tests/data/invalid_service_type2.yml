@@ -1,0 +1,16 @@
+file:
+- name: test.proto
+  messageType:
+  - name: Message
+  enumType:
+  - name: Enum
+    value:
+    - name: ZERO
+      number: 0
+  service:
+  - name: Service
+    method:
+    - name: rpc
+      inputType: .Message
+      outputType: .Enum
+  syntax: proto3

@@ -1,0 +1,31 @@
+file:
+- name: test.proto
+  messageType:
+  - name: Foo
+    field:
+    - name: baz
+      number: 1
+      label: LABEL_REPEATED
+      type: TYPE_MESSAGE
+      typeName: BazEntry
+      jsonName: baz
+    nestedType:
+    - name: BazEntry
+      field:
+      - name: key
+        number: 1
+        label: LABEL_OPTIONAL
+        type: TYPE_UINT32
+        jsonName: key
+      - name: value
+        number: 2
+        label: LABEL_OPTIONAL
+        type: TYPE_BYTES
+        jsonName: value
+      options:
+        mapEntry: true
+    enumType:
+    - name: BazEntry
+      value:
+      - name: ZERO
+        number: 0

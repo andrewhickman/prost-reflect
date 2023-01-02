@@ -1,0 +1,22 @@
+file:
+- name: test.proto
+  messageType:
+  - name: Message
+    extensionRange:
+    - start: 1
+      end: 2
+  - name: Foo
+    field:
+    - name: bar
+      number: 1
+      label: LABEL_REQUIRED
+      type: TYPE_INT32
+      jsonName: bar
+  extension:
+  - name: foo
+    extendee: Message
+    number: 1
+    label: LABEL_REPEATED
+    type: TYPE_GROUP
+    typeName: Foo
+    jsonName: foo

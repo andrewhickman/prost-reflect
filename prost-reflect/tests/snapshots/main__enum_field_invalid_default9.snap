@@ -1,0 +1,24 @@
+---
+source: prost-reflect/tests/main.rs
+expression: actual
+---
+file:
+  - messageType:
+      - field:
+          - defaultValue: ZERO
+            jsonName: foo
+            label: LABEL_OPTIONAL
+            name: foo
+            number: 1
+            type: TYPE_ENUM
+            typeName: ".foo.Parent.Foo"
+        name: Message
+      - enumType:
+          - name: Foo
+            value:
+              - name: ZERO
+                number: 0
+        name: Parent
+    name: test.proto
+    package: foo
+
