@@ -20,7 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- The minimum supported rust version is now **1.57.0**.
+- The minimum supported rust version is now **1.60.0**.
 - **Breaking** The [`FileDescriptor::dependencies`](https://docs.rs/prost-reflect/latest/prost_reflect/struct.FileDescriptor.html#method.dependencies) now returns all imported files, instead of just those imported with `import public`. The new `public_dependencies` method preserves the old behaviour ([#19]).
 - **Breaking** The `reflect-well-known-types` feature flag has been removed, and the functionality is now always available.
 - Updated the base64 dependency to version [0.20.0](https://crates.io/crates/base64/0.20.0).
