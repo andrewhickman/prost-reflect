@@ -1194,14 +1194,12 @@ impl ExtensionDescriptor {
         self.inner().cardinality
     }
 
-    /// Whether this field supports distinguishing between an unpopulated field and
+    /// Whether this extension supports distinguishing between an unpopulated field and
     /// the default value.
     ///
-    /// For proto2 messages this returns `true` for all non-repeated fields.
-    /// For proto3 this returns `true` for message fields, and fields contained
-    /// in a `oneof`.
+    /// This is equivalent to `cardinality() != Cardinality::Repeated`
     pub fn supports_presence(&self) -> bool {
-        self.inner().supports_presence
+        self.cardinality() != Cardinality::Repeated
     }
 
     /// Gets the [`Kind`] of this field.

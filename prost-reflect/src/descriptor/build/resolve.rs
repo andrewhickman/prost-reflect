@@ -382,11 +382,6 @@ impl<'a> Visitor for ResolveVisitor<'a> {
                 .as_ref()
                 .map_or(syntax == Syntax::Proto3, |o| o.value.packed()));
 
-        let supports_presence = extension.proto3_optional()
-            || extension.oneof_index.is_some()
-            || (cardinality != Cardinality::Repeated
-                && (kind.map_or(false, |k| k.is_message()) || syntax == Syntax::Proto2));
-
         let default = kind.ok().and_then(|kind| {
             self.parse_field_default_value(kind, extension.default_value.as_deref(), file, path)
         });
@@ -400,7 +395,6 @@ impl<'a> Visitor for ResolveVisitor<'a> {
             kind: kind.unwrap_or(KindIndex::Double),
             is_packed,
             cardinality,
-            supports_presence,
             default,
         });
     }

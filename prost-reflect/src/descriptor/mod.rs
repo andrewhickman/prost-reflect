@@ -255,7 +255,6 @@ pub struct ExtensionDescriptorInner {
     extendee: MessageIndex,
     kind: KindIndex,
     is_packed: bool,
-    supports_presence: bool,
     cardinality: Cardinality,
     default: Option<Value>,
 }
