@@ -160,6 +160,9 @@ impl DescriptorError {
     }
 
     /// The 1-based line number at which this error occurred, if available.
+    ///
+    /// This field may be `None` if the error is not associated with a particular source location, or the
+    /// [`source_code_info`](prost_types::FileDescriptorProto::source_code_info) field was not populated for the input file.
     pub fn line(&self) -> Option<usize> {
         self.first()
             .label()
@@ -168,6 +171,9 @@ impl DescriptorError {
     }
 
     /// The 1-based column number at which this error occurred, if available.
+    ///
+    /// This field may be `None` if the error is not associated with a particular source location, or the
+    /// [`source_code_info`](prost_types::FileDescriptorProto::source_code_info) field was not populated for the input file.
     pub fn column(&self) -> Option<usize> {
         self.first()
             .label()
@@ -175,7 +181,7 @@ impl DescriptorError {
             .map(|s| s[1] as usize)
     }
 
-    /// Gets the path where this error occurred in the [`FileDescriptorProto`][FileDescriptorProto], if available.
+    /// Gets the path where this error occurred in the [`FileDescriptorProto`][prost_types::FileDescriptorProto], if available.
     ///
     /// See [`path`][prost_types::source_code_info::Location::path] for more details on the structure of the path.
     pub fn path(&self) -> Option<&[i32]> {
@@ -186,7 +192,7 @@ impl DescriptorError {
     #[cfg_attr(docsrs, doc(cfg(feature = "miette")))]
     /// Provide source code information for this error.
     ///
-    /// The source should correspond to the contents of [`file()`][DescriptorError::source].
+    /// The source should correspond to the contents of [`file()`][DescriptorError::file].
     pub fn with_source_code(mut self, source: &str) -> Self {
         if let Some(file) = self.file() {
             let file = file.to_owned();

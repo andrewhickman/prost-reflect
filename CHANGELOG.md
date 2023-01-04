@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added the [`options()`](https://docs.rs/prost-reflect/latest/prost_reflect/struct.MessageDescriptor.html#method.options) method to all descriptor types, which returns a message containing the options defined for the descriptor, including custom options.
 - The `uninterpreted_options` field of options is now used to populate options if it is present.
   - Note that if the `text-format` feature flag is not enabled, then options set through the [`aggregate_value`](https://docs.rs/prost-types/latest/prost_types/struct.UninterpretedOption.html#method.aggregate_value) field will be ignored.
+- Added several new validation checks when constructing a `DescriptorPool` instance.
+- Added new [`file()`](https://docs.rs/prost-reflect/latest/prost_reflect/struct.DescriptorError.html#method.file), [`line()`](https://docs.rs/prost-reflect/latest/prost_reflect/struct.DescriptorError.html#method.line) and [`column()`](https://docs.rs/prost-reflect/latest/prost_reflect/struct.DescriptorError.html#method.column) methods to get more context information about errors.
+- When the `miette` feature is enabled, `DescriptorError` now implements [`Diagnostic`](https://docs.rs/miette/latest/miette/trait.Diagnostic.html). When source code is provided through [`DescriptorError::with_source_code`](https://docs.rs/prost-reflect/latest/prost_reflect/struct.DescriptorError.html#method.with_source_code), and span information is provided in [`FileDescriptorProto::source_code_info`](https://docs.rs/prost-types/latest/prost_types/struct.FileDescriptorProto.html#structfield.source_code_info), then the error will have labels annotating relevant portions of the source.
 
 ### Changed
 
