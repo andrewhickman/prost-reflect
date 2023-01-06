@@ -560,13 +560,13 @@ impl miette::Diagnostic for DescriptorErrorKind {
             DescriptorErrorKind::InvalidFieldNumber { number, .. } => {
                 if !VALID_MESSAGE_FIELD_NUMBERS.contains(number) {
                     Some(Box::new(format!(
-                        "message numbers must be between {} and {}",
+                        "field numbers must be between {} and {}",
                         VALID_MESSAGE_FIELD_NUMBERS.start,
                         VALID_MESSAGE_FIELD_NUMBERS.end - 1
                     )))
                 } else if RESERVED_MESSAGE_FIELD_NUMBERS.contains(number) {
                     Some(Box::new(format!(
-                        "message numbers {} to {} are reserved",
+                        "field numbers {} to {} are reserved",
                         RESERVED_MESSAGE_FIELD_NUMBERS.start,
                         RESERVED_MESSAGE_FIELD_NUMBERS.end - 1
                     )))
