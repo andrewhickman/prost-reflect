@@ -377,6 +377,7 @@ impl<'a> OptionsVisitor<'a> {
                             } else {
                                 self.set_field_value(
                                     message.get_extension_mut(&extension_desc),
+                                    &mut resolved_path,
                                     &extension_desc,
                                     option,
                                     file,
@@ -425,6 +426,7 @@ impl<'a> OptionsVisitor<'a> {
                             } else {
                                 self.set_field_value(
                                     message.get_field_mut(&field_desc),
+                                    &mut resolved_path,
                                     &field_desc,
                                     option,
                                     file,
@@ -464,6 +466,7 @@ impl<'a> OptionsVisitor<'a> {
     fn set_field_value(
         &self,
         value: &mut Value,
+        resolved_path: &mut Vec<i32>,
         desc: &impl FieldDescriptorLike,
         option: &UninterpretedOption,
         file: FileIndex,
@@ -495,8 +498,10 @@ impl<'a> OptionsVisitor<'a> {
                     option_to_message(option, desc.kind().as_message().unwrap()).map_err(err)?
             }
             Value::List(value) => {
+                resolved_path.push(value.len() as i32);
+
                 let mut entry = Value::default_value(&desc.kind());
-                self.set_field_value(&mut entry, desc, option, file, path)?;
+                self.set_field_value(&mut entry, resolved_path, desc, option, file, path)?;
                 value.push(entry);
             }
             Value::Map(value) => {
