@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.1] - 2023-01-07
+
 ### Fixed
 
 - The path for repeated extension options now includes the array index (for consistency with the output of protoc).
@@ -253,7 +255,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial release, including support for inspecting message types at runtime.
 
-[Unreleased]: https://github.com/andrewhickman/prost-reflect/compare/0.10.0...HEAD
+[Unreleased]: https://github.com/andrewhickman/prost-reflect/compare/0.10.1...HEAD
+[0.10.1]: https://github.com/andrewhickman/prost-reflect/compare/0.10.0...0.10.1
 [0.10.0]: https://github.com/andrewhickman/prost-reflect/compare/0.9.0...0.10.0
 [0.9.2]: https://github.com/andrewhickman/prost-reflect/compare/0.9.1...0.9.2
 [0.9.1]: https://github.com/andrewhickman/prost-reflect/compare/0.9.0...0.9.1
