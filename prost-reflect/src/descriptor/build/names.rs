@@ -383,14 +383,17 @@ impl<'a> NameVisitor<'a> {
                                 &self.pool.files,
                                 "first defined here",
                                 file,
-                                join_path(path, &[tag::message::FIELD, entry.get().1]),
+                                join_path(
+                                    path,
+                                    &[tag::message::FIELD, entry.get().1, tag::field::NAME],
+                                ),
                             ),
                             second_name: name.to_owned(),
                             second: Label::new(
                                 &self.pool.files,
                                 "defined again here",
                                 file,
-                                join_path(path, &[tag::message::FIELD, index]),
+                                join_path(path, &[tag::message::FIELD, index, tag::field::NAME]),
                             ),
                         })
                 }
