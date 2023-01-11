@@ -1,4 +1,4 @@
-use base64::display::Base64Display;
+use base64::{display::Base64Display, prelude::BASE64_STANDARD};
 use prost::{DecodeError, Message};
 use serde::ser::{Error, Serialize, SerializeMap, SerializeSeq, Serializer};
 
@@ -247,7 +247,7 @@ where
 {
     let raw: Vec<u8> = msg.transcode_to().map_err(decode_to_ser_err)?;
 
-    serializer.collect_str(&Base64Display::from(&raw, &base64::engine::DEFAULT_ENGINE))
+    serializer.collect_str(&Base64Display::new(&raw, &BASE64_STANDARD))
 }
 
 fn serialize_field_mask<S>(

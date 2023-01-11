@@ -492,26 +492,24 @@ impl<'de> Visitor<'de> for BytesVisitor {
         E: Error,
     {
         use base64::{
-            alphabet, decode_engine_vec,
-            engine::{
-                fast_portable::{FastPortable, FastPortableConfig},
-                DecodePaddingMode,
-            },
-            DecodeError,
+            alphabet,
+            engine::DecodePaddingMode,
+            engine::{GeneralPurpose, GeneralPurposeConfig},
+            DecodeError, Engine,
         };
 
-        const CONFIG: FastPortableConfig = FastPortableConfig::new()
+        const CONFIG: GeneralPurposeConfig = GeneralPurposeConfig::new()
             .with_decode_allow_trailing_bits(true)
             .with_decode_padding_mode(DecodePaddingMode::Indifferent);
-        const STANDARD: FastPortable = FastPortable::from(&alphabet::STANDARD, CONFIG);
-        const URL_SAFE: FastPortable = FastPortable::from(&alphabet::URL_SAFE, CONFIG);
+        const STANDARD: GeneralPurpose = GeneralPurpose::new(&alphabet::STANDARD, CONFIG);
+        const URL_SAFE: GeneralPurpose = GeneralPurpose::new(&alphabet::URL_SAFE, CONFIG);
 
         let mut buf = Vec::new();
-        match decode_engine_vec(v, &mut buf, &STANDARD) {
+        match STANDARD.decode_vec(v, &mut buf) {
             Ok(()) => Ok(buf.into()),
             Err(DecodeError::InvalidByte(_, b'-')) | Err(DecodeError::InvalidByte(_, b'_')) => {
                 buf.clear();
-                match decode_engine_vec(v, &mut buf, &URL_SAFE) {
+                match URL_SAFE.decode_vec(v, &mut buf) {
                     Ok(()) => Ok(buf.into()),
                     Err(err) => Err(Error::custom(format!("invalid base64: {}", err))),
                 }

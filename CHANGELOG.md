@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Updated the base64 dependency to version [0.21.0](https://crates.io/crates/base64/0.21.0).
+
 ## [0.10.1] - 2023-01-07
 
 ### Fixed

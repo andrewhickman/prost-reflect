@@ -1,6 +1,6 @@
 mod wkt;
 
-use base64::display::Base64Display;
+use base64::{display::Base64Display, prelude::BASE64_STANDARD};
 
 use serde::ser::{Serialize, SerializeMap, SerializeSeq, Serializer};
 
@@ -169,7 +169,7 @@ impl<'a> Serialize for SerializeWrapper<'a, ValueAndKind<'a>> {
             }
             Value::String(value) => serializer.serialize_str(value),
             Value::Bytes(value) => {
-                serializer.collect_str(&Base64Display::from(value, &base64::engine::DEFAULT_ENGINE))
+                serializer.collect_str(&Base64Display::new(value, &BASE64_STANDARD))
             }
             Value::EnumNumber(number) => {
                 let enum_ty = match self.value.kind {
