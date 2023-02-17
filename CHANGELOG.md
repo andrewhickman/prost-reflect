@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.2] - 2023-02-17
+
 ### Changed
 
 - Updated the base64 dependency to version [0.21.0](https://crates.io/crates/base64/0.21.0).
@@ -260,7 +262,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial release, including support for inspecting message types at runtime.
 
-[Unreleased]: https://github.com/andrewhickman/prost-reflect/compare/0.10.1...HEAD
+[Unreleased]: https://github.com/andrewhickman/prost-reflect/compare/0.10.2...HEAD
+[0.10.2]: https://github.com/andrewhickman/prost-reflect/compare/0.10.1...0.10.2
 [0.10.1]: https://github.com/andrewhickman/prost-reflect/compare/0.10.0...0.10.1
 [0.10.0]: https://github.com/andrewhickman/prost-reflect/compare/0.9.0...0.10.0
 [0.9.2]: https://github.com/andrewhickman/prost-reflect/compare/0.9.1...0.9.2
