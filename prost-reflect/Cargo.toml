@@ -22,7 +22,7 @@ exclude = [
 [[test]]
 name = "main"
 path = "tests/main.rs"
-required-features = ["serde", "miette"]
+required-features = ["serde", "miette", "text-format"]
 
 [features]
 derive = ["prost-reflect-derive"]
