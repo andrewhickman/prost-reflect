@@ -3,7 +3,7 @@ use prost::bytes::Bytes;
 use crate::{
     descriptor::{
         build::{
-            join_path, resolve_name,
+            join_path, resolve_name, to_json_name,
             visit::{visit, Visitor},
             DescriptorPoolOffsets,
         },
@@ -104,6 +104,8 @@ impl<'a> Visitor for ResolveVisitor<'a> {
 
         let kind = self.resolve_field_type(field.r#type, field.type_name(), full_name, file, path);
 
+        let json_name: Box<str> = self.resolve_field_json_name(field, file, path).into();
+
         let is_packed = cardinality == Cardinality::Repeated
             && kind.map_or(false, |k| k.is_packable())
             && (field
@@ -139,6 +141,7 @@ impl<'a> Visitor for ResolveVisitor<'a> {
             oneof,
             is_packed,
             supports_presence,
+            json_name: json_name.clone(),
             cardinality,
             default,
         });
@@ -182,10 +185,7 @@ impl<'a> Visitor for ResolveVisitor<'a> {
                 ),
             });
         }
-        if let Some(existing) = message
-            .field_json_names
-            .insert(field.json_name().into(), index)
-        {
+        if let Some(existing) = message.field_json_names.insert(json_name, index) {
             self.errors
                 .push(DescriptorErrorKind::DuplicateFieldJsonName {
                     name: field.json_name().to_owned(),
@@ -375,6 +375,8 @@ impl<'a> Visitor for ResolveVisitor<'a> {
             path,
         );
 
+        self.resolve_field_json_name(extension, file, path);
+
         let is_packed = cardinality == Cardinality::Repeated
             && kind.map_or(false, |k| k.is_packable())
             && (extension
@@ -521,6 +523,20 @@ impl<'a> ResolveVisitor<'a> {
                         ),
                     });
             }
+        }
+    }
+
+    fn resolve_field_json_name<'b>(
+        &'b mut self,
+        field: &'b FieldDescriptorProto,
+        file: FileIndex,
+        path: &[i32],
+    ) -> &'b str {
+        if let Some(json_name) = &field.json_name {
+            json_name
+        } else {
+            let field = find_file_field_proto_mut(&mut self.pool.files[file as usize].raw, path);
+            field.json_name.insert(to_json_name(field.name()))
         }
     }
 
@@ -761,7 +777,7 @@ impl<'a> ResolveVisitor<'a> {
             } else {
                 field_descriptor_proto::Type::Enum
             };
-            set_file_type_name(
+            set_type_name(
                 &mut self.pool.files[file as usize].raw,
                 path,
                 tag,
@@ -898,7 +914,7 @@ fn unescape_c_escape_string(s: &str) -> Result<Bytes, &'static str> {
     Ok(dst.into())
 }
 
-fn set_file_type_name(
+fn set_type_name(
     file: &mut FileDescriptorProto,
     path: &[i32],
     tag: i32,
@@ -906,10 +922,6 @@ fn set_file_type_name(
     ty: field_descriptor_proto::Type,
 ) {
     match path[0] {
-        tag::file::MESSAGE_TYPE => {
-            let message = &mut file.message_type[path[1] as usize];
-            set_message_type_name(message, &path[2..], tag, type_name, ty);
-        }
         tag::file::SERVICE => {
             debug_assert_eq!(path.len(), 4);
             let service = &mut file.service[path[1] as usize];
@@ -921,55 +933,57 @@ fn set_file_type_name(
                 p => panic!("unknown path element {}", p),
             }
         }
-        tag::file::EXTENSION => {
-            debug_assert_eq!(path.len(), 2);
-            let extension = &mut file.extension[path[1] as usize];
-            set_field_type_name(extension, tag, type_name, ty);
+        tag::file::MESSAGE_TYPE | tag::file::EXTENSION => {
+            let field = find_file_field_proto_mut(file, path);
+            match tag {
+                tag::field::TYPE_NAME => {
+                    field.type_name = Some(type_name);
+                    if field.r#type() != field_descriptor_proto::Type::Group {
+                        field.set_type(ty);
+                    }
+                }
+                tag::field::EXTENDEE => field.extendee = Some(type_name),
+                p => panic!("unknown path element {}", p),
+            }
         }
         p => panic!("unknown path element {}", p),
     }
 }
 
-fn set_message_type_name(
-    message: &mut DescriptorProto,
+fn find_file_field_proto_mut<'a>(
+    file: &'a mut FileDescriptorProto,
     path: &[i32],
-    tag: i32,
-    type_name: String,
-    ty: field_descriptor_proto::Type,
-) {
+) -> &'a mut FieldDescriptorProto {
+    match path[0] {
+        tag::file::MESSAGE_TYPE => {
+            let message = &mut file.message_type[path[1] as usize];
+            find_message_field_proto(message, &path[2..])
+        }
+        tag::file::EXTENSION => {
+            debug_assert_eq!(path.len(), 2);
+            &mut file.extension[path[1] as usize]
+        }
+        p => panic!("unknown path element {}", p),
+    }
+}
+
+fn find_message_field_proto<'a>(
+    message: &'a mut DescriptorProto,
+    path: &[i32],
+) -> &'a mut FieldDescriptorProto {
     match path[0] {
         tag::message::FIELD => {
             debug_assert_eq!(path.len(), 2);
-            let field = &mut message.field[path[1] as usize];
-            set_field_type_name(field, tag, type_name, ty);
+            &mut message.field[path[1] as usize]
         }
         tag::message::EXTENSION => {
             debug_assert_eq!(path.len(), 2);
-            let extension = &mut message.extension[path[1] as usize];
-            set_field_type_name(extension, tag, type_name, ty);
+            &mut message.extension[path[1] as usize]
         }
         tag::message::NESTED_TYPE => {
             let nested_message = &mut message.nested_type[path[1] as usize];
-            set_message_type_name(nested_message, &path[2..], tag, type_name, ty);
+            find_message_field_proto(nested_message, &path[2..])
         }
-        p => panic!("unknown path element {}", p),
-    }
-}
-
-fn set_field_type_name(
-    field: &mut FieldDescriptorProto,
-    tag: i32,
-    type_name: String,
-    ty: field_descriptor_proto::Type,
-) {
-    match tag {
-        tag::field::TYPE_NAME => {
-            field.type_name = Some(type_name);
-            if field.r#type() != field_descriptor_proto::Type::Group {
-                field.set_type(ty);
-            }
-        }
-        tag::field::EXTENDEE => field.extendee = Some(type_name),
         p => panic!("unknown path element {}", p),
     }
 }

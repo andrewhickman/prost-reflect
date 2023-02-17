@@ -629,7 +629,7 @@ pub(super) fn option_to_message(
     option: &UninterpretedOption,
     desc: &MessageDescriptor,
 ) -> Result<DynamicMessage, ()> {
-    if let Some(_) = &option.aggregate_value {
+    if option.aggregate_value.is_some() {
         Ok(DynamicMessage::new(desc.clone()))
     } else {
         Err(())

@@ -964,7 +964,7 @@ impl FieldDescriptor {
     /// This is usually the camel-cased form of the field name, unless
     /// another value is set in the proto file.
     pub fn json_name(&self) -> &str {
-        self.raw().json_name()
+        &self.inner().json_name
     }
 
     /// Whether this field is encoded using the proto2 group encoding.

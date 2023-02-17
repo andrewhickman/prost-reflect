@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Updated the base64 dependency to version [0.21.0](https://crates.io/crates/base64/0.21.0).
+- If the `json_name` property for a field is unset, it will now be populated with the camel-cased field name ([#5](https://github.com/andrewhickman/prost-reflect/issues/5#issuecomment-1432230706)).
 
 ## [0.10.1] - 2023-01-07
 
