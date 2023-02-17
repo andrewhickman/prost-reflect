@@ -231,6 +231,7 @@ pub struct FieldDescriptor {
 struct FieldDescriptorInner {
     id: Identity,
     number: u32,
+    json_name: Box<str>,
     kind: KindIndex,
     oneof: Option<OneofIndex>,
     is_packed: bool,

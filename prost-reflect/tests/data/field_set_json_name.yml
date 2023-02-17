@@ -1,0 +1,13 @@
+file:
+- name: test.proto
+  messageType:
+  - name: Message
+    field:
+    - name: no_json_name
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_INT32
+    - name: no_json_name2
+      number: 2
+      label: LABEL_OPTIONAL
+      type: TYPE_INT32

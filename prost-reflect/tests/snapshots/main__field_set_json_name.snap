@@ -1,0 +1,20 @@
+---
+source: prost-reflect/tests/main.rs
+expression: actual
+---
+file:
+  - messageType:
+      - field:
+          - jsonName: noJsonName
+            label: LABEL_OPTIONAL
+            name: no_json_name
+            number: 1
+            type: TYPE_INT32
+          - jsonName: noJsonName2
+            label: LABEL_OPTIONAL
+            name: no_json_name2
+            number: 2
+            type: TYPE_INT32
+        name: Message
+    name: test.proto
+

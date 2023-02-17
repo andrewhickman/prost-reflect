@@ -138,6 +138,7 @@ check_err!(name_collision4);
 check_err!(name_collision5);
 check_err!(field_default_value1);
 check_ok!(field_default_value2);
+check_ok!(field_set_json_name);
 check_err!(enum_field_invalid_default1);
 check_err!(enum_field_invalid_default2);
 check_err!(enum_field_invalid_default3);
