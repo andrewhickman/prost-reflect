@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+**prost-reflect-derive** Update syn requirement from 1.0.84 to 2.0.3
+
 ## [0.10.3] - 2023-03-20
 
 ### Fixed
