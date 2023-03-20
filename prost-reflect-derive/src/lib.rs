@@ -52,7 +52,7 @@ fn reflect_message_impl(input: syn::DeriveInput) -> Result<proc_macro2::TokenStr
 }
 
 fn is_prost_reflect_attribute(attr: &syn::Attribute) -> bool {
-    attr.path.is_ident("prost_reflect")
+    attr.path().is_ident("prost_reflect")
 }
 
 impl Args {
@@ -69,40 +69,31 @@ impl Args {
             ));
         }
 
-        let mut span: Option<Span> = None;
-        let mut nested = Vec::new();
-        for attr in reflect_attrs {
-            span = match span {
-                Some(span) => span.join(attr.span()),
-                None => Some(attr.span()),
-            };
-            match attr.parse_meta()? {
-                syn::Meta::List(list) => nested.extend(list.nested),
-                meta => return Err(syn::Error::new(meta.span(), "expected list of attributes")),
-            }
-        }
-
         let mut args = Args {
-            args_span: span.unwrap_or_else(Span::call_site),
-            descriptor_pool: None,
+            args_span: reflect_attrs
+                .iter()
+                .map(|a| a.span())
+                .reduce(|l, r| l.join(r).unwrap_or(l))
+                .unwrap(),
             message_name: None,
+            descriptor_pool: None,
         };
-        for item in nested {
-            match item {
-                syn::NestedMeta::Meta(syn::Meta::NameValue(value)) => {
-                    if value.path.is_ident("descriptor_pool") {
-                        args.descriptor_pool = Some(value.lit);
-                    } else if value.path.is_ident("message_name") {
-                        args.message_name = Some(value.lit);
-                    } else {
-                        return Err(syn::Error::new(
-                            value.span(),
-                            "unknown argument (expected 'descriptor_pool' or 'message_name')",
-                        ));
-                    }
+
+        for attr in reflect_attrs {
+            attr.parse_nested_meta(|nested| {
+                if nested.path.is_ident("descriptor_pool") {
+                    args.descriptor_pool = nested.value()?.parse()?;
+                    Ok(())
+                } else if nested.path.is_ident("message_name") {
+                    args.message_name = nested.value()?.parse()?;
+                    Ok(())
+                } else {
+                    return Err(syn::Error::new(
+                        nested.path.span(),
+                        "unknown argument (expected 'descriptor_pool' or 'message_name')",
+                    ));
                 }
-                _ => return Err(syn::Error::new(item.span(), "unexpected attribute")),
-            }
+            })?;
         }
 
         Ok(args)
