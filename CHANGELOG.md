@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.3] - 2023-03-20
+
 ### Fixed
 
 Fixed type resolution for double fields. Thanks to [@jackkleeman] for [#29]
@@ -266,7 +268,8 @@ Fixed type resolution for double fields. Thanks to [@jackkleeman] for [#29]
 
 - Initial release, including support for inspecting message types at runtime.
 
-[Unreleased]: https://github.com/andrewhickman/prost-reflect/compare/0.10.2...HEAD
+[Unreleased]: https://github.com/andrewhickman/prost-reflect/compare/0.10.3...HEAD
+[0.10.3]: https://github.com/andrewhickman/prost-reflect/compare/0.10.2...0.10.3
 [0.10.2]: https://github.com/andrewhickman/prost-reflect/compare/0.10.1...0.10.2
 [0.10.1]: https://github.com/andrewhickman/prost-reflect/compare/0.10.0...0.10.1
 [0.10.0]: https://github.com/andrewhickman/prost-reflect/compare/0.9.0...0.10.0
