@@ -1,0 +1,13 @@
+---
+source: prost-reflect/tests/main.rs
+expression: actual
+---
+file:
+  - messageType:
+      - field:
+          - jsonName: doubleValue
+            name: double_value
+            number: 1
+        name: FieldDescriptorProto
+    name: test.proto
+

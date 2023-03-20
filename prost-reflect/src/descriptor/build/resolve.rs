@@ -102,7 +102,8 @@ impl<'a> Visitor for ResolveVisitor<'a> {
             field_descriptor_proto::Label::Repeated => Cardinality::Repeated,
         };
 
-        let kind = self.resolve_field_type(field.r#type, field.type_name(), full_name, file, path);
+        let kind =
+            self.resolve_field_type(field.r#type(), field.type_name(), full_name, file, path);
 
         let json_name: Box<str> = self.resolve_field_json_name(field, file, path).into();
 
@@ -368,7 +369,7 @@ impl<'a> Visitor for ResolveVisitor<'a> {
         };
 
         let kind = self.resolve_field_type(
-            extension.r#type,
+            extension.r#type(),
             extension.type_name(),
             full_name,
             file,
@@ -542,24 +543,13 @@ impl<'a> ResolveVisitor<'a> {
 
     fn resolve_field_type(
         &mut self,
-        ty: Option<i32>,
+        ty: field_descriptor_proto::Type,
         ty_name: &str,
         scope: &str,
         file: FileIndex,
         path: &[i32],
     ) -> Result<KindIndex, ()> {
         if ty_name.is_empty() {
-            let ty = match ty.and_then(field_descriptor_proto::Type::from_i32) {
-                Some(ty) => ty,
-                None => {
-                    self.add_missing_required_field_error(
-                        file,
-                        join_path(path, &[tag::field::TYPE]),
-                    );
-                    return Err(());
-                }
-            };
-
             match ty {
                 field_descriptor_proto::Type::Double => Ok(KindIndex::Double),
                 field_descriptor_proto::Type::Float => Ok(KindIndex::Float),
@@ -592,7 +582,7 @@ impl<'a> ResolveVisitor<'a> {
                     kind: DefinitionKind::Message(message),
                     ..
                 }) => {
-                    if ty == Some(field_descriptor_proto::Type::Group as i32) {
+                    if ty == field_descriptor_proto::Type::Group {
                         Ok(KindIndex::Group(*message))
                     } else {
                         Ok(KindIndex::Message(*message))

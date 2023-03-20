@@ -1,0 +1,8 @@
+file:
+- name: test.proto
+  messageType:
+  - name: FieldDescriptorProto
+    field:
+    - name: double_value
+      number: 1
+      jsonName: doubleValue
