@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+Fixed type resolution for double fields. Thanks to [@jackkleeman] for [#29]
+
 ## [0.10.2] - 2023-02-17
 
 ### Changed
@@ -293,7 +297,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [0.1.0]: https://github.com/andrewhickman/prost-reflect/releases/tag/0.1.0
 
 [@benesch]: https://github.com/benesch
+[@jackkleeman]: https://github.com/jackkleeman
 
 [#4]: https://github.com/andrewhickman/prost-reflect/pull/4
 [#9]: https://github.com/andrewhickman/prost-reflect/issues/9
 [#19]: https://github.com/andrewhickman/prost-reflect/issues/19
+[#29]: https://github.com/andrewhickman/prost-reflect/issues/29
