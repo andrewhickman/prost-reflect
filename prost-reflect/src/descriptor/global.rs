@@ -1,11 +1,13 @@
 use std::sync::Mutex;
 
+use once_cell::sync::Lazy;
 use prost::bytes::Buf;
 use prost_types::FileDescriptorProto;
 
 use crate::{reflect::WELL_KNOWN_TYPES_BYTES, DescriptorError, DescriptorPool};
 
-static INSTANCE: Mutex<Option<DescriptorPool>> = Mutex::new(None);
+static INSTANCE: Lazy<Mutex<DescriptorPool>> =
+    Lazy::new(|| Mutex::new(DescriptorPool::decode(WELL_KNOWN_TYPES_BYTES).unwrap()));
 
 impl DescriptorPool {
     /// Gets a copy of the global descriptor pool. By default, this just contains the google well-known types.
@@ -17,11 +19,7 @@ impl DescriptorPool {
     /// [`add_global_file_descriptor`](add_global_file_descriptor) to modify the global pool. Furthermore,
     /// modifications to the global pool won't be vis
     pub fn global() -> DescriptorPool {
-        INSTANCE
-            .lock()
-            .unwrap()
-            .get_or_insert_with(|| DescriptorPool::decode(WELL_KNOWN_TYPES_BYTES).unwrap())
-            .clone()
+        INSTANCE.lock().unwrap().clone()
     }
 
     /// Decodes and adds a set of file descriptors to the pool.
@@ -32,8 +30,6 @@ impl DescriptorPool {
         B: Buf,
     {
         let mut instance = INSTANCE.lock().unwrap();
-        let instance =
-            instance.get_or_insert_with(|| DescriptorPool::decode(WELL_KNOWN_TYPES_BYTES).unwrap());
         instance.decode_file_descriptor_set(bytes)?;
         Ok(())
     }
@@ -48,8 +44,6 @@ impl DescriptorPool {
         B: Buf,
     {
         let mut instance = INSTANCE.lock().unwrap();
-        let instance =
-            instance.get_or_insert_with(|| DescriptorPool::decode(WELL_KNOWN_TYPES_BYTES).unwrap());
         instance.add_file_descriptor_proto(file)?;
         Ok(())
     }
