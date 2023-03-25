@@ -90,10 +90,7 @@ impl DescriptorPool {
         let inner = Arc::make_mut(&mut self.inner);
         let deduped_files: Vec<_> = files
             .into_iter()
-            .filter(|f| match inner.file_names.get(f.name()) {
-                Some(&index) => &inner.files[index as usize].raw != f,
-                None => true,
-            })
+            .filter(|f| !inner.file_names.contains_key(f.name()))
             .collect();
 
         inner.collect_names(offsets, deduped_files.iter())?;

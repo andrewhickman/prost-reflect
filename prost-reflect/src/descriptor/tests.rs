@@ -291,44 +291,6 @@ fn add_duplicate_file() {
 }
 
 #[test]
-fn add_conflicting_duplicate_file() {
-    let file_descriptor_set1 = FileDescriptorSet {
-        file: vec![FileDescriptorProto {
-            name: Some("myfile.proto".to_owned()),
-            package: Some("my.package".to_owned()),
-            syntax: Some("proto3".to_owned()),
-            message_type: vec![DescriptorProto {
-                name: Some("MyMessage1".to_owned()),
-                ..Default::default()
-            }],
-            ..Default::default()
-        }],
-    };
-    let file_descriptor_set2 = FileDescriptorSet {
-        file: vec![FileDescriptorProto {
-            name: Some("myfile.proto".to_owned()),
-            package: Some("my.package".to_owned()),
-            syntax: Some("proto3".to_owned()),
-            message_type: vec![DescriptorProto {
-                name: Some("MyMessage2".to_owned()),
-                ..Default::default()
-            }],
-            ..Default::default()
-        }],
-    };
-
-    let mut pool = DescriptorPool::new();
-    pool.add_file_descriptor_set(file_descriptor_set1).unwrap();
-    let err = pool
-        .add_file_descriptor_set(file_descriptor_set2)
-        .unwrap_err();
-    assert_eq!(
-        err.to_string(),
-        "a different file named 'myfile.proto' has already been added"
-    );
-}
-
-#[test]
 fn add_file_rollback_on_error() {
     let bad_file_descriptor_set = FileDescriptorSet {
         file: vec![FileDescriptorProto {

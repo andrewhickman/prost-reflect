@@ -10,13 +10,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-**prost-reflect-derive** Update syn requirement from 1.0.84 to 2.0.3
+- Duplicate files are now always ignored when adding to a `DescriptorPool` (previously, the code would skip files with identical contents, but now it skips any file with the same name).
+- **prost-reflect-derive** Update syn requirement from 1.0.84 to 2.0.3
 
 ## [0.10.3] - 2023-03-20
 
 ### Fixed
 
-Fixed type resolution for double fields. Thanks to [@jackkleeman] for [#29]
+- Fixed type resolution for double fields. Thanks to [@jackkleeman] for [#29]
 
 ## [0.10.2] - 2023-02-17
 
