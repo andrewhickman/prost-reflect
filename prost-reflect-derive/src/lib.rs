@@ -24,7 +24,8 @@ pub fn reflect_message(input: TokenStream) -> TokenStream {
 struct Args {
     args_span: Span,
     message_name: Option<syn::Lit>,
-    descriptor_pool: Option<syn::Lit>,
+    descriptor_pool: Option<syn::LitStr>,
+    file_descriptor_set: Option<syn::LitStr>,
 }
 
 fn reflect_message_impl(input: syn::DeriveInput) -> Result<proc_macro2::TokenStream, syn::Error> {
@@ -77,6 +78,7 @@ impl Args {
                 .unwrap(),
             message_name: None,
             descriptor_pool: None,
+            file_descriptor_set: None,
         };
 
         for attr in reflect_attrs {
@@ -84,13 +86,16 @@ impl Args {
                 if nested.path.is_ident("descriptor_pool") {
                     args.descriptor_pool = nested.value()?.parse()?;
                     Ok(())
+                } else if nested.path.is_ident("file_descriptor_set_bytes") {
+                    args.file_descriptor_set = nested.value()?.parse()?;
+                    Ok(())
                 } else if nested.path.is_ident("message_name") {
                     args.message_name = nested.value()?.parse()?;
                     Ok(())
                 } else {
                     return Err(syn::Error::new(
                         nested.path.span(),
-                        "unknown argument (expected 'descriptor_pool' or 'message_name')",
+                        "unknown argument (expected 'descriptor_pool', 'file_descriptor_set_bytes' or 'message_name')",
                     ));
                 }
             })?;
@@ -100,17 +105,17 @@ impl Args {
     }
 
     fn descriptor_pool(&self) -> Result<proc_macro2::TokenStream, syn::Error> {
-        if let Some(file_descriptor_set) = &self.descriptor_pool {
-            match file_descriptor_set {
-                syn::Lit::Str(expr_str) => {
-                    let expr: syn::Expr = syn::parse_str(&expr_str.value())?;
-                    Ok(expr.to_token_stream())
-                }
-                _ => Err(syn::Error::new(
-                    self.args_span,
-                    "'file_descriptor_set' must be a string literal",
-                )),
-            }
+        if let Some(descriptor_pool) = &self.descriptor_pool {
+            let expr: syn::Expr = syn::parse_str(&descriptor_pool.value())?;
+            Ok(expr.to_token_stream())
+        } else if let Some(file_descriptor_set) = &self.file_descriptor_set {
+            let expr: syn::Expr = syn::parse_str(&file_descriptor_set.value())?;
+
+            Ok(quote!({
+                static INIT: ::std::sync::Once = ::std::sync::Once::new();
+                INIT.call_once(|| ::prost_reflect::DescriptorPool::decode_global_file_descriptor_set(#expr).unwrap());
+                ::prost_reflect::DescriptorPool::global()
+            }))
         } else {
             Err(syn::Error::new(
                 self.args_span,

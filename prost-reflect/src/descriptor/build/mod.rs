@@ -87,11 +87,15 @@ impl DescriptorPool {
     where
         I: IntoIterator<Item = FileDescriptorProto>,
     {
-        let inner = Arc::make_mut(&mut self.inner);
         let deduped_files: Vec<_> = files
             .into_iter()
-            .filter(|f| !inner.file_names.contains_key(f.name()))
+            .filter(|f| !self.inner.file_names.contains_key(f.name()))
             .collect();
+        if deduped_files.is_empty() {
+            return Ok(());
+        }
+
+        let inner = Arc::make_mut(&mut self.inner);
 
         inner.collect_names(offsets, deduped_files.iter())?;
 

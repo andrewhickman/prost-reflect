@@ -7,7 +7,8 @@ derive macro takes the following parameters:
 
 | Name            | Value |
 |-----------------|-------|
-| descriptor_pool | An expression that resolves to a [`DescriptorPool`] containing the message type. The descriptor should be cached to avoid re-building it. |
+| descriptor_pool | An expression that resolves to a [`DescriptorPool`] containing the message type. The descriptor should be cached to avoid re-building it. Either this or `file_descriptor_pool_bytes` must be set |
+| file_descriptor_pool_bytes | An expression that resolves to an implementation of `Buf` containing an encoded file descriptor set. This will be automatically added to the global descriptor pool the first time `ReflectMessage::descriptor()` is called. |
 | message_name    | The full name of the message, used to look it up within [`DescriptorPool`]. |
 
 ```rust

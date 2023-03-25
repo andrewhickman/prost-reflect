@@ -45,7 +45,8 @@ use prost_reflect::DescriptorPool;
 #[derive(Debug, Clone)]
 pub struct Builder {
     file_descriptor_set_path: PathBuf,
-    file_descriptor_expr: String,
+    descriptor_pool_expr: Option<String>,
+    file_descriptor_set_bytes_expr: Option<String>,
 }
 
 impl Default for Builder {
@@ -57,7 +58,8 @@ impl Default for Builder {
 
         Self {
             file_descriptor_set_path,
-            file_descriptor_expr: "crate::DESCRIPTOR_POOL".into(),
+            descriptor_pool_expr: None,
+            file_descriptor_set_bytes_expr: None,
         }
     }
 }
@@ -82,8 +84,9 @@ impl Builder {
     }
 
     /// Set the file descriptor expression for reflection.
-    /// By default, `crate::DESCRIPTOR_POOL` is used as the expression.
-    /// In that case, `lib.rs` should contain the following lines,
+    ///
+    /// This should resolve to an instance of `DescriptorPool`. For example, if this
+    /// value is set to `crate::DescriptorPool`, then `lib.rs` should contain the following
     ///
     /// ```ignore
     /// static DESCRIPTOR_POOL: Lazy<DescriptorPool> = Lazy::new(||
@@ -92,11 +95,27 @@ impl Builder {
     ///     ).as_ref()).unwrap()
     /// );
     /// ```
-    pub fn file_descriptor_expr<P>(&mut self, expr: P) -> &mut Self
+    pub fn descriptor_pool<P>(&mut self, expr: P) -> &mut Self
     where
         P: Into<String>,
     {
-        self.file_descriptor_expr = expr.into();
+        self.descriptor_pool_expr = Some(expr.into());
+        self
+    }
+
+    /// Set the file descriptor bytes to use for reflection.
+    ///
+    /// This should typically be the contents of the file at `file_descriptor_set_path`. For example,
+    /// if this value is set to `crate::FILE_DESCRIPTOR_SET_BYTES`, then `lib.rs` should contain the following
+    ///
+    /// ```ignore
+    /// const FILE_DESCRIPTOR_SET_BYTES: &'static [u8] = include_bytes!(concat!(env!("OUT_DIR"), "/file_descriptor_set.bin"));
+    /// ```
+    pub fn file_descriptor_set_bytes<P>(&mut self, expr: P) -> &mut Self
+    where
+        P: Into<String>,
+    {
+        self.file_descriptor_set_bytes_expr = Some(expr.into());
         self
     }
 
@@ -131,17 +150,32 @@ impl Builder {
         let buf = fs::read(&self.file_descriptor_set_path)?;
         let descriptor = DescriptorPool::decode(buf.as_ref()).expect("Invalid file descriptor");
 
+        let pool_attribute = if let Some(descriptor_pool) = &self.descriptor_pool_expr {
+            format!(
+                r#"#[prost_reflect(descriptor_pool = "{}")]"#,
+                descriptor_pool,
+            )
+        } else if let Some(file_descriptor_set_bytes) = &self.file_descriptor_set_bytes_expr {
+            format!(
+                r#"#[prost_reflect(file_descriptor_set_bytes = "{}")]"#,
+                file_descriptor_set_bytes,
+            )
+        } else {
+            return Err(io::Error::new(
+                io::ErrorKind::Other,
+                "either 'descriptor_pool' or 'file_descriptor_set_bytes' must be set",
+            ));
+        };
+
         for message in descriptor.all_messages() {
             let full_name = message.full_name();
             config
                 .type_attribute(full_name, "#[derive(::prost_reflect::ReflectMessage)]")
                 .type_attribute(
                     full_name,
-                    &format!(
-                        r#"#[prost_reflect(descriptor_pool = "{}", message_name = "{}")]"#,
-                        self.file_descriptor_expr, full_name,
-                    ),
-                );
+                    &format!(r#"#[prost_reflect(message_name = "{}")]"#, full_name,),
+                )
+                .type_attribute(full_name, &pool_attribute);
         }
 
         Ok(())
@@ -182,6 +216,7 @@ mod tests {
 
         builder
             .file_descriptor_set_path(tmpdir.join("file_descriptor_set.bin"))
+            .descriptor_pool("crate::DESCRIPTOR_POOL")
             .compile_protos_with_config(config, &["src/test.proto"], &["src"])
             .unwrap();
 

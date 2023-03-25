@@ -1,4 +1,4 @@
-error: unknown argument (expected 'descriptor_pool' or 'message_name')
+error: unknown argument (expected 'descriptor_pool', 'file_descriptor_set_bytes' or 'message_name')
  --> tests/attr_unknown_field.rs:4:17
   |
 4 | #[prost_reflect(foo = 123)]

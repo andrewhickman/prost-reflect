@@ -8,10 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added a global descriptor pool which can be fetched using [`DescriptorPool::global()`](https://docs.rs/prost-reflect/latest/prost_reflect/struct.DescriptorPool.html#method.global). By default it just contains well-known types, but additional files can be added using [`DescriptorPool::decode_global_file_descriptor_set()`](https://docs.rs/prost-reflect/latest/prost_reflect/struct.DescriptorPool.html#method.decode_global_file_descriptor_set) and [`DescriptorPool::add_global_file_descriptor_proto()`](https://docs.rs/prost-reflect/latest/prost_reflect/struct.DescriptorPool.html#method.add_global_file_descriptor_proto). ([#13])
+- *prost-reflect-derive* Added the `file_descriptor_set_bytes` attribute as an alternative to `descriptor_pool`, which automatically registers the file with the global pool.
+- *prost-reflect-build* Added `Builder::file_descriptor_pool_bytes` to set the `file_descriptor_set_bytes` derive attribute.
+
 ### Changed
 
 - Duplicate files are now always ignored when adding to a `DescriptorPool` (previously, the code would skip files with identical contents, but now it skips any file with the same name).
-- **prost-reflect-derive** Update syn requirement from 1.0.84 to 2.0.3
+- *prost-reflect-derive* Update syn requirement from 1.0.84 to 2.0.3
+- *prost-reflect-build* **Breaking** Renamed `Builder::file_descriptor_expr` to `Builder::descriptor_pool`.
+- *prost-reflect-build* **Breaking** Removed the default behaviour of looking for the file descriptor under `crate::DESCRIPTOR_POOL`. One of `descriptor_pool` or `file_descriptor_pool_bytes` must be set explicitly.
 
 ## [0.10.3] - 2023-03-20
 
@@ -309,5 +317,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 [#4]: https://github.com/andrewhickman/prost-reflect/pull/4
 [#9]: https://github.com/andrewhickman/prost-reflect/issues/9
+[#13]: https://github.com/andrewhickman/prost-reflect/issues/13
 [#19]: https://github.com/andrewhickman/prost-reflect/issues/19
 [#29]: https://github.com/andrewhickman/prost-reflect/issues/29
