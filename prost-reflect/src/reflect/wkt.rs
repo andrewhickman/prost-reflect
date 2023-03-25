@@ -1,10 +1,6 @@
-use once_cell::sync::Lazy;
-
 use crate::{DescriptorPool, MessageDescriptor, ReflectMessage};
 
-static WELL_KNOWN_TYPES_BYTES: &[u8] = include_bytes!("../well_known_types.bin");
-pub(crate) static WELL_KNOWN_TYPES: Lazy<DescriptorPool> =
-    Lazy::new(|| DescriptorPool::decode(WELL_KNOWN_TYPES_BYTES).unwrap());
+pub(crate) const WELL_KNOWN_TYPES_BYTES: &[u8] = include_bytes!("../well_known_types.bin");
 
 macro_rules! impl_reflect_message {
     ($($ty:ty => $name:literal;)*) => {
@@ -12,7 +8,7 @@ macro_rules! impl_reflect_message {
             impl ReflectMessage for $ty {
                 #[doc = concat!("Returns a descriptor for the `", $name, "` message type.")]
                 fn descriptor(&self) -> MessageDescriptor {
-                    match WELL_KNOWN_TYPES.get_message_by_name($name) {
+                    match DescriptorPool::global().get_message_by_name($name) {
                         Some(desc) => desc,
                         None => panic!("descriptor for well-known type `{}` not found", $name),
                     }
@@ -23,7 +19,7 @@ macro_rules! impl_reflect_message {
         #[test]
         fn test_reflect_message_impls() {
             $(
-                let _ = <$ty>::default().descriptor();
+                assert_eq!(<$ty>::default().descriptor().full_name(), $name);
             )*
         }
     };

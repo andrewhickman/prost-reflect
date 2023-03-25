@@ -1,6 +1,7 @@
 mod api;
 mod build;
 mod error;
+mod global;
 mod tag;
 #[cfg(test)]
 mod tests;

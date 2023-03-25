@@ -21,7 +21,6 @@ use crate::{
         MAP_ENTRY_VALUE_NUMBER,
     },
     dynamic::{fmt_string, FieldDescriptorLike},
-    reflect::WELL_KNOWN_TYPES,
     Cardinality, DescriptorError, DescriptorPool, DynamicMessage, EnumDescriptor,
     ExtensionDescriptor, MapKey, MessageDescriptor, ReflectMessage, Value,
 };
@@ -309,10 +308,11 @@ impl<'a> OptionsVisitor<'a> {
         file: FileIndex,
         path: &[i32],
     ) -> Vec<u8> {
-        let desc = self
-            .pool
-            .get_message_by_name(desc_name)
-            .unwrap_or_else(|| WELL_KNOWN_TYPES.get_message_by_name(desc_name).unwrap());
+        let desc = self.pool.get_message_by_name(desc_name).unwrap_or_else(|| {
+            DescriptorPool::global()
+                .get_message_by_name(desc_name)
+                .unwrap()
+        });
 
         let mut message = match DynamicMessage::decode(desc, options.encoded.as_slice()) {
             Ok(message) => message,

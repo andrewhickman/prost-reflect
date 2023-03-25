@@ -1,6 +1,6 @@
 mod wkt;
 
-pub(crate) use wkt::WELL_KNOWN_TYPES;
+pub(crate) use wkt::WELL_KNOWN_TYPES_BYTES;
 
 use prost::Message;
 
