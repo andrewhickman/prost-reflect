@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.0] - 2023-03-27
+
 ### Added
 
 - Added a global descriptor pool which can be fetched using [`DescriptorPool::global()`](https://docs.rs/prost-reflect/latest/prost_reflect/struct.DescriptorPool.html#method.global). By default it just contains well-known types, but additional files can be added using [`DescriptorPool::decode_global_file_descriptor_set()`](https://docs.rs/prost-reflect/latest/prost_reflect/struct.DescriptorPool.html#method.decode_global_file_descriptor_set) and [`DescriptorPool::add_global_file_descriptor_proto()`](https://docs.rs/prost-reflect/latest/prost_reflect/struct.DescriptorPool.html#method.add_global_file_descriptor_proto). ([#13])
@@ -281,7 +283,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial release, including support for inspecting message types at runtime.
 
-[Unreleased]: https://github.com/andrewhickman/prost-reflect/compare/0.10.3...HEAD
+[Unreleased]: https://github.com/andrewhickman/prost-reflect/compare/0.11.0...HEAD
+[0.11.0]: https://github.com/andrewhickman/prost-reflect/compare/0.10.3...0.11.0
 [0.10.3]: https://github.com/andrewhickman/prost-reflect/compare/0.10.2...0.10.3
 [0.10.2]: https://github.com/andrewhickman/prost-reflect/compare/0.10.1...0.10.2
 [0.10.1]: https://github.com/andrewhickman/prost-reflect/compare/0.10.0...0.10.1

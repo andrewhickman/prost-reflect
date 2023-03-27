@@ -17,7 +17,7 @@ exclude = ["test.proto"]
 default = []
 
 [dependencies]
-prost-reflect = { path = "../prost-reflect", version = "0.10.0", features = [
+prost-reflect = { path = "../prost-reflect", version = "0.11.0", features = [
     "derive"
 ] }
 prost-build = "0.11.0"
