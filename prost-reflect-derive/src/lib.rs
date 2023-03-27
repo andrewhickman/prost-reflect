@@ -1,7 +1,7 @@
 //! This crate provides the [`ReflectMessage`](https://docs.rs/prost-reflect/latest/prost_reflect/derive.ReflectMessage.html) derive macro
 //!
 //! For documentation, see the example in the [`prost-reflect` crate docs](https://docs.rs/prost-reflect/latest/prost_reflect/index.html#deriving-reflectmessage).
-#![doc(html_root_url = "https://docs.rs/prost-reflect-derive/0.10.0/")]
+#![doc(html_root_url = "https://docs.rs/prost-reflect-derive/0.11.0/")]
 
 use proc_macro::TokenStream;
 use proc_macro2::Span;
