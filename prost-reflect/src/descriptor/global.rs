@@ -16,8 +16,7 @@ impl DescriptorPool {
     ///
     /// Note that modifications to the returned pool won't affect the global pool - use
     /// [`decode_global_file_descriptor_set`](decode_global_file_descriptor_set) or
-    /// [`add_global_file_descriptor`](add_global_file_descriptor) to modify the global pool. Furthermore,
-    /// modifications to the global pool won't be vis
+    /// [`add_global_file_descriptor`](add_global_file_descriptor) to modify the global pool.
     pub fn global() -> DescriptorPool {
         INSTANCE.lock().unwrap().clone()
     }
