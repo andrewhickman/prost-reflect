@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added [`Kind::wire_type`](https://docs.rs/prost-reflect/latest/prost_reflect/enum.Kind.html#method.wire_type). Thanks to [@slinkydeveloper] for [#34]
+
 ## [0.11.0] - 2023-03-27
 
 ### Added
@@ -317,9 +321,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 [@benesch]: https://github.com/benesch
 [@jackkleeman]: https://github.com/jackkleeman
+[@slinkydeveloper]: https://github.com/slinkydeveloper
 
 [#4]: https://github.com/andrewhickman/prost-reflect/pull/4
 [#9]: https://github.com/andrewhickman/prost-reflect/issues/9
 [#13]: https://github.com/andrewhickman/prost-reflect/issues/13
 [#19]: https://github.com/andrewhickman/prost-reflect/issues/19
 [#29]: https://github.com/andrewhickman/prost-reflect/issues/29
+[#34]: https://github.com/andrewhickman/prost-reflect/pull/34
