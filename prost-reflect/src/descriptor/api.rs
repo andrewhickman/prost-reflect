@@ -91,7 +91,11 @@ impl Kind {
         }
     }
 
-    pub(crate) fn wire_type(&self) -> WireType {
+    /// Returns the [`WireType`] used to encode this type.
+    ///
+    /// Note: The [`Kind::Message`] returns [` WireType::LengthDelimited`],
+    /// as [groups are deprecated](https://protobuf.dev/programming-guides/encoding/#groups).
+    pub fn wire_type(&self) -> WireType {
         match self {
             Kind::Double | Kind::Fixed64 | Kind::Sfixed64 => WireType::SixtyFourBit,
             Kind::Float | Kind::Fixed32 | Kind::Sfixed32 => WireType::ThirtyTwoBit,
