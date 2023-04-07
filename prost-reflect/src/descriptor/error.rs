@@ -124,6 +124,13 @@ pub(super) enum DescriptorErrorKind {
         is_last: bool,
         found: Label,
     },
+    #[cfg(feature = "text-format")]
+    InvalidMessageOption {
+        name: String,
+        ty: String,
+        found: Label,
+        err: crate::text_format::ParseError,
+    },
     DuplicateOption {
         name: String,
         found: Label,
@@ -296,6 +303,8 @@ impl DescriptorErrorKind {
             DescriptorErrorKind::EnumNumberInReservedRange { found, .. } => Some(found),
             DescriptorErrorKind::OptionNotFound { found, .. } => Some(found),
             DescriptorErrorKind::InvalidOptionType { found, .. } => Some(found),
+            #[cfg(feature = "text-format")]
+            DescriptorErrorKind::InvalidMessageOption { found, .. } => Some(found),
             DescriptorErrorKind::DuplicateOption { found, .. } => Some(found),
             DescriptorErrorKind::DecodeFileDescriptorSet { .. } => None,
         }
@@ -376,6 +385,10 @@ impl DescriptorErrorKind {
             DescriptorErrorKind::InvalidOptionType { found, .. } => {
                 found.resolve_span(file, source);
             }
+            #[cfg(feature = "text-format")]
+            DescriptorErrorKind::InvalidMessageOption { found, .. } => {
+                found.resolve_span(file, source);
+            }
             DescriptorErrorKind::DuplicateOption { found, .. } => {
                 found.resolve_span(file, source);
             }
@@ -388,6 +401,8 @@ impl std::error::Error for DescriptorErrorKind {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             DescriptorErrorKind::DecodeFileDescriptorSet { err } => Some(err),
+            #[cfg(feature = "text-format")]
+            DescriptorErrorKind::InvalidMessageOption { err, .. } => Some(err),
             _ => None,
         }
     }
@@ -530,6 +545,10 @@ impl fmt::Display for DescriptorErrorKind {
                     )
                 }
             }
+            #[cfg(feature = "text-format")]
+            DescriptorErrorKind::InvalidMessageOption { name, ty, .. } => {
+                write!(f, "invalid value of type '{}' for option '{}'", ty, name)
+            }
             DescriptorErrorKind::DuplicateOption { name, .. } => {
                 write!(f, "option field '{}' has already been set", name)
             }
@@ -589,6 +608,8 @@ impl miette::Diagnostic for DescriptorErrorKind {
             DescriptorErrorKind::EnumNumberInReservedRange { .. } => None,
             DescriptorErrorKind::OptionNotFound { .. } => None,
             DescriptorErrorKind::InvalidOptionType { .. } => None,
+            #[cfg(feature = "text-format")]
+            DescriptorErrorKind::InvalidMessageOption { .. } => None,
             DescriptorErrorKind::DuplicateOption { .. } => None,
             DescriptorErrorKind::DecodeFileDescriptorSet { .. } => None,
             DescriptorErrorKind::ExtensionNumberOutOfRange { .. } => None,
@@ -668,6 +689,10 @@ impl miette::Diagnostic for DescriptorErrorKind {
             DescriptorErrorKind::InvalidOptionType { found, .. } => {
                 spans.extend(found.to_span());
             }
+            #[cfg(feature = "text-format")]
+            DescriptorErrorKind::InvalidMessageOption { found, .. } => {
+                spans.extend(found.to_span());
+            }
             DescriptorErrorKind::DuplicateOption { found, .. } => {
                 spans.extend(found.to_span());
             }
@@ -677,6 +702,14 @@ impl miette::Diagnostic for DescriptorErrorKind {
             None
         } else {
             Some(Box::new(spans.into_iter()))
+        }
+    }
+
+    fn diagnostic_source(&self) -> Option<&dyn miette::Diagnostic> {
+        match self {
+            #[cfg(feature = "text-format")]
+            DescriptorErrorKind::InvalidMessageOption { err, .. } => Some(err),
+            _ => None,
         }
     }
 }

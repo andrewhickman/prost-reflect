@@ -480,6 +480,17 @@ impl<'a> OptionsVisitor<'a> {
             found: Label::new(&self.pool.inner.files, "found here", file, path.into()),
         };
 
+        let parse_err = |parse_err| match parse_err {
+            #[cfg(feature = "text-format")]
+            Some(parse_err) => DescriptorErrorKind::InvalidMessageOption {
+                name: fmt_option_name(&option.name),
+                ty: fmt_field_ty(desc),
+                found: Label::new(&self.pool.inner.files, "found here", file, path.into()),
+                err: parse_err,
+            },
+            _ => err(()),
+        };
+
         match value {
             Value::Bool(value) => *value = option_to_bool(option).map_err(err)?,
             Value::I32(value) => *value = option_to_int(option).map_err(err)?,
@@ -494,8 +505,8 @@ impl<'a> OptionsVisitor<'a> {
                 *value = option_to_enum(option, desc.kind().as_enum().unwrap()).map_err(err)?
             }
             Value::Message(value) => {
-                *value =
-                    option_to_message(option, desc.kind().as_message().unwrap()).map_err(err)?
+                *value = option_to_message(option, desc.kind().as_message().unwrap())
+                    .map_err(parse_err)?
             }
             Value::List(value) => {
                 resolved_path.push(value.len() as i32);
@@ -506,7 +517,8 @@ impl<'a> OptionsVisitor<'a> {
             }
             Value::Map(value) => {
                 let (entry_key, entry_value) =
-                    option_to_map_entry(option, desc.kind().as_message().unwrap()).map_err(err)?;
+                    option_to_map_entry(option, desc.kind().as_message().unwrap())
+                        .map_err(parse_err)?;
                 value.insert(entry_key, entry_value);
             }
         }
@@ -613,14 +625,19 @@ pub(super) fn option_to_enum(
 }
 
 #[cfg(feature = "text-format")]
+type ParseError = crate::text_format::ParseError;
+#[cfg(not(feature = "text-format"))]
+type ParseError = ();
+
+#[cfg(feature = "text-format")]
 pub(super) fn option_to_message(
     option: &UninterpretedOption,
     desc: &MessageDescriptor,
-) -> Result<DynamicMessage, ()> {
+) -> Result<DynamicMessage, Option<ParseError>> {
     if let Some(text_format) = &option.aggregate_value {
-        DynamicMessage::parse_text_format(desc.clone(), text_format).map_err(drop)
+        DynamicMessage::parse_text_format(desc.clone(), text_format).map_err(Some)
     } else {
-        Err(())
+        Err(None)
     }
 }
 
@@ -628,29 +645,29 @@ pub(super) fn option_to_message(
 pub(super) fn option_to_message(
     option: &UninterpretedOption,
     desc: &MessageDescriptor,
-) -> Result<DynamicMessage, ()> {
+) -> Result<DynamicMessage, Option<ParseError>> {
     if option.aggregate_value.is_some() {
         Ok(DynamicMessage::new(desc.clone()))
     } else {
-        Err(())
+        Err(None)
     }
 }
 
 pub(super) fn option_to_map_entry(
     option: &UninterpretedOption,
     desc: &MessageDescriptor,
-) -> Result<(MapKey, Value), ()> {
+) -> Result<(MapKey, Value), Option<ParseError>> {
     debug_assert!(desc.is_map_entry());
     let entry = option_to_message(option, desc)?;
     let key = entry
         .get_field_by_number(MAP_ENTRY_KEY_NUMBER)
-        .ok_or(())?
+        .ok_or(None)?
         .into_owned()
         .into_map_key()
-        .ok_or(())?;
+        .ok_or(None)?;
     let value = entry
         .get_field_by_number(MAP_ENTRY_VALUE_NUMBER)
-        .ok_or(())?
+        .ok_or(None)?
         .into_owned();
     Ok((key, value))
 }
