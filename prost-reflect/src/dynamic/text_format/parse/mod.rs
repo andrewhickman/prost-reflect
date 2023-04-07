@@ -611,7 +611,7 @@ fn find_field(desc: &MessageDescriptor, name: &str) -> Option<FieldDescriptor> {
     }
 
     if let Some(field) = desc.get_field_by_name(&name.to_ascii_lowercase()) {
-        if field.is_group() {
+        if field.is_group() && name == field.kind().as_message().unwrap().name() {
             return Some(field);
         }
     }

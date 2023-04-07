@@ -354,6 +354,41 @@ fn fmt_group() {
 }
 
 #[test]
+fn parse_group() {
+    let value = ContainsGroup {
+        requiredgroup: Some(contains_group::RequiredGroup {
+            a: "bar".to_owned(),
+            b: None,
+        }),
+        optionalgroup: Some(contains_group::OptionalGroup {
+            c: "foo".to_owned(),
+            d: Some(-5),
+        }),
+        repeatedgroup: vec![
+            contains_group::RepeatedGroup {
+                ..Default::default()
+            },
+            contains_group::RepeatedGroup {
+                e: "hello".to_owned(),
+                f: Some(10),
+            },
+        ],
+    }
+    .transcode_to_dynamic();
+
+    assert_eq!(
+        DynamicMessage::parse_text_format(value.descriptor(), "RequiredGroup{a:\"bar\"},OptionalGroup{c:\"foo\",d:-5},RepeatedGroup:[{e:\"\"},{e:\"hello\",f:10}]").unwrap(),
+        value,
+    );
+    assert_eq!(
+        DynamicMessage::parse_text_format(value.descriptor(), "requiredgroup{a:\"bar\"}")
+            .unwrap_err()
+            .to_string(),
+        "field 'requiredgroup' not found for message 'test2.ContainsGroup'"
+    );
+}
+
+#[test]
 fn parse_scalars() {
     let value: Scalars = from_text(
         "

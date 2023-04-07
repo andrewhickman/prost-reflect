@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed parsing of group fields from text format. The field name must now match the type name of the group field.
+
 ## [0.11.1] - 2023-04-05
 
 ### Added
