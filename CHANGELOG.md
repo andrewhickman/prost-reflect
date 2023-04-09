@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Adjusted the `Debug` implementation for `DescriptorError` to be more concise and readable.
+
 ### Fixed
 
 - Fixed parsing of group fields from text format. The field name must now match the type name of the group field.
