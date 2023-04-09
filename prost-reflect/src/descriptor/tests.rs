@@ -1,7 +1,9 @@
 use prost_types::{
     field_descriptor_proto::{self, Label, Type},
+    source_code_info::Location,
     DescriptorProto, EnumDescriptorProto, EnumValueDescriptorProto, FieldDescriptorProto,
     FileDescriptorProto, FileDescriptorSet, MethodDescriptorProto, ServiceDescriptorProto,
+    SourceCodeInfo,
 };
 
 use crate::DescriptorPool;
@@ -418,5 +420,51 @@ fn extension_extendee_type_not_message() {
     assert_eq!(
         err.to_string(),
         "'my.package.MyMessage' is not a message type"
+    );
+}
+
+#[test]
+fn error_source_location() {
+    let file_descriptor_set = FileDescriptorSet {
+        file: vec![FileDescriptorProto {
+            name: Some("myfile.proto".to_owned()),
+            package: Some("my.package".to_owned()),
+            syntax: Some("proto3".to_owned()),
+            message_type: vec![
+                DescriptorProto {
+                    name: Some("Foo".to_owned()),
+                    ..Default::default()
+                },
+                DescriptorProto {
+                    name: Some("Foo".to_owned()),
+                    ..Default::default()
+                },
+            ],
+            source_code_info: Some(SourceCodeInfo {
+                location: vec![
+                    Location {
+                        path: vec![4, 0, 1],
+                        span: vec![0, 8, 11],
+                        ..Default::default()
+                    },
+                    Location {
+                        path: vec![4, 1, 1],
+                        span: vec![1, 8, 11],
+                        ..Default::default()
+                    },
+                ],
+            }),
+            ..Default::default()
+        }],
+    };
+
+    let err = DescriptorPool::from_file_descriptor_set(file_descriptor_set).unwrap_err();
+    assert_eq!(err.file(), Some("myfile.proto"));
+    assert_eq!(err.line(), Some(1));
+    assert_eq!(err.column(), Some(8));
+    assert_eq!(err.to_string(), "name 'my.package.Foo' is defined twice");
+    assert_eq!(
+        format!("{:?}", err),
+        "myfile.proto:2:9: name 'my.package.Foo' is defined twice"
     );
 }

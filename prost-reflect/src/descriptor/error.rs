@@ -6,7 +6,6 @@ use std::{
 use crate::descriptor::{FileDescriptorInner, FileIndex};
 
 /// An error that may occur while creating a [`DescriptorPool`][crate::DescriptorPool].
-#[derive(Debug)]
 pub struct DescriptorError {
     errors: Box<[DescriptorErrorKind]>,
     #[cfg(feature = "miette")]
@@ -166,7 +165,7 @@ impl DescriptorError {
         self.first().label().map(|l| l.file.as_str())
     }
 
-    /// The 1-based line number at which this error occurred, if available.
+    /// The 0-based line number at which this error occurred, if available.
     ///
     /// This field may be `None` if the error is not associated with a particular source location, or the
     /// [`source_code_info`](prost_types::FileDescriptorProto::source_code_info) field was not populated for the input file.
@@ -177,7 +176,7 @@ impl DescriptorError {
             .map(|s| s[0] as usize)
     }
 
-    /// The 1-based column number at which this error occurred, if available.
+    /// The 0-based column number at which this error occurred, if available.
     ///
     /// This field may be `None` if the error is not associated with a particular source location, or the
     /// [`source_code_info`](prost_types::FileDescriptorProto::source_code_info) field was not populated for the input file.
@@ -226,6 +225,20 @@ impl std::error::Error for DescriptorError {
 impl fmt::Display for DescriptorError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.first().fmt(f)
+    }
+}
+
+impl fmt::Debug for DescriptorError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if let Some(file) = self.file() {
+            write!(f, "{}:", file)?;
+            if let (Some(line), Some(column)) = (self.line(), self.column()) {
+                write!(f, "{}:{}:", line + 1, column + 1)?;
+            }
+            write!(f, " ")?;
+        }
+
+        write!(f, "{}", self)
     }
 }
 
