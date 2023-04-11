@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.3] - 2023-04-11
+
 ### Changed
 
 - Updated logos dependency to [0.13.0](https://github.com/maciejhirsz/logos/releases/tag/v0.13).
@@ -303,7 +305,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial release, including support for inspecting message types at runtime.
 
-[Unreleased]: https://github.com/andrewhickman/prost-reflect/compare/0.11.2...HEAD
+[Unreleased]: https://github.com/andrewhickman/prost-reflect/compare/0.11.3...HEAD
+[0.11.3]: https://github.com/andrewhickman/prost-reflect/compare/0.11.2...0.11.3
 [0.11.2]: https://github.com/andrewhickman/prost-reflect/compare/0.11.1...0.11.2
 [0.11.1]: https://github.com/andrewhickman/prost-reflect/compare/0.11.0...0.11.1
 [0.11.0]: https://github.com/andrewhickman/prost-reflect/compare/0.10.3...0.11.0
