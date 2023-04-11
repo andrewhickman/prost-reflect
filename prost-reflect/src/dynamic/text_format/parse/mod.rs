@@ -579,12 +579,12 @@ impl<'a> Parser<'a> {
     fn next(&mut self) -> Option<Result<(Token<'a>, Span), ParseErrorKind>> {
         debug_assert!(self.peek.is_none());
         match self.lexer.next() {
-            Some(Token::Error) => Some(Err(self.lexer.extras.error.take().unwrap_or_else(|| {
+            Some(Err(())) => Some(Err(self.lexer.extras.error.take().unwrap_or_else(|| {
                 ParseErrorKind::InvalidToken {
                     span: self.lexer.span(),
                 }
             }))),
-            Some(tok) => Some(Ok((tok, self.lexer.span()))),
+            Some(Ok(tok)) => Some(Ok((tok, self.lexer.span()))),
             None => None,
         }
     }
