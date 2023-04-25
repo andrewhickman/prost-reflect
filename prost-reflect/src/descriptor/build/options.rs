@@ -31,7 +31,7 @@ impl DescriptorPool {
     pub(super) fn resolve_options<'a>(
         &mut self,
         offsets: DescriptorPoolOffsets,
-        files: impl Iterator<Item = &'a FileDescriptorProto>,
+        files: &[FileDescriptorProto],
     ) -> Result<(), DescriptorError> {
         debug_assert_eq!(Arc::strong_count(&self.inner), 1);
         let mut visitor = OptionsVisitor {

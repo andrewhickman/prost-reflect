@@ -70,7 +70,12 @@ impl DescriptorPool {
     {
         let offsets = DescriptorPoolOffsets::new(&self.inner);
 
-        let result = self.build_files_inner(offsets, files);
+        let deduped_files: Vec<_> = files
+            .into_iter()
+            .filter(|f| !self.inner.file_names.contains_key(f.name()))
+            .collect();
+
+        let result = self.build_files_deduped(offsets, &deduped_files);
         if result.is_err() {
             debug_assert_eq!(Arc::strong_count(&self.inner), 1);
             offsets.rollback(Arc::get_mut(&mut self.inner).unwrap());
@@ -79,29 +84,22 @@ impl DescriptorPool {
         result
     }
 
-    fn build_files_inner<I>(
+    fn build_files_deduped(
         &mut self,
         offsets: DescriptorPoolOffsets,
-        files: I,
-    ) -> Result<(), DescriptorError>
-    where
-        I: IntoIterator<Item = FileDescriptorProto>,
-    {
-        let deduped_files: Vec<_> = files
-            .into_iter()
-            .filter(|f| !self.inner.file_names.contains_key(f.name()))
-            .collect();
+        deduped_files: &[FileDescriptorProto],
+    ) -> Result<(), DescriptorError> {
         if deduped_files.is_empty() {
             return Ok(());
         }
 
         let inner = Arc::make_mut(&mut self.inner);
 
-        inner.collect_names(offsets, deduped_files.iter())?;
+        inner.collect_names(offsets, deduped_files)?;
 
-        inner.resolve_names(offsets, deduped_files.iter())?;
+        inner.resolve_names(offsets, deduped_files)?;
 
-        self.resolve_options(offsets, deduped_files.iter())?;
+        self.resolve_options(offsets, deduped_files)?;
 
         debug_assert_eq!(Arc::strong_count(&self.inner), 1);
         let inner = Arc::get_mut(&mut self.inner).unwrap();
