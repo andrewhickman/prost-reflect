@@ -28,7 +28,7 @@ use crate::{
 use super::resolve_name;
 
 impl DescriptorPool {
-    pub(super) fn resolve_options<'a>(
+    pub(super) fn resolve_options(
         &mut self,
         offsets: DescriptorPoolOffsets,
         files: &[FileDescriptorProto],
