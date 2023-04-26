@@ -103,7 +103,7 @@ pub(super) trait Visitor {
 pub(super) fn visit(
     offsets: DescriptorPoolOffsets,
     files: &[FileDescriptorProto],
-    visitor: &mut impl Visitor,
+    visitor: &mut dyn Visitor,
 ) {
     let mut context = Context {
         path: Vec::new(),
@@ -123,7 +123,7 @@ struct Context {
 }
 
 impl Context {
-    fn visit_file(&mut self, file: &FileDescriptorProto, visitor: &mut impl Visitor) {
+    fn visit_file(&mut self, file: &FileDescriptorProto, visitor: &mut dyn Visitor) {
         if !file.package().is_empty() {
             self.push_scope(file.package());
         }
@@ -171,7 +171,7 @@ impl Context {
     fn visit_message(
         &mut self,
         message: &DescriptorProto,
-        visitor: &mut impl Visitor,
+        visitor: &mut dyn Visitor,
         file: FileIndex,
         parent_message: Option<MessageIndex>,
     ) {
@@ -233,7 +233,7 @@ impl Context {
     fn visit_field(
         &mut self,
         field: &FieldDescriptorProto,
-        visitor: &mut impl Visitor,
+        visitor: &mut dyn Visitor,
         file: FileIndex,
         message: MessageIndex,
         index: FieldIndex,
@@ -246,7 +246,7 @@ impl Context {
     fn visit_oneof(
         &mut self,
         oneof: &OneofDescriptorProto,
-        visitor: &mut impl Visitor,
+        visitor: &mut dyn Visitor,
         file: FileIndex,
         message: MessageIndex,
         index: OneofIndex,
@@ -259,7 +259,7 @@ impl Context {
     fn visit_service(
         &mut self,
         service: &ServiceDescriptorProto,
-        visitor: &mut impl Visitor,
+        visitor: &mut dyn Visitor,
         file: FileIndex,
     ) {
         self.push_scope(service.name());
@@ -281,7 +281,7 @@ impl Context {
     fn visit_method(
         &mut self,
         method: &MethodDescriptorProto,
-        visitor: &mut impl Visitor,
+        visitor: &mut dyn Visitor,
         file: FileIndex,
         service: ServiceIndex,
         index: MethodIndex,
@@ -294,7 +294,7 @@ impl Context {
     fn visit_enum(
         &mut self,
         enum_: &EnumDescriptorProto,
-        visitor: &mut impl Visitor,
+        visitor: &mut dyn Visitor,
         file: FileIndex,
         parent_message: Option<MessageIndex>,
     ) {
@@ -317,7 +317,7 @@ impl Context {
     fn visit_enum_value(
         &mut self,
         value: &EnumValueDescriptorProto,
-        visitor: &mut impl Visitor,
+        visitor: &mut dyn Visitor,
         file: FileIndex,
         enum_: EnumIndex,
         index: EnumValueIndex,
@@ -330,7 +330,7 @@ impl Context {
     fn visit_extension(
         &mut self,
         extension: &FieldDescriptorProto,
-        visitor: &mut impl Visitor,
+        visitor: &mut dyn Visitor,
         file: FileIndex,
         parent_message: Option<MessageIndex>,
     ) {
