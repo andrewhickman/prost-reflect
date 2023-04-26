@@ -100,13 +100,11 @@ pub(super) trait Visitor {
     }
 }
 
-pub(super) fn visit<'a, V>(
+pub(super) fn visit(
     offsets: DescriptorPoolOffsets,
-    files: impl IntoIterator<Item = &'a FileDescriptorProto>,
-    visitor: &mut V,
-) where
-    V: Visitor,
-{
+    files: &[FileDescriptorProto],
+    visitor: &mut impl Visitor,
+) {
     let mut context = Context {
         path: Vec::new(),
         scope: String::new(),

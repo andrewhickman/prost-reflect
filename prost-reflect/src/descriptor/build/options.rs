@@ -28,10 +28,10 @@ use crate::{
 use super::resolve_name;
 
 impl DescriptorPool {
-    pub(super) fn resolve_options<'a>(
+    pub(super) fn resolve_options(
         &mut self,
         offsets: DescriptorPoolOffsets,
-        files: impl Iterator<Item = &'a FileDescriptorProto>,
+        files: &[FileDescriptorProto],
     ) -> Result<(), DescriptorError> {
         debug_assert_eq!(Arc::strong_count(&self.inner), 1);
         let mut visitor = OptionsVisitor {

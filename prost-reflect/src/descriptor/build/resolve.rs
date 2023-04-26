@@ -24,10 +24,10 @@ use crate::{
 };
 
 impl DescriptorPoolInner {
-    pub(super) fn resolve_names<'a>(
+    pub(super) fn resolve_names(
         &mut self,
         offsets: DescriptorPoolOffsets,
-        files: impl Iterator<Item = &'a FileDescriptorProto>,
+        files: &[FileDescriptorProto],
     ) -> Result<(), DescriptorError> {
         let mut visitor = ResolveVisitor {
             pool: self,
