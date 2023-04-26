@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Monomorphised some code in `DescriptorPool::add_*` methods to reduce binary size. Thanks to [@sjrs] for [#40] and [#41].
+
 ## [0.11.3] - 2023-04-11
 
 ### Changed
@@ -343,6 +347,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [@benesch]: https://github.com/benesch
 [@jackkleeman]: https://github.com/jackkleeman
 [@slinkydeveloper]: https://github.com/slinkydeveloper
+[@srijs]: https://github.com/srijs
 
 [#4]: https://github.com/andrewhickman/prost-reflect/pull/4
 [#9]: https://github.com/andrewhickman/prost-reflect/issues/9
@@ -350,3 +355,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#19]: https://github.com/andrewhickman/prost-reflect/issues/19
 [#29]: https://github.com/andrewhickman/prost-reflect/issues/29
 [#34]: https://github.com/andrewhickman/prost-reflect/pull/34
+[#40]: https://github.com/andrewhickman/prost-reflect/pull/40
+[#41]: https://github.com/andrewhickman/prost-reflect/pull/41
