@@ -1,6 +1,7 @@
 use crate::{DescriptorPool, MessageDescriptor, ReflectMessage};
 
-pub(crate) const WELL_KNOWN_TYPES_BYTES: &[u8] = include_bytes!("../well_known_types.bin");
+pub(crate) const WELL_KNOWN_TYPES_BYTES: &[u8] =
+    include_bytes!(concat!(env!("OUT_DIR"), "/well_known_types.bin"));
 
 macro_rules! impl_reflect_message {
     ($($ty:ty => $name:literal;)*) => {
