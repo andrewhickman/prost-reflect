@@ -10,3 +10,6 @@ members = [
 [workspace.metadata.release]
 allow-branch = ["main"]
 pre-release-commit-message = "(cargo-release) {{crate_name}} version {{version}}"
+
+[patch.crates-io]
+prost-reflect = { path = "prost-reflect" }
