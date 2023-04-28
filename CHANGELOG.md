@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Monomorphised some code in `DescriptorPool::add_*` methods to reduce binary size. Thanks to [@sjrs] for [#40] and [#41].
+- Source code info is now omitted from the built-in descriptors for well-known types. This reduces the binary size by around 100KB.
 
 ## [0.11.3] - 2023-04-11
 
