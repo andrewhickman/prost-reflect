@@ -1,5 +1,3 @@
-#![allow(unused_variables)]
-
 use std::{
     borrow::Cow,
     fmt, iter,
