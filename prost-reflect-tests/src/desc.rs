@@ -719,9 +719,24 @@ fn message_take_field() {
     let num = Value::EnumNumber(3);
 
     assert!(message.fields().eq([
-        (message.descriptor().get_field_by_name("string_map").unwrap(), &map),
-        (message.descriptor().get_field_by_name("nested").unwrap(), &nested),
-        (message.descriptor().get_field_by_name("optional_enum").unwrap(), &num)
+        (
+            message
+                .descriptor()
+                .get_field_by_name("string_map")
+                .unwrap(),
+            &map
+        ),
+        (
+            message.descriptor().get_field_by_name("nested").unwrap(),
+            &nested
+        ),
+        (
+            message
+                .descriptor()
+                .get_field_by_name("optional_enum")
+                .unwrap(),
+            &num
+        )
     ]));
 
     assert_eq!(message.take_field_by_name("int_map"), None);
