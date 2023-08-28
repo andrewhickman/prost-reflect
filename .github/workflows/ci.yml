@@ -29,9 +29,9 @@ jobs:
       - run: cargo test --all-features
 
       - run: cargo update
-        if: eq(matrix.rust, stable)
+        if: ${{ matrix.rust == 'stable' }}
       - run: cargo check
-        if: eq(matrix.rust, stable)
+        if: ${{ matrix.rust == 'stable' }}
 
   lints:
     name: Lints
