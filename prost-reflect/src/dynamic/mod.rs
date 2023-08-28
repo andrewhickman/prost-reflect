@@ -499,11 +499,43 @@ impl DynamicMessage {
         self.fields.iter_fields(&self.desc)
     }
 
+    /// Gets an iterator returning mutable references to all fields of this message.
+    ///
+    /// The iterator will yield all fields for which [`has_field`](Self::has_field) returns `true`.
+    pub fn fields_mut(&mut self) -> impl Iterator<Item = (FieldDescriptor, &'_ mut Value)> {
+        self.fields.iter_fields_mut(&self.desc)
+    }
+
+    /// Clears all fields from the message and returns an iterator yielding the values.
+    ///
+    /// The iterator will yield all fields for which [`has_field`](Self::has_field) returns `true`.
+    ///
+    /// If the iterator is dropped before completing the iteration, it is unspecified how many fields are removed.
+    pub fn take_fields(&mut self) -> impl Iterator<Item = (FieldDescriptor, Value)> + '_ {
+        self.fields.take_fields(&self.desc)
+    }
+
     /// Gets an iterator over all extension fields of this message.
     ///
     /// The iterator will yield all extension fields for which [`has_extension`](Self::has_extension) returns `true`.
     pub fn extensions(&self) -> impl Iterator<Item = (ExtensionDescriptor, &'_ Value)> {
         self.fields.iter_extensions(&self.desc)
+    }
+
+    /// Gets an iterator returning mutable references to all extension fields of this message.
+    ///
+    /// The iterator will yield all extension fields for which [`has_extension`](Self::has_extension) returns `true`.
+    pub fn extensions_mut(&mut self) -> impl Iterator<Item = (ExtensionDescriptor, &'_ mut Value)> {
+        self.fields.iter_extensions_mut(&self.desc)
+    }
+
+    /// Clears all extension fields from the message and returns an iterator yielding the values.
+    ///
+    /// The iterator will yield all extension fields for which [`has_extension`](Self::has_extension) returns `true`.
+    ///
+    /// If the iterator is dropped before completing the iteration, it is unspecified how many fields are removed.
+    pub fn take_extensions(&mut self) -> impl Iterator<Item = (ExtensionDescriptor, Value)> + '_ {
+        self.fields.take_extensions(&self.desc)
     }
 
     /// Gets an iterator over unknown fields for this message.
@@ -514,6 +546,13 @@ impl DynamicMessage {
     /// Unknown fields are preserved when decoding and re-encoding a message.
     pub fn unknown_fields(&self) -> impl Iterator<Item = &'_ UnknownField> {
         self.fields.iter_unknown()
+    }
+
+    /// Clears all unknown fields from the message and returns an iterator yielding the values.
+    ///
+    /// If the iterator is dropped before completing the iteration, it is unspecified how many fields are removed.
+    pub fn take_unknown_fields(&mut self) -> impl Iterator<Item = UnknownField> + '_ {
+        self.fields.take_unknown()
     }
 
     /// Merge a strongly-typed message into this one.

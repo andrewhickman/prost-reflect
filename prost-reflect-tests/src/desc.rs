@@ -686,10 +686,10 @@ fn message_list_extensions() {
             .get_field_by_name("int")
             .unwrap(),
         &Value::I32(0)
-    ),]));
+    )]));
     assert!(dynamic_message
         .extensions()
-        .eq([(extension_desc, &Value::F64(42.0)),]));
+        .eq([(extension_desc, &Value::F64(42.0))]));
 }
 
 #[test]
@@ -746,4 +746,29 @@ fn message_take_field() {
     assert_eq!(message.take_field_by_name("optional_enum"), Some(num));
 
     assert!(message.fields().eq([]));
+}
+
+#[test]
+fn message_take_fields() {
+    let message_desc = test_file_descriptor()
+        .get_message_by_name("my.package2.MyMessage")
+        .unwrap();
+
+    let extension_desc = message_desc.get_extension(113).unwrap();
+
+    let mut dynamic_message = DynamicMessage::new(message_desc.clone());
+
+    assert_eq!(dynamic_message.fields().count(), 0);
+    assert_eq!(dynamic_message.extensions().count(), 0);
+
+    dynamic_message.set_field_by_name("int", Value::I32(0));
+    dynamic_message.set_extension(&extension_desc, Value::F64(42.0));
+
+    assert!(dynamic_message.take_fields().eq([(
+        message_desc.get_field_by_name("int").unwrap(),
+        Value::I32(0)
+    )]));
+    assert!(dynamic_message
+        .take_extensions()
+        .eq([(extension_desc, Value::F64(42.0))]));
 }

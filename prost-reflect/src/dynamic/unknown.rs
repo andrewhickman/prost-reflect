@@ -1,4 +1,4 @@
-use std::{fmt, slice};
+use std::{fmt, slice, vec};
 
 use prost::{
     bytes::{Buf, BufMut, Bytes},
@@ -6,7 +6,7 @@ use prost::{
     DecodeError, Message,
 };
 
-use crate::text_format;
+use crate::dynamic::text_format;
 
 /// An unknown field found when deserializing a protobuf message.
 ///
@@ -226,6 +226,10 @@ impl UnknownFieldSet {
 
     pub(crate) fn iter(&self) -> slice::Iter<'_, UnknownField> {
         self.fields.iter()
+    }
+
+    pub(crate) fn into_iter(self) -> vec::IntoIter<UnknownField> {
+        self.fields.into_iter()
     }
 
     pub(crate) fn insert(&mut self, unknown: UnknownField) {
