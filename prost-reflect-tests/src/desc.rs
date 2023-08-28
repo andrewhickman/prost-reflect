@@ -1,8 +1,10 @@
+use std::collections::HashMap;
+
 use prost::{bytes::Bytes, Message};
-use prost_reflect::{DescriptorPool, DynamicMessage, ReflectMessage, Syntax, Value};
+use prost_reflect::{DescriptorPool, DynamicMessage, MapKey, ReflectMessage, Syntax, Value};
 
 use crate::{
-    proto::{self, Scalars},
+    proto::{self, ComplexType, Scalars},
     test_file_descriptor, DESCRIPTOR_POOL_BYTES,
 };
 
@@ -595,7 +597,7 @@ fn message_default_value_presence() {
 }
 
 #[test]
-fn message_list_fields() {
+fn message_list_fields_scalars() {
     let message = Scalars {
         double: 0.0,
         float: 2.2,
@@ -688,4 +690,45 @@ fn message_list_extensions() {
     assert!(dynamic_message
         .extensions()
         .eq([(extension_desc, &Value::F64(42.0)),]));
+}
+
+#[test]
+fn message_take_field() {
+    let mut message = ComplexType {
+        string_map: HashMap::from_iter([("foo".to_owned(), Scalars::default())]),
+        nested: Some(Scalars {
+            int32: 3,
+            ..Default::default()
+        }),
+        optional_enum: 3,
+        ..Default::default()
+    }
+    .transcode_to_dynamic();
+
+    let map = Value::Map(HashMap::from_iter([(
+        MapKey::String("foo".to_owned()),
+        Value::Message(Scalars::default().transcode_to_dynamic()),
+    )]));
+    let nested = Value::Message(
+        Scalars {
+            int32: 3,
+            ..Default::default()
+        }
+        .transcode_to_dynamic(),
+    );
+    let num = Value::EnumNumber(3);
+
+    assert!(message.fields().eq([
+        (message.descriptor().get_field_by_name("string_map").unwrap(), &map),
+        (message.descriptor().get_field_by_name("nested").unwrap(), &nested),
+        (message.descriptor().get_field_by_name("optional_enum").unwrap(), &num)
+    ]));
+
+    assert_eq!(message.take_field_by_name("int_map"), None);
+    assert_eq!(message.take_field_by_name("notfound"), None);
+    assert_eq!(message.take_field_by_name("string_map"), Some(map));
+    assert_eq!(message.take_field_by_name("nested"), Some(nested));
+    assert_eq!(message.take_field_by_name("optional_enum"), Some(num));
+
+    assert!(message.fields().eq([]));
 }

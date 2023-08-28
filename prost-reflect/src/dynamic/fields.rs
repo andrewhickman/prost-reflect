@@ -127,6 +127,13 @@ impl DynamicMessageFieldSet {
         self.fields.remove(&desc.number());
     }
 
+    pub(crate) fn take(&mut self, desc: &impl FieldDescriptorLike) -> Option<Value> {
+        match self.fields.remove(&desc.number()) {
+            Some(ValueOrUnknown::Value(value)) if desc.has(&value) => Some(value),
+            _ => None,
+        }
+    }
+
     pub(crate) fn iter<'a>(
         &'a self,
         message: &'a MessageDescriptor,
