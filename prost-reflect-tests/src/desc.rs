@@ -1,5 +1,5 @@
-use prost::{Message, bytes::Bytes};
-use prost_reflect::{DescriptorPool, ReflectMessage, Syntax, Value, DynamicMessage};
+use prost::{bytes::Bytes, Message};
+use prost_reflect::{DescriptorPool, DynamicMessage, ReflectMessage, Syntax, Value};
 
 use crate::{
     proto::{self, Scalars},
@@ -612,20 +612,54 @@ fn message_list_fields() {
         r#bool: false,
         string: "5".to_owned(),
         bytes: b"6".to_vec(),
-    }.transcode_to_dynamic();
+    }
+    .transcode_to_dynamic();
 
-    assert_eq!(message.fields().collect::<Vec<_>>(), vec![
-        (message.descriptor().get_field_by_name("float").unwrap(), &Value::F32(2.2)),
-        (message.descriptor().get_field_by_name("int32").unwrap(), &Value::I32(3)),
-        (message.descriptor().get_field_by_name("uint32").unwrap(), &Value::U32(5)),
-        (message.descriptor().get_field_by_name("uint64").unwrap(), &Value::U64(6)),
-        (message.descriptor().get_field_by_name("sint32").unwrap(), &Value::I32(7)),
-        (message.descriptor().get_field_by_name("fixed32").unwrap(), &Value::U32(9)),
-        (message.descriptor().get_field_by_name("sfixed32").unwrap(), &Value::I32(11)),
-        (message.descriptor().get_field_by_name("sfixed64").unwrap(), &Value::I64(12)),
-        (message.descriptor().get_field_by_name("string").unwrap(), &Value::String("5".to_owned())),
-        (message.descriptor().get_field_by_name("bytes").unwrap(), &Value::Bytes(Bytes::from_static(b"6"))),
-    ]);
+    assert_eq!(
+        message.fields().collect::<Vec<_>>(),
+        vec![
+            (
+                message.descriptor().get_field_by_name("float").unwrap(),
+                &Value::F32(2.2)
+            ),
+            (
+                message.descriptor().get_field_by_name("int32").unwrap(),
+                &Value::I32(3)
+            ),
+            (
+                message.descriptor().get_field_by_name("uint32").unwrap(),
+                &Value::U32(5)
+            ),
+            (
+                message.descriptor().get_field_by_name("uint64").unwrap(),
+                &Value::U64(6)
+            ),
+            (
+                message.descriptor().get_field_by_name("sint32").unwrap(),
+                &Value::I32(7)
+            ),
+            (
+                message.descriptor().get_field_by_name("fixed32").unwrap(),
+                &Value::U32(9)
+            ),
+            (
+                message.descriptor().get_field_by_name("sfixed32").unwrap(),
+                &Value::I32(11)
+            ),
+            (
+                message.descriptor().get_field_by_name("sfixed64").unwrap(),
+                &Value::I64(12)
+            ),
+            (
+                message.descriptor().get_field_by_name("string").unwrap(),
+                &Value::String("5".to_owned())
+            ),
+            (
+                message.descriptor().get_field_by_name("bytes").unwrap(),
+                &Value::Bytes(Bytes::from_static(b"6"))
+            ),
+        ]
+    );
 }
 
 #[test]
@@ -644,10 +678,14 @@ fn message_list_extensions() {
     dynamic_message.set_field_by_name("int", Value::I32(0));
     dynamic_message.set_extension(&extension_desc, Value::F64(42.0));
 
-    assert!(dynamic_message.fields().eq([
-        (dynamic_message.descriptor().get_field_by_name("int").unwrap(), &Value::I32(0)),
-    ]));
-    assert!(dynamic_message.extensions().eq([
-        (extension_desc, &Value::F64(42.0)),
-    ]));
+    assert!(dynamic_message.fields().eq([(
+        dynamic_message
+            .descriptor()
+            .get_field_by_name("int")
+            .unwrap(),
+        &Value::I32(0)
+    ),]));
+    assert!(dynamic_message
+        .extensions()
+        .eq([(extension_desc, &Value::F64(42.0)),]));
 }
