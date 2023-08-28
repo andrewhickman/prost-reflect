@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added new `DynamicMessage` APIs for getting and clearing message fields:
+  - [`fields`](https://docs.rs/prost-reflect/latest/prost_reflect/struct.DynamicMessage.html#method.fields) Gets an iterator over all fields of this message.
+  - [`extensions`](https://docs.rs/prost-reflect/latest/prost_reflect/struct.DynamicMessage.html#method.extensions) Gets an iterator over all extension fields of this message.
+  - [`take_field`](https://docs.rs/prost-reflect/latest/prost_reflect/struct.DynamicMessage.html#method.take_field) Clears the value for the given field, and returns it.
+  - [`take_field_by_name`](https://docs.rs/prost-reflect/latest/prost_reflect/struct.DynamicMessage.html#method.take_field_by_name) Clears the value for the field with the given name, and returns it.
+  - [`take_field_by_number`](https://docs.rs/prost-reflect/latest/prost_reflect/struct.DynamicMessage.html#method.take_field_by_number) Clears the value for the field with the given number, and returns it.
+  - [`take_extension`](https://docs.rs/prost-reflect/latest/prost_reflect/struct.DynamicMessage.html#method.take_extension) Clears the value for the given extension field and returns it.
+
 ## [0.11.4] - 2023-04-28
 
 ### Changed

@@ -437,7 +437,7 @@ impl DynamicMessage {
         }
     }
 
-    /// Clears the value for the given extension field and returns it.
+    /// Clears the value for the field with the given number, and returns it.
     ///
     /// Returns the value if [`has_field_by_number`](Self::has_field_by_number) was `true`, or `None` otherwise.
     pub fn take_field_by_number(&mut self, number: u32) -> Option<Value> {
