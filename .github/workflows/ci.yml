@@ -20,6 +20,9 @@ jobs:
       - uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: ${{ matrix.rust }}
+      # Skip cargo update for MSRV validation build
+      - run: cargo update
+        if: ${{ matrix.rust == 'stable' || matrix.rust == 'beta' }}
       - name: Get latest CMake and ninja
         uses: lukka/get-cmake@latest
       - name: Install Protoc
@@ -74,6 +77,6 @@ jobs:
         run: |
           cargo tarpaulin --verbose --packages prost-reflect prost-reflect-tests --all-features --timeout 120 --out Xml
       - name: Upload to codecov.io
-        uses: codecov/codecov-action@v1
+        uses: codecov/codecov-action@v3
         with:
           fail_ci_if_error: true
