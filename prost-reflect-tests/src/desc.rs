@@ -1,7 +1,10 @@
-use prost::Message;
-use prost_reflect::{DescriptorPool, ReflectMessage, Syntax, Value};
+use prost::{Message, bytes::Bytes};
+use prost_reflect::{DescriptorPool, ReflectMessage, Syntax, Value, DynamicMessage};
 
-use crate::{proto, test_file_descriptor, DESCRIPTOR_POOL_BYTES};
+use crate::{
+    proto::{self, Scalars},
+    test_file_descriptor, DESCRIPTOR_POOL_BYTES,
+};
 
 #[test]
 fn test_descriptor_methods() {
@@ -567,4 +570,84 @@ fn test_enum_extension_options() {
         value.options().get_extension(&value_ext).as_ref(),
         &Value::EnumNumber(1)
     );
+}
+
+#[test]
+fn message_default_value_presence() {
+    let mut message = Scalars::default().transcode_to_dynamic();
+    let field = message.descriptor().get_field_by_name("int32").unwrap();
+
+    assert_eq!(message.fields().count(), 0);
+    assert!(!message.has_field(&field));
+    assert_eq!(message.get_field(&field).as_ref(), &Value::I32(0));
+
+    message.set_field(&field, Value::I32(0));
+
+    assert_eq!(message.fields().count(), 0);
+    assert!(!message.has_field(&field));
+    assert_eq!(message.get_field(&field).as_ref(), &Value::I32(0));
+
+    message.get_field_mut(&field);
+
+    assert_eq!(message.fields().count(), 0);
+    assert!(!message.has_field(&field));
+    assert_eq!(message.get_field(&field).as_ref(), &Value::I32(0));
+}
+
+#[test]
+fn message_list_fields() {
+    let message = Scalars {
+        double: 0.0,
+        float: 2.2,
+        int32: 3,
+        int64: 0,
+        uint32: 5,
+        uint64: 6,
+        sint32: 7,
+        sint64: 0,
+        fixed32: 9,
+        fixed64: 0,
+        sfixed32: 11,
+        sfixed64: 12,
+        r#bool: false,
+        string: "5".to_owned(),
+        bytes: b"6".to_vec(),
+    }.transcode_to_dynamic();
+
+    assert_eq!(message.fields().collect::<Vec<_>>(), vec![
+        (message.descriptor().get_field_by_name("float").unwrap(), &Value::F32(2.2)),
+        (message.descriptor().get_field_by_name("int32").unwrap(), &Value::I32(3)),
+        (message.descriptor().get_field_by_name("uint32").unwrap(), &Value::U32(5)),
+        (message.descriptor().get_field_by_name("uint64").unwrap(), &Value::U64(6)),
+        (message.descriptor().get_field_by_name("sint32").unwrap(), &Value::I32(7)),
+        (message.descriptor().get_field_by_name("fixed32").unwrap(), &Value::U32(9)),
+        (message.descriptor().get_field_by_name("sfixed32").unwrap(), &Value::I32(11)),
+        (message.descriptor().get_field_by_name("sfixed64").unwrap(), &Value::I64(12)),
+        (message.descriptor().get_field_by_name("string").unwrap(), &Value::String("5".to_owned())),
+        (message.descriptor().get_field_by_name("bytes").unwrap(), &Value::Bytes(Bytes::from_static(b"6"))),
+    ]);
+}
+
+#[test]
+fn message_list_extensions() {
+    let message_desc = test_file_descriptor()
+        .get_message_by_name("my.package2.MyMessage")
+        .unwrap();
+
+    let extension_desc = message_desc.get_extension(113).unwrap();
+
+    let mut dynamic_message = DynamicMessage::new(message_desc.clone());
+
+    assert_eq!(dynamic_message.fields().count(), 0);
+    assert_eq!(dynamic_message.extensions().count(), 0);
+
+    dynamic_message.set_field_by_name("int", Value::I32(0));
+    dynamic_message.set_extension(&extension_desc, Value::F64(42.0));
+
+    assert!(dynamic_message.fields().eq([
+        (dynamic_message.descriptor().get_field_by_name("int").unwrap(), &Value::I32(0)),
+    ]));
+    assert!(dynamic_message.extensions().eq([
+        (extension_desc, &Value::F64(42.0)),
+    ]));
 }
