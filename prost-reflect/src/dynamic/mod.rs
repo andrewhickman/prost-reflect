@@ -419,6 +419,35 @@ impl DynamicMessage {
         }
     }
 
+    /// Clears the value for the given field, and returns it.
+    ///
+    /// Returns the value if [`has_field`](Self::has_field) was `true`, or `None` otherwise.
+    pub fn take_field(&mut self, field_desc: &FieldDescriptor) -> Option<Value> {
+        self.fields.take(field_desc)
+    }
+
+    /// Clears the value for the field with the given name, and returns it.
+    ///
+    /// Returns the value if [`has_field_by_name`](Self::has_field_by_name) was `true`, or `None` otherwise.
+    pub fn take_field_by_name(&mut self, name: &str) -> Option<Value> {
+        if let Some(field_desc) = self.desc.get_field_by_name(name) {
+            self.fields.take(&field_desc)
+        } else {
+            None
+        }
+    }
+
+    /// Clears the value for the field with the given number, and returns it.
+    ///
+    /// Returns the value if [`has_field_by_number`](Self::has_field_by_number) was `true`, or `None` otherwise.
+    pub fn take_field_by_number(&mut self, number: u32) -> Option<Value> {
+        if let Some(field_desc) = self.desc.get_field(number) {
+            self.fields.take(&field_desc)
+        } else {
+            None
+        }
+    }
+
     /// Returns `true` if this message has the given extension field set.
     ///
     /// See [`has_field`][Self::has_field] for more details.
@@ -455,6 +484,13 @@ impl DynamicMessage {
         self.fields.clear(extension_desc)
     }
 
+    /// Clears the value for the given extension field, and returns it.
+    ///
+    /// Returns the value if [`has_extension`](Self::has_extension) was `true`, or `None` otherwise.
+    pub fn take_extension(&mut self, extension_desc: &ExtensionDescriptor) -> Option<Value> {
+        self.fields.take(extension_desc)
+    }
+
     /// Merge a strongly-typed message into this one.
     ///
     /// The message should be compatible with the type specified by
@@ -466,6 +502,20 @@ impl DynamicMessage {
     {
         let buf = value.encode_to_vec();
         self.merge(buf.as_slice())
+    }
+
+    /// Gets an iterator over all fields of this message.
+    ///
+    /// The iterator will yield all fields for which [`has_field`](Self::has_field) returns `true`.
+    pub fn fields(&self) -> impl Iterator<Item = (FieldDescriptor, &'_ Value)> {
+        self.fields.iter_fields(&self.desc)
+    }
+
+    /// Gets an iterator over all extension fields of this message.
+    ///
+    /// The iterator will yield all extension fields for which [`has_extension`](Self::has_extension) returns `true`.
+    pub fn extensions(&self) -> impl Iterator<Item = (ExtensionDescriptor, &'_ Value)> {
+        self.fields.iter_extensions(&self.desc)
     }
 
     /// Convert this dynamic message into a strongly typed value.

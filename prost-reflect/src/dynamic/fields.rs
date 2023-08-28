@@ -127,6 +127,13 @@ impl DynamicMessageFieldSet {
         self.fields.remove(&desc.number());
     }
 
+    pub(crate) fn take(&mut self, desc: &impl FieldDescriptorLike) -> Option<Value> {
+        match self.fields.remove(&desc.number()) {
+            Some(ValueOrUnknown::Value(value)) if desc.has(&value) => Some(value),
+            _ => None,
+        }
+    }
+
     pub(crate) fn iter<'a>(
         &'a self,
         message: &'a MessageDescriptor,
@@ -192,6 +199,48 @@ impl DynamicMessageFieldSet {
                 }
             });
         fields.chain(others)
+    }
+
+    pub(crate) fn iter_fields<'a>(
+        &'a self,
+        message: &'a MessageDescriptor,
+    ) -> impl Iterator<Item = (FieldDescriptor, &'a Value)> + 'a {
+        self.fields.iter().filter_map(move |(&number, value)| {
+            let value = match value {
+                ValueOrUnknown::Value(value) => value,
+                _ => return None,
+            };
+            let field = match message.get_field(number) {
+                Some(field) => field,
+                _ => return None,
+            };
+            if field.has(value) {
+                Some((field, value))
+            } else {
+                None
+            }
+        })
+    }
+
+    pub(crate) fn iter_extensions<'a>(
+        &'a self,
+        message: &'a MessageDescriptor,
+    ) -> impl Iterator<Item = (ExtensionDescriptor, &'a Value)> + 'a {
+        self.fields.iter().filter_map(move |(&number, value)| {
+            let value = match value {
+                ValueOrUnknown::Value(value) => value,
+                _ => return None,
+            };
+            let field = match message.get_extension(number) {
+                Some(field) => field,
+                _ => return None,
+            };
+            if field.has(value) {
+                Some((field, value))
+            } else {
+                None
+            }
+        })
     }
 
     pub(super) fn clear_all(&mut self) {

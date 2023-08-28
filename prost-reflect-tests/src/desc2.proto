@@ -7,6 +7,8 @@ message MyMessage {
   reserved "foo", "bar";
   extensions 100, 110 to 115;
 
+  optional int32 int = 1;
+
   extend MyMessage {
     optional int32 in_extendee = 111;
   }
