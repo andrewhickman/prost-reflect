@@ -194,6 +194,36 @@ impl DynamicMessageFieldSet {
         fields.chain(others)
     }
 
+    pub(crate) fn iter_fields<'a>(
+        &'a self,
+        message: &'a MessageDescriptor,
+    ) -> impl Iterator<Item = (FieldDescriptor, &'a Value)> + 'a {
+        self.fields.iter().filter_map(move |(&number, value)| {
+            let ValueOrUnknown::Value(value) = value else { return None };
+            let Some(field) = message.get_field(number) else { return None };
+            if field.has(value) {
+                Some((field, value))
+            } else {
+                None
+            }
+        })
+    }
+
+    pub(crate) fn iter_extensions<'a>(
+        &'a self,
+        message: &'a MessageDescriptor,
+    ) -> impl Iterator<Item = (ExtensionDescriptor, &'a Value)> + 'a {
+        self.fields.iter().filter_map(move |(&number, value)| {
+            let ValueOrUnknown::Value(value) = value else { return None };
+            let Some(field) = message.get_extension(number) else { return None };
+            if field.has(value) {
+                Some((field, value))
+            } else {
+                None
+            }
+        })
+    }
+
     pub(super) fn clear_all(&mut self) {
         self.fields.clear();
     }

@@ -468,6 +468,20 @@ impl DynamicMessage {
         self.merge(buf.as_slice())
     }
 
+    /// Gets an iterator over all fields of this message.
+    ///
+    /// The iterator will yield all fields for which [`has_field`](Self::has_field) returns `true`.
+    pub fn fields(&self) -> impl Iterator<Item = (FieldDescriptor, &'_ Value)> {
+        self.fields.iter_fields(&self.desc)
+    }
+
+    /// Gets an iterator over all extension fields of this message.
+    ///
+    /// The iterator will yield all extension fields for which [`has_extension`](Self::has_extension) returns `true`.
+    pub fn extensions(&self) -> impl Iterator<Item = (ExtensionDescriptor, &'_ Value)> {
+        self.fields.iter_extensions(&self.desc)
+    }
+
     /// Convert this dynamic message into a strongly typed value.
     ///
     /// The message should be compatible with the type specified by
