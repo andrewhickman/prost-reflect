@@ -1,10 +1,12 @@
-use std::slice;
+use std::{fmt, slice};
 
 use prost::{
     bytes::{Buf, BufMut, Bytes},
     encoding::{self, DecodeContext, WireType},
     DecodeError, Message,
 };
+
+use crate::text_format;
 
 /// An unknown field found when deserializing a protobuf message.
 ///
@@ -92,6 +94,18 @@ impl UnknownField {
     /// This method will read the field number and wire type from the buffer. Normally, it is useful to know
     /// the field number before deciding whether to treat a field as unknown. See [`decode_value`](UnknownField::decode_value)
     /// if you have already read the number.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use prost_reflect::{DescriptorPool, UnknownField};
+    /// # use prost::encoding::{DecodeContext, WireType};
+    /// # let pool = DescriptorPool::decode(include_bytes!("../file_descriptor_set.bin").as_ref()).unwrap();
+    /// # let message_descriptor = pool.get_message_by_name("google.protobuf.Empty").unwrap();
+    /// let unknown_field = UnknownField::decode(&mut b"\x1a\x02\x10\x42".as_ref(), DecodeContext::default()).unwrap();
+    /// assert_eq!(unknown_field.number(), 3);
+    /// assert_eq!(unknown_field.wire_type(), WireType::LengthDelimited);
+    /// ```
     pub fn decode<B>(buf: &mut B, ctx: DecodeContext) -> Result<Self, DecodeError>
     where
         B: Buf,
@@ -104,6 +118,22 @@ impl UnknownField {
     ///
     /// This method assumes the field number and wire type have already been read from the buffer.
     /// See also [`decode`](UnknownField::decode).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use prost_reflect::{DescriptorPool, UnknownField};
+    /// # use prost::encoding::{DecodeContext, WireType};
+    /// # let pool = DescriptorPool::decode(include_bytes!("../file_descriptor_set.bin").as_ref()).unwrap();
+    /// # let message_descriptor = pool.get_message_by_name("google.protobuf.Empty").unwrap();
+    /// let unknown_field = UnknownField::decode_value(3, WireType::LengthDelimited, &mut b"\x02\x10\x42".as_ref(), DecodeContext::default()).unwrap();
+    /// assert_eq!(unknown_field.number(), 3);
+    /// assert_eq!(unknown_field.wire_type(), WireType::LengthDelimited);
+    ///
+    /// let mut buf = Vec::new();
+    /// unknown_field.encode(&mut buf);
+    /// assert_eq!(buf, b"\x1a\x02\x10\x42");
+    /// ```
     pub fn decode_value<B>(
         number: u32,
         wire_type: WireType,
@@ -163,6 +193,29 @@ impl UnknownField {
             UnknownFieldValue::Group(value) => encoding::group::encoded_len(self.number, value),
             UnknownFieldValue::ThirtyTwoBit(value) => encoding::key_len(self.number) + value.len(),
         }
+    }
+}
+
+impl fmt::Display for UnknownField {
+    /// Formats this unknown field using the protobuf text format.
+    ///
+    /// The protobuf format does not include type information, so the formatter will attempt to infer types.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use prost_reflect::{DescriptorPool, UnknownField};
+    /// # use prost::encoding::DecodeContext;
+    /// # let pool = DescriptorPool::decode(include_bytes!("../file_descriptor_set.bin").as_ref()).unwrap();
+    /// # let message_descriptor = pool.get_message_by_name("google.protobuf.Empty").unwrap();
+    /// let unknown_field = UnknownField::decode(&mut b"\x1a\x02\x10\x42".as_ref(), DecodeContext::default()).unwrap();
+    /// assert_eq!(format!("{}", unknown_field), "3{2:66}");
+    /// // The alternate format specifier may be used to indent the output
+    /// assert_eq!(format!("{:#}", unknown_field), "3 {\n  2: 66\n}");
+    /// ```
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        text_format::Writer::new(text_format::FormatOptions::new().pretty(f.alternate()), f)
+            .fmt_unknown_field(self)
     }
 }
 

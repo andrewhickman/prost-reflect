@@ -174,7 +174,7 @@ where
         self.fmt_value(value, kind)
     }
 
-    fn fmt_unknown_field(&mut self, field: &UnknownField) -> fmt::Result {
+    pub fn fmt_unknown_field(&mut self, field: &UnknownField) -> fmt::Result {
         write!(self.f, "{}", field.number())?;
         match field.value() {
             UnknownFieldValue::Varint(int) => {
