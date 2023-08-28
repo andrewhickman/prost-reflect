@@ -670,26 +670,32 @@ fn message_list_extensions() {
         .get_message_by_name("my.package2.MyMessage")
         .unwrap();
 
+    let field_desc = message_desc.get_field_by_name("int").unwrap();
     let extension_desc = message_desc.get_extension(113).unwrap();
 
     let mut dynamic_message = DynamicMessage::new(message_desc.clone());
 
     assert_eq!(dynamic_message.fields().count(), 0);
     assert_eq!(dynamic_message.extensions().count(), 0);
+    assert_eq!(dynamic_message.fields_mut().count(), 0);
+    assert_eq!(dynamic_message.extensions_mut().count(), 0);
 
-    dynamic_message.set_field_by_name("int", Value::I32(0));
+    dynamic_message.set_field(&field_desc, Value::I32(0));
     dynamic_message.set_extension(&extension_desc, Value::F64(42.0));
 
-    assert!(dynamic_message.fields().eq([(
-        dynamic_message
-            .descriptor()
-            .get_field_by_name("int")
-            .unwrap(),
-        &Value::I32(0)
-    )]));
+    assert!(dynamic_message
+        .fields()
+        .eq([(field_desc.clone(), &Value::I32(0))]));
     assert!(dynamic_message
         .extensions()
-        .eq([(extension_desc, &Value::F64(42.0))]));
+        .eq([(extension_desc.clone(), &Value::F64(42.0))]));
+
+    assert!(dynamic_message
+        .fields_mut()
+        .eq([(field_desc, &mut Value::I32(0))]));
+    assert!(dynamic_message
+        .extensions_mut()
+        .eq([(extension_desc, &mut Value::F64(42.0))]));
 }
 
 #[test]
@@ -754,21 +760,28 @@ fn message_take_fields() {
         .get_message_by_name("my.package2.MyMessage")
         .unwrap();
 
+    let field_desc = message_desc.get_field_by_name("int").unwrap();
     let extension_desc = message_desc.get_extension(113).unwrap();
 
     let mut dynamic_message = DynamicMessage::new(message_desc.clone());
 
     assert_eq!(dynamic_message.fields().count(), 0);
     assert_eq!(dynamic_message.extensions().count(), 0);
+    assert_eq!(dynamic_message.fields_mut().count(), 0);
+    assert_eq!(dynamic_message.extensions_mut().count(), 0);
 
-    dynamic_message.set_field_by_name("int", Value::I32(0));
+    dynamic_message.set_field(&field_desc, Value::I32(0));
     dynamic_message.set_extension(&extension_desc, Value::F64(42.0));
 
-    assert!(dynamic_message.take_fields().eq([(
-        message_desc.get_field_by_name("int").unwrap(),
-        Value::I32(0)
-    )]));
+    assert!(dynamic_message
+        .take_fields()
+        .eq([(field_desc, Value::I32(0))]));
     assert!(dynamic_message
         .take_extensions()
         .eq([(extension_desc, Value::F64(42.0))]));
+
+    assert_eq!(dynamic_message.fields().count(), 0);
+    assert_eq!(dynamic_message.extensions().count(), 0);
+    assert_eq!(dynamic_message.fields_mut().count(), 0);
+    assert_eq!(dynamic_message.extensions_mut().count(), 0);
 }
