@@ -199,8 +199,14 @@ impl DynamicMessageFieldSet {
         message: &'a MessageDescriptor,
     ) -> impl Iterator<Item = (FieldDescriptor, &'a Value)> + 'a {
         self.fields.iter().filter_map(move |(&number, value)| {
-            let ValueOrUnknown::Value(value) = value else { return None };
-            let Some(field) = message.get_field(number) else { return None };
+            let value = match value {
+                ValueOrUnknown::Value(value) => value,
+                _ => return None,
+            };
+            let field = match message.get_field(number) {
+                Some(field) => field,
+                _ => return None,
+            };
             if field.has(value) {
                 Some((field, value))
             } else {
@@ -214,8 +220,14 @@ impl DynamicMessageFieldSet {
         message: &'a MessageDescriptor,
     ) -> impl Iterator<Item = (ExtensionDescriptor, &'a Value)> + 'a {
         self.fields.iter().filter_map(move |(&number, value)| {
-            let ValueOrUnknown::Value(value) = value else { return None };
-            let Some(field) = message.get_extension(number) else { return None };
+            let value = match value {
+                ValueOrUnknown::Value(value) => value,
+                _ => return None,
+            };
+            let field = match message.get_extension(number) {
+                Some(field) => field,
+                _ => return None,
+            };
             if field.has(value) {
                 Some((field, value))
             } else {
