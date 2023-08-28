@@ -27,9 +27,11 @@ jobs:
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - run: cargo test --all-features
-      # Check compilation with latest packages (excluding test code)
+
       - run: cargo update
+        if: eq(matrix.rust, stable)
       - run: cargo check
+        if: eq(matrix.rust, stable)
 
   lints:
     name: Lints
