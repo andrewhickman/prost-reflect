@@ -18,6 +18,7 @@ use std::{borrow::Cow, collections::HashMap, error::Error, fmt};
 
 #[cfg(feature = "serde")]
 pub use self::serde::{DeserializeOptions, SerializeOptions};
+pub use self::unknown::UnknownField;
 
 pub(crate) use self::fields::FieldDescriptorLike;
 
@@ -491,19 +492,6 @@ impl DynamicMessage {
         self.fields.take(extension_desc)
     }
 
-    /// Merge a strongly-typed message into this one.
-    ///
-    /// The message should be compatible with the type specified by
-    /// [`descriptor`][Self::descriptor], or the merge will likely fail with
-    /// a [`DecodeError`].
-    pub fn transcode_from<T>(&mut self, value: &T) -> Result<(), DecodeError>
-    where
-        T: Message,
-    {
-        let buf = value.encode_to_vec();
-        self.merge(buf.as_slice())
-    }
-
     /// Gets an iterator over all fields of this message.
     ///
     /// The iterator will yield all fields for which [`has_field`](Self::has_field) returns `true`.
@@ -516,6 +504,29 @@ impl DynamicMessage {
     /// The iterator will yield all extension fields for which [`has_extension`](Self::has_extension) returns `true`.
     pub fn extensions(&self) -> impl Iterator<Item = (ExtensionDescriptor, &'_ Value)> {
         self.fields.iter_extensions(&self.desc)
+    }
+
+    /// Gets an iterator over unknown fields for this message.
+    ///
+    /// A field is unknown if the message descriptor does not contain a field with the given number. This is often the
+    /// result of a new field being added to the message definition.
+    ///
+    /// Unknown fields are preserved when decoding and re-encoding a message.
+    pub fn unknown_fields(&self) -> impl Iterator<Item = &'_ UnknownField> {
+        self.fields.iter_unknown()
+    }
+
+    /// Merge a strongly-typed message into this one.
+    ///
+    /// The message should be compatible with the type specified by
+    /// [`descriptor`][Self::descriptor], or the merge will likely fail with
+    /// a [`DecodeError`].
+    pub fn transcode_from<T>(&mut self, value: &T) -> Result<(), DecodeError>
+    where
+        T: Message,
+    {
+        let buf = value.encode_to_vec();
+        self.merge(buf.as_slice())
     }
 
     /// Convert this dynamic message into a strongly typed value.

@@ -8,7 +8,7 @@ use crate::{
         fields::ValueAndDescriptor,
         fmt_string,
         text_format::FormatOptions,
-        unknown::{UnknownField, UnknownFieldSet},
+        unknown::{UnknownField, UnknownFieldSet, UnknownFieldValue},
     },
     DynamicMessage, Kind, MapKey, Value,
 };
@@ -160,10 +160,9 @@ where
                 write!(self.f, "[{}]", desc.full_name())?;
                 self.fmt_field_value(&value, Some(&desc.kind()))
             }
-            ValueAndDescriptor::Unknown(number, values) => self.fmt_delimited(
-                values.iter().map(|value| (number, value)),
-                Writer::fmt_unknown_field,
-            ),
+            ValueAndDescriptor::Unknown(_, values) => {
+                self.fmt_delimited(values.iter(), Writer::fmt_unknown_field)
+            }
         }
     }
 
@@ -175,25 +174,25 @@ where
         self.fmt_value(value, kind)
     }
 
-    fn fmt_unknown_field(&mut self, (number, value): (u32, &UnknownField)) -> fmt::Result {
-        write!(self.f, "{}", number)?;
-        match value {
-            UnknownField::Varint(int) => {
+    fn fmt_unknown_field(&mut self, field: &UnknownField) -> fmt::Result {
+        write!(self.f, "{}", field.number())?;
+        match field.value() {
+            UnknownFieldValue::Varint(int) => {
                 self.f.write_char(':')?;
                 self.fmt_padding()?;
                 write!(self.f, "{}", int)
             }
-            UnknownField::ThirtyTwoBit(bytes) => {
+            UnknownFieldValue::ThirtyTwoBit(bytes) => {
                 self.f.write_char(':')?;
                 self.fmt_padding()?;
                 write!(self.f, "0x{:08x}", u32::from_le_bytes(*bytes))
             }
-            UnknownField::SixtyFourBit(bytes) => {
+            UnknownFieldValue::SixtyFourBit(bytes) => {
                 self.f.write_char(':')?;
                 self.fmt_padding()?;
                 write!(self.f, "0x{:016x}", u64::from_le_bytes(*bytes))
             }
-            UnknownField::LengthDelimited(bytes) => {
+            UnknownFieldValue::LengthDelimited(bytes) => {
                 if !bytes.is_empty() {
                     if let Ok(set) = UnknownFieldSet::decode(bytes.clone()) {
                         self.fmt_padding()?;
@@ -205,7 +204,7 @@ where
                 self.fmt_padding()?;
                 self.fmt_string(bytes.as_ref())
             }
-            UnknownField::Group(set) => {
+            UnknownFieldValue::Group(set) => {
                 self.fmt_padding()?;
                 self.fmt_unknown_field_set(set)
             }
@@ -219,13 +218,13 @@ where
             self.f.write_char('{')?;
             self.indent_level += 2;
             self.fmt_newline()?;
-            self.fmt_delimited(set.fields(), Writer::fmt_unknown_field)?;
+            self.fmt_delimited(set.iter(), Writer::fmt_unknown_field)?;
             self.indent_level -= 2;
             self.fmt_newline()?;
             self.f.write_char('}')
         } else {
             self.f.write_char('{')?;
-            self.fmt_delimited(set.fields(), Writer::fmt_unknown_field)?;
+            self.fmt_delimited(set.iter(), Writer::fmt_unknown_field)?;
             self.f.write_char('}')
         }
     }
@@ -314,7 +313,7 @@ mod tests {
     fn fmt_unknown(value: &UnknownFieldSet) -> String {
         let mut string = String::new();
         Writer::new(FormatOptions::new().skip_unknown_fields(false), &mut string)
-            .fmt_delimited(value.fields(), Writer::fmt_unknown_field)
+            .fmt_delimited(value.iter(), Writer::fmt_unknown_field)
             .unwrap();
         string
     }
@@ -325,7 +324,7 @@ mod tests {
             FormatOptions::new().skip_unknown_fields(false).pretty(true),
             &mut string,
         )
-        .fmt_delimited(value.fields(), Writer::fmt_unknown_field)
+        .fmt_delimited(value.iter(), Writer::fmt_unknown_field)
         .unwrap();
         string
     }

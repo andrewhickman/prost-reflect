@@ -9,7 +9,7 @@ use crate::{
     Value,
 };
 
-use super::unknown::UnknownField;
+use super::unknown::{UnknownField, UnknownFieldSet};
 
 pub(crate) trait FieldDescriptorLike: fmt::Debug {
     fn text_name(&self) -> &str;
@@ -40,13 +40,13 @@ pub(super) struct DynamicMessageFieldSet {
 #[derive(Debug, Clone, PartialEq)]
 pub(super) enum ValueOrUnknown {
     Value(Value),
-    Unknown(Vec<UnknownField>),
+    Unknown(UnknownFieldSet),
 }
 
 pub(super) enum ValueAndDescriptor<'a> {
     Field(Cow<'a, Value>, FieldDescriptor),
     Extension(Cow<'a, Value>, ExtensionDescriptor),
-    Unknown(u32, &'a [UnknownField]),
+    Unknown(u32, &'a UnknownFieldSet),
 }
 
 impl DynamicMessageFieldSet {
@@ -115,10 +115,12 @@ impl DynamicMessageFieldSet {
                 ValueOrUnknown::Value(_) => {
                     panic!("expected no field to be found with number {}", number)
                 }
-                ValueOrUnknown::Unknown(unknowns) => unknowns.push(unknown),
+                ValueOrUnknown::Unknown(unknowns) => unknowns.insert(unknown),
             },
             btree_map::Entry::Vacant(entry) => {
-                entry.insert(ValueOrUnknown::Unknown(vec![unknown]));
+                entry.insert(ValueOrUnknown::Unknown(UnknownFieldSet::from_iter([
+                    unknown,
+                ])));
             }
         }
     }
@@ -162,7 +164,7 @@ impl DynamicMessageFieldSet {
                     }
                 }
                 ValueOrUnknown::Unknown(unknown) => {
-                    Some(ValueAndDescriptor::Unknown(number, unknown.as_slice()))
+                    Some(ValueAndDescriptor::Unknown(number, unknown))
                 }
             })
     }
@@ -195,7 +197,7 @@ impl DynamicMessageFieldSet {
                     }
                 }
                 ValueOrUnknown::Unknown(unknown) => {
-                    Some(ValueAndDescriptor::Unknown(number, unknown.as_slice()))
+                    Some(ValueAndDescriptor::Unknown(number, unknown))
                 }
             });
         fields.chain(others)
@@ -240,6 +242,13 @@ impl DynamicMessageFieldSet {
             } else {
                 None
             }
+        })
+    }
+
+    pub(super) fn iter_unknown(&self) -> impl Iterator<Item = &'_ UnknownField> {
+        self.fields.values().flat_map(move |value| match value {
+            ValueOrUnknown::Value(_) => [].iter(),
+            ValueOrUnknown::Unknown(unknowns) => unknowns.iter(),
         })
     }
 

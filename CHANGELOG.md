@@ -17,6 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - [`take_field_by_name`](https://docs.rs/prost-reflect/latest/prost_reflect/struct.DynamicMessage.html#method.take_field_by_name) Clears the value for the field with the given name, and returns it.
   - [`take_field_by_number`](https://docs.rs/prost-reflect/latest/prost_reflect/struct.DynamicMessage.html#method.take_field_by_number) Clears the value for the field with the given number, and returns it.
   - [`take_extension`](https://docs.rs/prost-reflect/latest/prost_reflect/struct.DynamicMessage.html#method.take_extension) Clears the value for the given extension field and returns it.
+- Added new APIs for inspecting unknown fields of a message.
+  - [`DynamicMessage::unknown_fields()`](https://docs.rs/prost-reflect/latest/prost_reflect/struct.DynamicMessage.html#method.unknown_fields) Gets an iterator over unknown fields for this message.
+  - [`UnknownField`](https://docs.rs/prost-reflect/latest/prost_reflect/struct.UnknownField.html) An unknown field found when deserializing a protobuf message..
 
 ## [0.11.4] - 2023-04-28
 

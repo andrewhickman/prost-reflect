@@ -28,11 +28,7 @@ impl Message for DynamicMessage {
                 ValueAndDescriptor::Extension(value, extension_desc) => {
                     value.encode_field(&extension_desc, buf)
                 }
-                ValueAndDescriptor::Unknown(number, unknowns) => {
-                    for unknown in unknowns {
-                        unknown.encode_field(number, buf);
-                    }
-                }
+                ValueAndDescriptor::Unknown(_, unknowns) => unknowns.encode_raw(buf),
             }
         }
     }
@@ -59,7 +55,7 @@ impl Message for DynamicMessage {
                 ctx,
             )
         } else {
-            let field = UnknownField::decode(number, wire_type, buf, ctx)?;
+            let field = UnknownField::decode_value(number, wire_type, buf, ctx)?;
             self.fields.add_unknown(number, field);
             Ok(())
         }
@@ -75,11 +71,7 @@ impl Message for DynamicMessage {
                 ValueAndDescriptor::Extension(value, extension_desc) => {
                     len += value.encoded_len(&extension_desc);
                 }
-                ValueAndDescriptor::Unknown(number, unknowns) => {
-                    for unknown in unknowns {
-                        len += unknown.encoded_len(number)
-                    }
-                }
+                ValueAndDescriptor::Unknown(_, unknowns) => len += unknowns.encoded_len(),
             }
         }
         len
