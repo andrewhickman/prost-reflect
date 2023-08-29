@@ -7,7 +7,7 @@ use std::{
 };
 
 use proptest::{prelude::*, test_runner::TestCaseError};
-use prost::{bytes::Bytes, Message};
+use prost::{bytes::Bytes, encoding::WireType, Message};
 use prost_reflect::{DynamicMessage, MapKey, ReflectMessage, Value};
 use prost_types::FileDescriptorSet;
 
@@ -766,6 +766,19 @@ fn unknown_fields_are_roundtripped() {
     message.merge(BYTES).unwrap();
 
     assert_eq!(&message.encode_to_vec(), BYTES);
+
+    let unknown_fields = message.unknown_fields().cloned().collect::<Vec<_>>();
+    assert_eq!(unknown_fields.len(), 1);
+    assert_eq!(unknown_fields[0].number(), 1);
+    assert_eq!(unknown_fields[0].wire_type(), WireType::Varint);
+    assert_eq!(unknown_fields[0].encoded_len(), 3);
+    let mut field_buf = Vec::new();
+    unknown_fields[0].encode(&mut field_buf);
+    assert_eq!(field_buf, BYTES);
+
+    assert!(message.take_unknown_fields().eq(unknown_fields));
+    assert!(message.encode_to_vec().is_empty());
+    assert_eq!(message.unknown_fields().count(), 0);
 }
 
 #[test]

@@ -15,13 +15,13 @@ impl DescriptorPool {
     /// The global descriptor pool is typically used as a convenient place to store descriptors for `ReflectMessage` implementations.
     ///
     /// Note that modifications to the returned pool won't affect the global pool - use
-    /// [`decode_global_file_descriptor_set`](decode_global_file_descriptor_set) or
-    /// [`add_global_file_descriptor`](add_global_file_descriptor) to modify the global pool.
+    /// [`decode_global_file_descriptor_set`](DescriptorPool::decode_global_file_descriptor_set) or
+    /// [`add_global_file_descriptor_proto`](DescriptorPool::add_global_file_descriptor_proto) to modify the global pool.
     pub fn global() -> DescriptorPool {
         INSTANCE.lock().unwrap().clone()
     }
 
-    /// Decodes and adds a set of file descriptors to the pool.
+    /// Decodes and adds a set of file descriptors to the global pool.
     ///
     /// See [`DescriptorPool::decode_file_descriptor_set`] for more details.
     pub fn decode_global_file_descriptor_set<B>(bytes: B) -> Result<(), DescriptorError>

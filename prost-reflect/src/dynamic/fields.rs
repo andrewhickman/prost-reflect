@@ -2,6 +2,7 @@ use std::{
     borrow::Cow,
     collections::btree_map::{self, BTreeMap},
     fmt,
+    mem::replace,
 };
 
 use crate::{
@@ -9,7 +10,7 @@ use crate::{
     Value,
 };
 
-use super::unknown::UnknownField;
+use super::unknown::{UnknownField, UnknownFieldSet};
 
 pub(crate) trait FieldDescriptorLike: fmt::Debug {
     fn text_name(&self) -> &str;
@@ -39,21 +40,25 @@ pub(super) struct DynamicMessageFieldSet {
 
 #[derive(Debug, Clone, PartialEq)]
 pub(super) enum ValueOrUnknown {
+    /// Used to implement draining iterators.
+    Taken,
+    /// A protobuf value with known field type.
     Value(Value),
-    Unknown(Vec<UnknownField>),
+    /// One or more unknown fields.
+    Unknown(UnknownFieldSet),
 }
 
 pub(super) enum ValueAndDescriptor<'a> {
     Field(Cow<'a, Value>, FieldDescriptor),
     Extension(Cow<'a, Value>, ExtensionDescriptor),
-    Unknown(u32, &'a [UnknownField]),
+    Unknown(u32, &'a UnknownFieldSet),
 }
 
 impl DynamicMessageFieldSet {
     fn get_value(&self, number: u32) -> Option<&Value> {
         match self.fields.get(&number) {
             Some(ValueOrUnknown::Value(value)) => Some(value),
-            Some(ValueOrUnknown::Unknown(_)) | None => None,
+            Some(ValueOrUnknown::Unknown(_) | ValueOrUnknown::Taken) | None => None,
         }
     }
 
@@ -75,7 +80,7 @@ impl DynamicMessageFieldSet {
         match self.fields.entry(desc.number()) {
             btree_map::Entry::Occupied(entry) => match entry.into_mut() {
                 ValueOrUnknown::Value(value) => value,
-                value @ ValueOrUnknown::Unknown(_) => {
+                value => {
                     *value = ValueOrUnknown::Value(desc.default_value());
                     value.unwrap_value_mut()
                 }
@@ -115,10 +120,15 @@ impl DynamicMessageFieldSet {
                 ValueOrUnknown::Value(_) => {
                     panic!("expected no field to be found with number {}", number)
                 }
-                ValueOrUnknown::Unknown(unknowns) => unknowns.push(unknown),
+                value @ ValueOrUnknown::Taken => {
+                    *value = ValueOrUnknown::Unknown(UnknownFieldSet::from_iter([unknown]))
+                }
+                ValueOrUnknown::Unknown(unknowns) => unknowns.insert(unknown),
             },
             btree_map::Entry::Vacant(entry) => {
-                entry.insert(ValueOrUnknown::Unknown(vec![unknown]));
+                entry.insert(ValueOrUnknown::Unknown(UnknownFieldSet::from_iter([
+                    unknown,
+                ])));
             }
         }
     }
@@ -162,8 +172,9 @@ impl DynamicMessageFieldSet {
                     }
                 }
                 ValueOrUnknown::Unknown(unknown) => {
-                    Some(ValueAndDescriptor::Unknown(number, unknown.as_slice()))
+                    Some(ValueAndDescriptor::Unknown(number, unknown))
                 }
+                ValueOrUnknown::Taken => None,
             })
     }
 
@@ -195,8 +206,9 @@ impl DynamicMessageFieldSet {
                     }
                 }
                 ValueOrUnknown::Unknown(unknown) => {
-                    Some(ValueAndDescriptor::Unknown(number, unknown.as_slice()))
+                    Some(ValueAndDescriptor::Unknown(number, unknown))
                 }
+                ValueOrUnknown::Taken => None,
             });
         fields.chain(others)
     }
@@ -243,6 +255,118 @@ impl DynamicMessageFieldSet {
         })
     }
 
+    pub(super) fn iter_unknown(&self) -> impl Iterator<Item = &'_ UnknownField> {
+        self.fields.values().flat_map(move |value| match value {
+            ValueOrUnknown::Taken | ValueOrUnknown::Value(_) => [].iter(),
+            ValueOrUnknown::Unknown(unknowns) => unknowns.iter(),
+        })
+    }
+
+    pub(crate) fn iter_fields_mut<'a>(
+        &'a mut self,
+        message: &'a MessageDescriptor,
+    ) -> impl Iterator<Item = (FieldDescriptor, &'a mut Value)> + 'a {
+        self.fields.iter_mut().filter_map(move |(&number, value)| {
+            let value = match value {
+                ValueOrUnknown::Value(value) => value,
+                _ => return None,
+            };
+            let field = match message.get_field(number) {
+                Some(field) => field,
+                _ => return None,
+            };
+            if field.has(value) {
+                Some((field, value))
+            } else {
+                None
+            }
+        })
+    }
+
+    pub(crate) fn iter_extensions_mut<'a>(
+        &'a mut self,
+        message: &'a MessageDescriptor,
+    ) -> impl Iterator<Item = (ExtensionDescriptor, &'a mut Value)> + 'a {
+        self.fields.iter_mut().filter_map(move |(&number, value)| {
+            let value = match value {
+                ValueOrUnknown::Value(value) => value,
+                _ => return None,
+            };
+            let field = match message.get_extension(number) {
+                Some(field) => field,
+                _ => return None,
+            };
+            if field.has(value) {
+                Some((field, value))
+            } else {
+                None
+            }
+        })
+    }
+
+    pub(crate) fn take_fields<'a>(
+        &'a mut self,
+        message: &'a MessageDescriptor,
+    ) -> impl Iterator<Item = (FieldDescriptor, Value)> + 'a {
+        self.fields
+            .iter_mut()
+            .filter_map(move |(&number, value_or_unknown)| {
+                let value = match value_or_unknown {
+                    ValueOrUnknown::Value(value) => value,
+                    _ => return None,
+                };
+                let field = match message.get_field(number) {
+                    Some(field) => field,
+                    _ => return None,
+                };
+                if field.has(value) {
+                    Some((
+                        field,
+                        replace(value_or_unknown, ValueOrUnknown::Taken).unwrap_value(),
+                    ))
+                } else {
+                    None
+                }
+            })
+    }
+
+    pub(crate) fn take_extensions<'a>(
+        &'a mut self,
+        message: &'a MessageDescriptor,
+    ) -> impl Iterator<Item = (ExtensionDescriptor, Value)> + 'a {
+        self.fields
+            .iter_mut()
+            .filter_map(move |(&number, value_or_unknown)| {
+                let value = match value_or_unknown {
+                    ValueOrUnknown::Value(value) => value,
+                    _ => return None,
+                };
+                let field = match message.get_extension(number) {
+                    Some(field) => field,
+                    _ => return None,
+                };
+                if field.has(value) {
+                    Some((
+                        field,
+                        replace(value_or_unknown, ValueOrUnknown::Taken).unwrap_value(),
+                    ))
+                } else {
+                    None
+                }
+            })
+    }
+
+    pub(crate) fn take_unknown(&mut self) -> impl Iterator<Item = UnknownField> + '_ {
+        self.fields
+            .values_mut()
+            .flat_map(move |value_or_unknown| match value_or_unknown {
+                ValueOrUnknown::Unknown(_) => replace(value_or_unknown, ValueOrUnknown::Taken)
+                    .unwrap_unknown()
+                    .into_iter(),
+                _ => vec![].into_iter(),
+            })
+    }
+
     pub(super) fn clear_all(&mut self) {
         self.fields.clear();
     }
@@ -252,7 +376,21 @@ impl ValueOrUnknown {
     fn unwrap_value_mut(&mut self) -> &mut Value {
         match self {
             ValueOrUnknown::Value(value) => value,
-            ValueOrUnknown::Unknown(_) => unreachable!(),
+            ValueOrUnknown::Unknown(_) | ValueOrUnknown::Taken => unreachable!(),
+        }
+    }
+
+    fn unwrap_value(self) -> Value {
+        match self {
+            ValueOrUnknown::Value(value) => value,
+            ValueOrUnknown::Unknown(_) | ValueOrUnknown::Taken => unreachable!(),
+        }
+    }
+
+    fn unwrap_unknown(self) -> UnknownFieldSet {
+        match self {
+            ValueOrUnknown::Unknown(unknowns) => unknowns,
+            ValueOrUnknown::Value(_) | ValueOrUnknown::Taken => unreachable!(),
         }
     }
 }
