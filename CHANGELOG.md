@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.5] - 2023-08-29
+
 ### Added
 
 - Added new APIs for getting and clearing message fields:
@@ -330,7 +332,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial release, including support for inspecting message types at runtime.
 
-[Unreleased]: https://github.com/andrewhickman/prost-reflect/compare/0.11.4...HEAD
+[Unreleased]: https://github.com/andrewhickman/prost-reflect/compare/0.11.5...HEAD
+[0.11.5]: https://github.com/andrewhickman/prost-reflect/compare/0.11.4...0.11.5
 [0.11.4]: https://github.com/andrewhickman/prost-reflect/compare/0.11.3...0.11.4
 [0.11.3]: https://github.com/andrewhickman/prost-reflect/compare/0.11.2...0.11.3
 [0.11.2]: https://github.com/andrewhickman/prost-reflect/compare/0.11.1...0.11.2
