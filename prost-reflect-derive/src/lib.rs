@@ -93,10 +93,10 @@ impl Args {
                     args.message_name = nested.value()?.parse()?;
                     Ok(())
                 } else {
-                    return Err(syn::Error::new(
+                    Err(syn::Error::new(
                         nested.path.span(),
                         "unknown argument (expected 'descriptor_pool', 'file_descriptor_set_bytes' or 'message_name')",
-                    ));
+                    ))
                 }
             })?;
         }
