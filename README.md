@@ -1,7 +1,7 @@
 [![crates.io](https://img.shields.io/crates/v/prost-reflect.svg)](https://crates.io/crates/prost-reflect/)
 [![docs.rs](https://docs.rs/prost-reflect/badge.svg)](https://docs.rs/prost-reflect/)
 [![deps.rs](https://deps.rs/crate/prost-reflect/0.11.5/status.svg)](https://deps.rs/crate/prost-reflect)
-![MSRV](https://img.shields.io/badge/rustc-1.60+-blue.svg)
+![MSRV](https://img.shields.io/badge/rustc-1.64+-blue.svg)
 [![Continuous integration](https://github.com/andrewhickman/prost-reflect/actions/workflows/ci.yml/badge.svg)](https://github.com/andrewhickman/prost-reflect/actions/workflows/ci.yml)
 [![codecov.io](https://codecov.io/gh/andrewhickman/prost-reflect/branch/main/graph/badge.svg?token=E2OITYXO7M)](https://codecov.io/gh/andrewhickman/prost-reflect)
 ![Apache 2.0 OR MIT licensed](https://img.shields.io/badge/license-Apache2.0%2FMIT-blue.svg)
@@ -17,9 +17,9 @@ protobuf type definition is not known ahead of time.
 
 The main entry points into the API of this crate are:
 
-- [`DescriptorPool`] wraps a [`FileDescriptorSet`][prost_types::FileDescriptorSet] output by 
+- [`DescriptorPool`] wraps a [`FileDescriptorSet`][prost_types::FileDescriptorSet] output by
   the protobuf compiler to provide an API for inspecting type definitions.
-- [`DynamicMessage`] provides encoding, decoding and reflection of an arbitrary protobuf 
+- [`DynamicMessage`] provides encoding, decoding and reflection of an arbitrary protobuf
   message definition described by a [`MessageDescriptor`].
 
 ### Example - decoding
@@ -104,7 +104,7 @@ prost_reflect_build::Builder::new()
 
 ## Minimum Supported Rust Version
 
-Rust **1.60** or higher.
+Rust **1.64** or higher.
 
 The minimum supported Rust version may be changed in the future, but it will be
 done with a minor version bump.

@@ -10,7 +10,7 @@ documentation = "https://docs.rs/prost-reflect"
 license = "MIT OR Apache-2.0"
 readme = "../README.md"
 edition = "2021"
-rust-version = "1.60.0"
+rust-version = "1.64.0"
 exclude = [
     "**/tests.rs",
     "proptest-regressions",
@@ -48,7 +48,7 @@ prost-build = "0.11.0"
 prost-reflect-build = { path = "../prost-reflect-build" }
 protox = "0.4.0"
 serde_json = "1.0.82"
-serde_yaml = "0.8.26"
+serde_yaml = "0.9.25"
 similar-asserts = { version = "1.4.2", features = ["serde"] }
 
 [package.metadata.release]

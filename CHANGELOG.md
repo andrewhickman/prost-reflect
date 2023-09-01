@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- The minimum supported rust version is now **1.64.0**.
+
 ## [0.11.5] - 2023-08-29
 
 ### Added
