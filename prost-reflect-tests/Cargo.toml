@@ -30,7 +30,7 @@ proptest = "1.0.0"
 proptest-derive = "0.4.0"
 serde_json = { version = "1.0.73", features = ["float_roundtrip"] }
 serde = "1.0.132"
-criterion = "0.4.0"
+criterion = "0.5.1"
 rayon = "1.5.3"
 
 [build-dependencies]
