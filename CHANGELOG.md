@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - The minimum supported rust version is now **1.64.0**.
+- Updated to prost [**0.12.0**](https://github.com/tokio-rs/prost/releases/tag/v0.12.0)
 - When adding files to a `DescriptorPool`, the library now validates that all referenced types are contained within the dependency files (including files imported using `import public`). Fixes #57.
 
 ## [0.11.5] - 2023-08-29
