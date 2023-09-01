@@ -1,0 +1,27 @@
+---
+source: prost-reflect/tests/main.rs
+expression: actual
+---
+file:
+  - dependency:
+      - dep.proto
+    name: test.proto
+    options:
+      "[unknown.extension]": 1
+  - dependency:
+      - transitive.proto
+    name: dep.proto
+    publicDependency:
+      - 0
+  - dependency:
+      - google/protobuf/descriptor.proto
+    extension:
+      - extendee: ".google.protobuf.FileOptions"
+        jsonName: extension
+        label: LABEL_OPTIONAL
+        name: extension
+        number: 1001
+        type: TYPE_INT32
+    name: transitive.proto
+    package: unknown
+

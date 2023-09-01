@@ -1,0 +1,29 @@
+---
+source: prost-reflect/tests/main.rs
+expression: actual
+---
+file:
+  - messageType:
+      - name: Foo
+    name: file1.proto
+    package: bar
+    syntax: proto3
+  - messageType:
+      - name: Foo
+    name: dep.proto
+    syntax: proto3
+  - dependency:
+      - dep.proto
+    messageType:
+      - field:
+          - jsonName: foo
+            label: LABEL_OPTIONAL
+            name: foo
+            number: 1
+            type: TYPE_MESSAGE
+            typeName: ".Foo"
+        name: Bar
+    name: file2.proto
+    package: bar
+    syntax: proto3
+

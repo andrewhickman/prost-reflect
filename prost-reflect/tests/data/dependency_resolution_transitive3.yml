@@ -1,0 +1,20 @@
+file:
+- name: dep.proto
+  syntax: proto3
+  dependency:
+  - transitive.proto
+- name: root.proto
+  syntax: proto3
+  dependency:
+  - dep.proto
+  messageType:
+  - name: Root
+    field:
+    - name: dep
+      number: 1
+      label: LABEL_OPTIONAL
+      typeName: Dependency
+- name: transitive.proto
+  syntax: proto3
+  messageType:
+  - name: Dependency

@@ -1,0 +1,10 @@
+---
+source: prost-reflect/tests/main.rs
+expression: actual
+---
+causes: []
+labels: []
+message: "expected an extension to type 'google.protobuf.FileOptions', but 'extension' extends 'google.protobuf.FieldOptions'"
+related: []
+severity: error
+

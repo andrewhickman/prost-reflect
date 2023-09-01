@@ -80,6 +80,8 @@ pub(super) enum DescriptorErrorKind {
     NameNotFound {
         name: String,
         found: Label,
+        #[cfg_attr(not(feature = "miette"), allow(dead_code))]
+        help: Option<String>,
     },
     InvalidType {
         name: String,
@@ -121,6 +123,12 @@ pub(super) enum DescriptorErrorKind {
         ty: String,
         value: String,
         is_last: bool,
+        found: Label,
+    },
+    InvalidOptionExtendee {
+        name: String,
+        expected_extendee: String,
+        actual_extendee: String,
         found: Label,
     },
     #[cfg(feature = "text-format")]
@@ -316,6 +324,7 @@ impl DescriptorErrorKind {
             DescriptorErrorKind::EnumNumberInReservedRange { found, .. } => Some(found),
             DescriptorErrorKind::OptionNotFound { found, .. } => Some(found),
             DescriptorErrorKind::InvalidOptionType { found, .. } => Some(found),
+            DescriptorErrorKind::InvalidOptionExtendee { found, .. } => Some(found),
             #[cfg(feature = "text-format")]
             DescriptorErrorKind::InvalidMessageOption { found, .. } => Some(found),
             DescriptorErrorKind::DuplicateOption { found, .. } => Some(found),
@@ -396,6 +405,9 @@ impl DescriptorErrorKind {
                 found.resolve_span(file, source);
             }
             DescriptorErrorKind::InvalidOptionType { found, .. } => {
+                found.resolve_span(file, source);
+            }
+            DescriptorErrorKind::InvalidOptionExtendee { found, .. } => {
                 found.resolve_span(file, source);
             }
             #[cfg(feature = "text-format")]
@@ -558,6 +570,18 @@ impl fmt::Display for DescriptorErrorKind {
                     )
                 }
             }
+            DescriptorErrorKind::InvalidOptionExtendee {
+                name,
+                expected_extendee,
+                actual_extendee,
+                ..
+            } => {
+                write!(
+                    f,
+                    "expected an extension to type '{}', but '{}' extends '{}'",
+                    expected_extendee, name, actual_extendee
+                )
+            }
             #[cfg(feature = "text-format")]
             DescriptorErrorKind::InvalidMessageOption { name, ty, .. } => {
                 write!(f, "invalid value of type '{}' for option '{}'", ty, name)
@@ -610,7 +634,9 @@ impl miette::Diagnostic for DescriptorErrorKind {
             DescriptorErrorKind::FieldNumberInExtensionRange { .. } => None,
             DescriptorErrorKind::DuplicateFieldJsonName { .. } => None,
             DescriptorErrorKind::DuplicateFieldCamelCaseName { .. } => None,
-            DescriptorErrorKind::NameNotFound { .. } => None,
+            DescriptorErrorKind::NameNotFound { help, .. } => help
+                .as_ref()
+                .map(|h| -> Box<dyn fmt::Display> { Box::new(h.clone()) }),
             DescriptorErrorKind::InvalidType { .. } => None,
             DescriptorErrorKind::InvalidFieldDefault { .. } => None,
             DescriptorErrorKind::EmptyEnum { .. } => None,
@@ -621,6 +647,7 @@ impl miette::Diagnostic for DescriptorErrorKind {
             DescriptorErrorKind::EnumNumberInReservedRange { .. } => None,
             DescriptorErrorKind::OptionNotFound { .. } => None,
             DescriptorErrorKind::InvalidOptionType { .. } => None,
+            DescriptorErrorKind::InvalidOptionExtendee { .. } => None,
             #[cfg(feature = "text-format")]
             DescriptorErrorKind::InvalidMessageOption { .. } => None,
             DescriptorErrorKind::DuplicateOption { .. } => None,
@@ -702,6 +729,9 @@ impl miette::Diagnostic for DescriptorErrorKind {
             DescriptorErrorKind::InvalidOptionType { found, .. } => {
                 spans.extend(found.to_span());
             }
+            DescriptorErrorKind::InvalidOptionExtendee { found, .. } => {
+                spans.extend(found.to_span());
+            }
             #[cfg(feature = "text-format")]
             DescriptorErrorKind::InvalidMessageOption { found, .. } => {
                 spans.extend(found.to_span());
@@ -725,6 +755,25 @@ impl miette::Diagnostic for DescriptorErrorKind {
             _ => None,
         }
     }
+}
+
+pub(super) type NameNotFoundHelp = Vec<(String, FileIndex)>;
+
+pub(super) fn fmt_name_not_found_help(
+    files: &[FileDescriptorInner],
+    root: FileIndex,
+    help: NameNotFoundHelp,
+) -> Option<String> {
+    let root_name = files[root as usize].raw.name();
+    help.into_iter()
+        .map(|(name, dep)| {
+            let dep_name = files[dep as usize].raw.name();
+            format!(
+                "'{}' is defined in '{}', which is not imported by '{}'",
+                name, dep_name, root_name
+            )
+        })
+        .next()
 }
 
 impl Label {

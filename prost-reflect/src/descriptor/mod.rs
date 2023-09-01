@@ -11,7 +11,7 @@ pub use self::error::DescriptorError;
 use self::types::{DescriptorProto, EnumDescriptorProto};
 
 use std::{
-    collections::{BTreeMap, HashMap},
+    collections::{BTreeMap, HashMap, HashSet},
     convert::TryInto,
     fmt,
     ops::Range,
@@ -187,6 +187,7 @@ struct FileDescriptorInner {
     raw: FileDescriptorProto,
     prost: prost_types::FileDescriptorProto,
     dependencies: Vec<FileIndex>,
+    transitive_dependencies: HashSet<FileIndex>,
 }
 
 /// A protobuf message definition.

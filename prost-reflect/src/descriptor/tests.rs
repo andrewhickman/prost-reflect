@@ -47,6 +47,7 @@ fn resolve_service_name_other_package() {
             FileDescriptorProto {
                 name: Some("myfile.proto".to_owned()),
                 package: Some("my.package".to_owned()),
+                dependency: vec!["myfile2.proto".to_owned()],
                 syntax: Some("proto3".to_owned()),
                 service: vec![ServiceDescriptorProto {
                     name: Some("MyService".to_owned()),

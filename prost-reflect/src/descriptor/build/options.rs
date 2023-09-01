@@ -9,7 +9,7 @@ use crate::{
             visit::{visit, Visitor},
             DescriptorPoolOffsets,
         },
-        error::{DescriptorErrorKind, Label},
+        error::{fmt_name_not_found_help, DescriptorErrorKind, Label},
         tag,
         types::{
             uninterpreted_option, DescriptorProto, EnumDescriptorProto, EnumValueDescriptorProto,
@@ -357,53 +357,40 @@ impl<'a> OptionsVisitor<'a> {
 
             let desc = message.descriptor();
             if part.is_extension {
-                match self.find_extension(scope, &part.name_part) {
-                    Some(extension_desc) => {
-                        resolved_path.push(extension_desc.number() as i32);
+                let extension_desc =
+                    self.find_extension(scope, &part.name_part, file, &path, &desc)?;
+                resolved_path.push(extension_desc.number() as i32);
 
-                        if is_last {
-                            if extension_desc.cardinality() != Cardinality::Repeated
-                                && message.has_extension(&extension_desc)
-                            {
-                                return Err(DescriptorErrorKind::DuplicateOption {
-                                    name: fmt_option_name(&option.name),
-                                    found: Label::new(
-                                        &self.pool.inner.files,
-                                        "found here",
-                                        file,
-                                        path,
-                                    ),
-                                });
-                            } else {
-                                self.set_field_value(
-                                    message.get_extension_mut(&extension_desc),
-                                    &mut resolved_path,
-                                    &extension_desc,
-                                    option,
-                                    file,
-                                    &path,
-                                )?;
-                            }
-                        } else if let Value::Message(submessage) =
-                            message.get_extension_mut(&extension_desc)
-                        {
-                            message = submessage;
-                        } else {
-                            return Err(DescriptorErrorKind::InvalidOptionType {
-                                name: fmt_option_name(&option.name[..i + 1]),
-                                ty: fmt_field_ty(&extension_desc),
-                                value: fmt_value(option),
-                                is_last,
-                                found: Label::new(&self.pool.inner.files, "found here", file, path),
-                            });
-                        }
-                    }
-                    None => {
-                        return Err(DescriptorErrorKind::OptionNotFound {
-                            name: fmt_option_name(&option.name[..i + 1]),
+                if is_last {
+                    if extension_desc.cardinality() != Cardinality::Repeated
+                        && message.has_extension(&extension_desc)
+                    {
+                        return Err(DescriptorErrorKind::DuplicateOption {
+                            name: fmt_option_name(&option.name),
                             found: Label::new(&self.pool.inner.files, "found here", file, path),
-                        })
+                        });
+                    } else {
+                        self.set_field_value(
+                            message.get_extension_mut(&extension_desc),
+                            &mut resolved_path,
+                            &extension_desc,
+                            option,
+                            file,
+                            &path,
+                        )?;
                     }
+                } else if let Value::Message(submessage) =
+                    message.get_extension_mut(&extension_desc)
+                {
+                    message = submessage;
+                } else {
+                    return Err(DescriptorErrorKind::InvalidOptionType {
+                        name: fmt_option_name(&option.name[..i + 1]),
+                        ty: fmt_field_ty(&extension_desc),
+                        value: fmt_value(option),
+                        is_last,
+                        found: Label::new(&self.pool.inner.files, "found here", file, path),
+                    });
                 }
             } else {
                 match desc.get_field_by_name(&part.name_part) {
@@ -526,19 +513,60 @@ impl<'a> OptionsVisitor<'a> {
         Ok(())
     }
 
-    fn find_extension(&self, scope: &str, name: &str) -> Option<ExtensionDescriptor> {
-        match resolve_name(&self.pool.inner.names, scope, name) {
-            Some((
+    #[allow(clippy::result_large_err)]
+    fn find_extension(
+        &self,
+        scope: &str,
+        name: &str,
+        file: FileIndex,
+        path: &[i32],
+        extendee: &MessageDescriptor,
+    ) -> Result<ExtensionDescriptor, DescriptorErrorKind> {
+        match resolve_name(
+            &self.pool.inner.files[file as usize].transitive_dependencies,
+            &self.pool.inner.names,
+            scope,
+            name,
+        ) {
+            Ok((
                 _,
                 &Definition {
                     kind: DefinitionKind::Extension(index),
                     ..
                 },
-            )) => Some(ExtensionDescriptor {
-                pool: self.pool.clone(),
-                index,
+            )) => {
+                let desc = ExtensionDescriptor {
+                    pool: self.pool.clone(),
+                    index,
+                };
+
+                if desc.containing_message() == *extendee {
+                    Ok(desc)
+                } else {
+                    Err(DescriptorErrorKind::InvalidOptionExtendee {
+                        name: desc.full_name().to_owned(),
+                        expected_extendee: extendee.full_name().to_owned(),
+                        actual_extendee: desc.containing_message().full_name().to_owned(),
+                        found: Label::new(&self.pool.inner.files, "found here", file, path.into()),
+                    })
+                }
+            }
+            Ok((_, def)) => {
+                let def_file = def.file;
+                let def_path = def.path.clone();
+
+                Err(DescriptorErrorKind::InvalidType {
+                    name: name.to_owned(),
+                    expected: "an extension".to_owned(),
+                    found: Label::new(&self.pool.inner.files, "found here", file, path.into()),
+                    defined: Label::new(&self.pool.inner.files, "defined here", def_file, def_path),
+                })
+            }
+            Err(help) => Err(DescriptorErrorKind::NameNotFound {
+                name: name.to_owned(),
+                found: Label::new(&self.pool.inner.files, "found here", file, path.into()),
+                help: fmt_name_not_found_help(&self.pool.inner.files, file, help),
             }),
-            _ => None,
         }
     }
 }

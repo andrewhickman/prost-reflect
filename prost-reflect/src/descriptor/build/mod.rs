@@ -3,12 +3,16 @@ mod options;
 mod resolve;
 mod visit;
 
-use std::{borrow::Cow, collections::HashMap, sync::Arc};
+use std::{
+    borrow::Cow,
+    collections::{HashMap, HashSet},
+    sync::Arc,
+};
 
 use crate::{
     descriptor::{
-        to_index, types::FileDescriptorProto, Definition, DefinitionKind, DescriptorPoolInner,
-        EnumIndex, ExtensionIndex, FileIndex, MessageIndex, ServiceIndex,
+        error::NameNotFoundHelp, to_index, types::FileDescriptorProto, Definition, DefinitionKind,
+        DescriptorPoolInner, EnumIndex, ExtensionIndex, FileIndex, MessageIndex, ServiceIndex,
     },
     DescriptorError, DescriptorPool,
 };
@@ -130,26 +134,44 @@ fn to_json_name(name: &str) -> String {
 }
 
 fn resolve_name<'a, 'b>(
+    dependencies: &HashSet<FileIndex>,
     names: &'a HashMap<Box<str>, Definition>,
     scope: &str,
     name: &'b str,
-) -> Option<(Cow<'b, str>, &'a Definition)> {
+) -> Result<(Cow<'b, str>, &'a Definition), NameNotFoundHelp> {
     match name.strip_prefix('.') {
-        Some(full_name) => names.get(full_name).map(|def| (Cow::Borrowed(name), def)),
-        None => resolve_relative_name(names, scope, name)
-            .map(|(resolved_name, def)| (Cow::Owned(resolved_name), def)),
+        Some(full_name) => match names.get(full_name) {
+            Some(def) => {
+                if dependencies.contains(&def.file) {
+                    Ok((Cow::Borrowed(full_name), def))
+                } else {
+                    Err(vec![(full_name.to_owned(), def.file)])
+                }
+            }
+            None => Err(vec![]),
+        },
+        None => {
+            let (resolved_name, def) = resolve_relative_name(dependencies, names, scope, name)?;
+            Ok((Cow::Owned(resolved_name), def))
+        }
     }
 }
 
 fn resolve_relative_name<'a>(
+    dependencies: &HashSet<FileIndex>,
     names: &'a HashMap<Box<str>, Definition>,
     scope: &str,
     relative_name: &str,
-) -> Option<(String, &'a Definition)> {
+) -> Result<(String, &'a Definition), NameNotFoundHelp> {
     let mut buf = format!(".{}.{}", scope, relative_name);
+    let mut help = Vec::new();
 
     if let Some(def) = names.get(&buf[1..]) {
-        return Some((buf, def));
+        if dependencies.contains(&def.file) {
+            return Ok((buf, def));
+        } else {
+            help.push((buf[1..].to_owned(), def.file));
+        }
     }
 
     for (i, _) in scope.rmatch_indices('.') {
@@ -157,17 +179,25 @@ fn resolve_relative_name<'a>(
         buf.push_str(relative_name);
 
         if let Some(def) = names.get(&buf[1..]) {
-            return Some((buf, def));
+            if dependencies.contains(&def.file) {
+                return Ok((buf, def));
+            } else {
+                help.push((buf[1..].to_owned(), def.file));
+            }
         }
     }
 
     buf.truncate(1);
     buf.push_str(relative_name);
     if let Some(def) = names.get(&buf[1..]) {
-        return Some((buf, def));
+        if dependencies.contains(&def.file) {
+            return Ok((buf, def));
+        } else {
+            help.push((buf[1..].to_owned(), def.file));
+        }
     }
 
-    None
+    Err(help)
 }
 
 fn join_path(path1: &[i32], path2: &[i32]) -> Box<[i32]> {

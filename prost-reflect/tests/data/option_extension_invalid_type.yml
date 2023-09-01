@@ -1,0 +1,10 @@
+file:
+- name: test.proto
+  options:
+    uninterpretedOption:
+    - name:
+      - namePart: extension
+        isExtension: true
+      positiveIntValue: '1'
+  messageType:
+  - name: extension

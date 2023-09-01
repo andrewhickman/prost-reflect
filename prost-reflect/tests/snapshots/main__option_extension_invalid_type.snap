@@ -4,7 +4,7 @@ expression: actual
 ---
 causes: []
 labels: []
-message: "name 'an.extension' is not defined"
+message: "'extension' is not an extension"
 related: []
 severity: error
 

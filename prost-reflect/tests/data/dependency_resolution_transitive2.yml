@@ -1,0 +1,23 @@
+file:
+- name: file1.proto
+  syntax: proto3
+  package: bar
+  messageType:
+  - name: Foo
+- name: dep.proto
+  syntax: proto3
+  messageType:
+  - name: Foo
+- name: file2.proto
+  syntax: proto3
+  package: bar
+  dependency:
+  - dep.proto
+  messageType:
+  - name: Bar
+    field:
+    - name: foo
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_MESSAGE
+      typeName: Foo

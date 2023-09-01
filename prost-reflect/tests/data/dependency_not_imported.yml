@@ -1,0 +1,14 @@
+file:
+- name: dep.proto
+  syntax: proto3
+  messageType:
+  - name: Dependency
+- name: root.proto
+  syntax: proto3
+  messageType:
+  - name: Root
+    field:
+    - name: dep
+      number: 1
+      label: LABEL_OPTIONAL
+      typeName: Dependency
