@@ -917,7 +917,7 @@ dependencies = [
 
 [[package]]
 name = "prost-reflect-build"
-version = "0.11.0"
+version = "0.12.0"
 dependencies = [
  "prost-build",
  "prost-reflect 0.12.0",
