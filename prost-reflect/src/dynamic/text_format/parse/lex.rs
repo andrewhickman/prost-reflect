@@ -387,7 +387,7 @@ mod tests {
 
     #[test]
     fn string_unicode_escape() {
-        let source = r#"'\u0068\u0065\u006c\u006c\u006f\u0020\U0001f600'"#;
+        let source = r"'\u0068\u0065\u006c\u006c\u006f\u0020\U0001f600'";
         let mut lexer = Token::lexer(source);
 
         assert_eq!(
@@ -403,7 +403,7 @@ mod tests {
 
     #[test]
     fn string_invalid_unicode_escape() {
-        let mut lexer = Token::lexer(r#"'\Uffffffff'"#);
+        let mut lexer = Token::lexer(r"'\Uffffffff'");
         assert_eq!(lexer.next(), Some(Err(())));
         assert_eq!(
             lexer.extras.error,

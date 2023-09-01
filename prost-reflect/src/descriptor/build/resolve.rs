@@ -987,15 +987,15 @@ fn test_unescape_c_escape_string() {
     );
     assert_eq!(
         Ok(Bytes::from_static(b"\0")),
-        unescape_c_escape_string(r#"\0"#),
+        unescape_c_escape_string(r"\0"),
     );
     assert_eq!(
         Ok(Bytes::from_static(&[0o012, 0o156])),
-        unescape_c_escape_string(r#"\012\156"#),
+        unescape_c_escape_string(r"\012\156"),
     );
     assert_eq!(
         Ok(Bytes::from_static(&[0x01, 0x02])),
-        unescape_c_escape_string(r#"\x01\x02"#)
+        unescape_c_escape_string(r"\x01\x02")
     );
     assert_eq!(
         Ok(Bytes::from_static(
@@ -1005,26 +1005,23 @@ fn test_unescape_c_escape_string() {
     );
     assert_eq!(
         Err("hex escape must contain two characters"),
-        unescape_c_escape_string(r#"\x"#)
+        unescape_c_escape_string(r"\x")
     );
     assert_eq!(
         Err("hex escape must contain two characters"),
-        unescape_c_escape_string(r#"\x1"#)
+        unescape_c_escape_string(r"\x1")
     );
     assert_eq!(
         Ok(Bytes::from_static(b"\x11")),
-        unescape_c_escape_string(r#"\x11"#),
+        unescape_c_escape_string(r"\x11"),
     );
     assert_eq!(
         Ok(Bytes::from_static(b"\x111")),
-        unescape_c_escape_string(r#"\x111"#),
+        unescape_c_escape_string(r"\x111")
     );
     assert_eq!(
         Err("invalid escape character"),
-        unescape_c_escape_string(r#"\w"#)
+        unescape_c_escape_string(r"\w")
     );
-    assert_eq!(
-        Err("invalid hex escape"),
-        unescape_c_escape_string(r#"\x__"#)
-    );
+    assert_eq!(Err("invalid hex escape"), unescape_c_escape_string(r"\x__"));
 }
