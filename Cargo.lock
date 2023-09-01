@@ -882,6 +882,19 @@ dependencies = [
 [[package]]
 name = "prost-reflect"
 version = "0.11.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6b823de344848e011658ac981009100818b322421676740546f8b52ed5249428"
+dependencies = [
+ "logos",
+ "miette",
+ "once_cell",
+ "prost 0.11.9",
+ "prost-types 0.11.9",
+]
+
+[[package]]
+name = "prost-reflect"
+version = "0.12.0"
 dependencies = [
  "base64",
  "insta",
@@ -903,24 +916,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "prost-reflect"
-version = "0.11.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6b823de344848e011658ac981009100818b322421676740546f8b52ed5249428"
-dependencies = [
- "logos",
- "miette",
- "once_cell",
- "prost 0.11.9",
- "prost-types 0.11.9",
-]
-
-[[package]]
 name = "prost-reflect-build"
 version = "0.11.0"
 dependencies = [
  "prost-build",
- "prost-reflect 0.11.5",
+ "prost-reflect 0.12.0",
 ]
 
 [[package]]
@@ -933,7 +933,7 @@ dependencies = [
  "once_cell",
  "prost 0.12.0",
  "prost-build",
- "prost-reflect 0.11.5",
+ "prost-reflect 0.12.0",
  "prost-types 0.12.0",
  "serde",
  "serde_json",
@@ -949,7 +949,7 @@ dependencies = [
  "once_cell",
  "proc-macro2",
  "prost 0.12.0",
- "prost-reflect 0.11.5",
+ "prost-reflect 0.12.0",
  "quote",
  "syn 2.0.29",
  "trybuild",
@@ -965,7 +965,7 @@ dependencies = [
  "proptest-derive",
  "prost 0.12.0",
  "prost-build",
- "prost-reflect 0.11.5",
+ "prost-reflect 0.12.0",
  "prost-reflect-build",
  "prost-types 0.12.0",
  "rayon",
@@ -1000,7 +1000,7 @@ dependencies = [
  "bytes",
  "miette",
  "prost 0.11.9",
- "prost-reflect 0.11.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "prost-reflect 0.11.5",
  "prost-types 0.11.9",
  "protox-parse",
  "thiserror",

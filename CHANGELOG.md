@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.0] - 2023-09-01
+
 ### Changed
 
 - The minimum supported rust version is now **1.64.0**.
@@ -338,7 +340,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial release, including support for inspecting message types at runtime.
 
-[Unreleased]: https://github.com/andrewhickman/prost-reflect/compare/0.11.5...HEAD
+[Unreleased]: https://github.com/andrewhickman/prost-reflect/compare/0.12.0...HEAD
+[0.12.0]: https://github.com/andrewhickman/prost-reflect/compare/0.11.5...0.12.0
 [0.11.5]: https://github.com/andrewhickman/prost-reflect/compare/0.11.4...0.11.5
 [0.11.4]: https://github.com/andrewhickman/prost-reflect/compare/0.11.3...0.11.4
 [0.11.3]: https://github.com/andrewhickman/prost-reflect/compare/0.11.2...0.11.3
