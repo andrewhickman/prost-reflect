@@ -1,0 +1,131 @@
+file:
+- name: include/package.proto
+  package: foo
+  messageType:
+  - name: Foo
+  syntax: proto3
+- name: include/no_package.proto
+  messageType:
+  - name: Bar
+  syntax: proto3
+- name: name_resolution.proto
+  package: foo.bar
+  dependency:
+  - include/package.proto
+  - include/no_package.proto
+  messageType:
+  - name: FooBar
+  - name: Names
+    field:
+    - name: field1
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_MESSAGE
+      typeName: ".foo.bar.FooBar"
+      jsonName: field1
+    - name: field2
+      number: 2
+      label: LABEL_OPTIONAL
+      type: TYPE_MESSAGE
+      typeName: "foo.bar.FooBar"
+      jsonName: field2
+    - name: field3
+      number: 3
+      label: LABEL_OPTIONAL
+      type: TYPE_MESSAGE
+      typeName: "bar.FooBar"
+      jsonName: field3
+    - name: field4
+      number: 4
+      label: LABEL_OPTIONAL
+      type: TYPE_MESSAGE
+      typeName: "FooBar"
+      jsonName: field4
+    - name: field5
+      number: 5
+      label: LABEL_OPTIONAL
+      type: TYPE_MESSAGE
+      typeName: ".foo.Foo"
+      jsonName: field5
+    - name: field6
+      number: 6
+      label: LABEL_OPTIONAL
+      type: TYPE_MESSAGE
+      typeName: "foo.Foo"
+      jsonName: field6
+    - name: field7
+      number: 7
+      label: LABEL_OPTIONAL
+      type: TYPE_MESSAGE
+      typeName: "Foo"
+      jsonName: field7
+    - name: field8
+      number: 8
+      label: LABEL_OPTIONAL
+      type: TYPE_MESSAGE
+      typeName: ".Bar"
+      jsonName: field8
+    - name: field9
+      number: 9
+      label: LABEL_OPTIONAL
+      type: TYPE_MESSAGE
+      typeName: "Bar"
+      jsonName: field9
+    nestedType:
+    - name: Nested
+      field:
+      - name: field1
+        number: 1
+        label: LABEL_OPTIONAL
+        type: TYPE_MESSAGE
+        typeName: ".foo.bar.FooBar"
+        jsonName: field1
+      - name: field2
+        number: 2
+        label: LABEL_OPTIONAL
+        type: TYPE_MESSAGE
+        typeName: "foo.bar.FooBar"
+        jsonName: field2
+      - name: field3
+        number: 3
+        label: LABEL_OPTIONAL
+        type: TYPE_MESSAGE
+        typeName: "bar.FooBar"
+        jsonName: field3
+      - name: field4
+        number: 4
+        label: LABEL_OPTIONAL
+        type: TYPE_MESSAGE
+        typeName: "FooBar"
+        jsonName: field4
+      - name: field5
+        number: 5
+        label: LABEL_OPTIONAL
+        type: TYPE_MESSAGE
+        typeName: ".foo.Foo"
+        jsonName: field5
+      - name: field6
+        number: 6
+        label: LABEL_OPTIONAL
+        type: TYPE_MESSAGE
+        typeName: "foo.Foo"
+        jsonName: field6
+      - name: field7
+        number: 7
+        label: LABEL_OPTIONAL
+        type: TYPE_MESSAGE
+        typeName: "Foo"
+        jsonName: field7
+      - name: field8
+        number: 8
+        label: LABEL_OPTIONAL
+        type: TYPE_MESSAGE
+        typeName: ".Bar"
+        jsonName: field8
+      - name: field9
+        number: 9
+        label: LABEL_OPTIONAL
+        type: TYPE_MESSAGE
+        typeName: "Bar"
+        jsonName: field9
+  syntax: proto3

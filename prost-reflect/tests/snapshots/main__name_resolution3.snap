@@ -1,0 +1,136 @@
+---
+source: prost-reflect/tests/main.rs
+expression: actual
+---
+file:
+  - messageType:
+      - name: Foo
+    name: include/package.proto
+    package: foo
+    syntax: proto3
+  - messageType:
+      - name: Bar
+    name: include/no_package.proto
+    syntax: proto3
+  - dependency:
+      - include/package.proto
+      - include/no_package.proto
+    messageType:
+      - name: FooBar
+      - field:
+          - jsonName: field1
+            label: LABEL_OPTIONAL
+            name: field1
+            number: 1
+            type: TYPE_MESSAGE
+            typeName: ".foo.bar.FooBar"
+          - jsonName: field2
+            label: LABEL_OPTIONAL
+            name: field2
+            number: 2
+            type: TYPE_MESSAGE
+            typeName: ".foo.bar.FooBar"
+          - jsonName: field3
+            label: LABEL_OPTIONAL
+            name: field3
+            number: 3
+            type: TYPE_MESSAGE
+            typeName: ".foo.bar.FooBar"
+          - jsonName: field4
+            label: LABEL_OPTIONAL
+            name: field4
+            number: 4
+            type: TYPE_MESSAGE
+            typeName: ".foo.bar.FooBar"
+          - jsonName: field5
+            label: LABEL_OPTIONAL
+            name: field5
+            number: 5
+            type: TYPE_MESSAGE
+            typeName: ".foo.Foo"
+          - jsonName: field6
+            label: LABEL_OPTIONAL
+            name: field6
+            number: 6
+            type: TYPE_MESSAGE
+            typeName: ".foo.Foo"
+          - jsonName: field7
+            label: LABEL_OPTIONAL
+            name: field7
+            number: 7
+            type: TYPE_MESSAGE
+            typeName: ".foo.Foo"
+          - jsonName: field8
+            label: LABEL_OPTIONAL
+            name: field8
+            number: 8
+            type: TYPE_MESSAGE
+            typeName: ".Bar"
+          - jsonName: field9
+            label: LABEL_OPTIONAL
+            name: field9
+            number: 9
+            type: TYPE_MESSAGE
+            typeName: ".Bar"
+        name: Names
+        nestedType:
+          - field:
+              - jsonName: field1
+                label: LABEL_OPTIONAL
+                name: field1
+                number: 1
+                type: TYPE_MESSAGE
+                typeName: ".foo.bar.FooBar"
+              - jsonName: field2
+                label: LABEL_OPTIONAL
+                name: field2
+                number: 2
+                type: TYPE_MESSAGE
+                typeName: ".foo.bar.FooBar"
+              - jsonName: field3
+                label: LABEL_OPTIONAL
+                name: field3
+                number: 3
+                type: TYPE_MESSAGE
+                typeName: ".foo.bar.FooBar"
+              - jsonName: field4
+                label: LABEL_OPTIONAL
+                name: field4
+                number: 4
+                type: TYPE_MESSAGE
+                typeName: ".foo.bar.FooBar"
+              - jsonName: field5
+                label: LABEL_OPTIONAL
+                name: field5
+                number: 5
+                type: TYPE_MESSAGE
+                typeName: ".foo.Foo"
+              - jsonName: field6
+                label: LABEL_OPTIONAL
+                name: field6
+                number: 6
+                type: TYPE_MESSAGE
+                typeName: ".foo.Foo"
+              - jsonName: field7
+                label: LABEL_OPTIONAL
+                name: field7
+                number: 7
+                type: TYPE_MESSAGE
+                typeName: ".foo.Foo"
+              - jsonName: field8
+                label: LABEL_OPTIONAL
+                name: field8
+                number: 8
+                type: TYPE_MESSAGE
+                typeName: ".Bar"
+              - jsonName: field9
+                label: LABEL_OPTIONAL
+                name: field9
+                number: 9
+                type: TYPE_MESSAGE
+                typeName: ".Bar"
+            name: Nested
+    name: name_resolution.proto
+    package: foo.bar
+    syntax: proto3
+

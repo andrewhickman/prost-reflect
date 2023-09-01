@@ -143,7 +143,7 @@ fn resolve_name<'a, 'b>(
         Some(full_name) => match names.get(full_name) {
             Some(def) => {
                 if dependencies.contains(&def.file) {
-                    Ok((Cow::Borrowed(full_name), def))
+                    Ok((Cow::Borrowed(name), def))
                 } else {
                     Err(vec![(full_name.to_owned(), def.file)])
                 }
