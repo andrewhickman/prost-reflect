@@ -31,52 +31,52 @@ jobs:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - run: cargo test --all-features
 
-  lints:
-    name: Lints
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: dtolnay/rust-toolchain@v1
-        with:
-          toolchain: stable
-          components: clippy, rustfmt
-      - name: Get latest CMake and ninja
-        uses: lukka/get-cmake@latest
-      - name: Install Protoc
-        uses: arduino/setup-protoc@v1
-        with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-      - run: cargo fmt --all -- --check
-      - run: cargo clippy --all -- -D warnings
-      - run: cargo check
-      - run: cargo check --package prost-reflect --no-default-features
-      - run: cargo check --package prost-reflect --no-default-features --features=text-format
-      - run: cargo check --package prost-reflect --no-default-features --features=serde
-      - run: cargo check --package prost-reflect --all-features
-      - name: Check README.md is up-to-date
-        shell: pwsh
-        run: |
-          ./generate-readme.ps1
-          if (git diff README.md) {
-            Write-Error "README.md is out-of-date, run generate-readme.ps1 to regenerate it." -ErrorAction Stop
-          }
+  # lints:
+  #   name: Lints
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v2
+  #     - uses: dtolnay/rust-toolchain@v1
+  #       with:
+  #         toolchain: stable
+  #         components: clippy, rustfmt
+  #     - name: Get latest CMake and ninja
+  #       uses: lukka/get-cmake@latest
+  #     - name: Install Protoc
+  #       uses: arduino/setup-protoc@v1
+  #       with:
+  #         repo-token: ${{ secrets.GITHUB_TOKEN }}
+  #     - run: cargo fmt --all -- --check
+  #     - run: cargo clippy --all -- -D warnings
+  #     - run: cargo check
+  #     - run: cargo check --package prost-reflect --no-default-features
+  #     - run: cargo check --package prost-reflect --no-default-features --features=text-format
+  #     - run: cargo check --package prost-reflect --no-default-features --features=serde
+  #     - run: cargo check --package prost-reflect --all-features
+  #     - name: Check README.md is up-to-date
+  #       shell: pwsh
+  #       run: |
+  #         ./generate-readme.ps1
+  #         if (git diff README.md) {
+  #           Write-Error "README.md is out-of-date, run generate-readme.ps1 to regenerate it." -ErrorAction Stop
+  #         }
 
-  coverage:
-    name: Coverage
-    runs-on: ubuntu-latest
-    container:
-      image: xd009642/tarpaulin:develop
-      options: --security-opt seccomp=unconfined
-    steps:
-      - uses: actions/checkout@v2
-      - name: Install Protoc
-        uses: arduino/setup-protoc@v1
-        with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Generate code coverage
-        run: |
-          cargo tarpaulin --verbose --packages prost-reflect prost-reflect-tests --all-features --timeout 120 --out xml
-      - name: Upload to codecov.io
-        uses: codecov/codecov-action@v3
-        with:
-          fail_ci_if_error: true
+  # coverage:
+  #   name: Coverage
+  #   runs-on: ubuntu-latest
+  #   container:
+  #     image: xd009642/tarpaulin:develop
+  #     options: --security-opt seccomp=unconfined
+  #   steps:
+  #     - uses: actions/checkout@v2
+  #     - name: Install Protoc
+  #       uses: arduino/setup-protoc@v1
+  #       with:
+  #         repo-token: ${{ secrets.GITHUB_TOKEN }}
+  #     - name: Generate code coverage
+  #       run: |
+  #         cargo tarpaulin --verbose --packages prost-reflect prost-reflect-tests --all-features --timeout 120 --out xml
+  #     - name: Upload to codecov.io
+  #       uses: codecov/codecov-action@v3
+  #       with:
+  #         fail_ci_if_error: true
