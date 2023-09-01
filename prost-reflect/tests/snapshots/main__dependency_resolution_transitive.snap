@@ -1,0 +1,29 @@
+---
+source: prost-reflect/tests/main.rs
+expression: actual
+---
+file:
+  - dependency:
+      - transitive.proto
+    name: dep.proto
+    publicDependency:
+      - 0
+    syntax: proto3
+  - dependency:
+      - dep.proto
+    messageType:
+      - field:
+          - jsonName: dep
+            label: LABEL_OPTIONAL
+            name: dep
+            number: 1
+            type: TYPE_MESSAGE
+            typeName: ".Dependency"
+        name: Root
+    name: root.proto
+    syntax: proto3
+  - messageType:
+      - name: Dependency
+    name: transitive.proto
+    syntax: proto3
+

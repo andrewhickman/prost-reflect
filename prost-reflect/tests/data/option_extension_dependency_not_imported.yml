@@ -1,0 +1,18 @@
+file:
+- name: test.proto
+  options:
+    uninterpretedOption:
+    - name:
+      - namePart: unknown.extension
+        isExtension: true
+      positiveIntValue: '1'
+- name: dep.proto
+  package: unknown
+  dependency:
+    - google/protobuf/descriptor.proto
+  extension:
+  - name: extension
+    extendee: google.protobuf.FileOptions
+    number: 1001
+    label: LABEL_OPTIONAL
+    type: TYPE_INT32

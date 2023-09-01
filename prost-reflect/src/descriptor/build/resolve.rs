@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use prost::bytes::Bytes;
 
 use crate::{
@@ -7,7 +9,9 @@ use crate::{
             visit::{visit, Visitor},
             DescriptorPoolOffsets,
         },
-        error::{DescriptorError, DescriptorErrorKind, Label},
+        error::{
+            fmt_name_not_found_help, DescriptorError, DescriptorErrorKind, Label, NameNotFoundHelp,
+        },
         find_enum_proto, find_message_proto, tag, to_index,
         types::{
             field_descriptor_proto, DescriptorProto, EnumValueDescriptorProto,
@@ -49,11 +53,17 @@ struct ResolveVisitor<'a> {
 
 impl<'a> Visitor for ResolveVisitor<'a> {
     fn visit_file(&mut self, path: &[i32], index: FileIndex, file: &FileDescriptorProto) {
+        let mut transitive_dependencies = HashSet::with_capacity(file.dependency.len() + 1);
+        transitive_dependencies.insert(index);
+
         for (i, dependency) in file.dependency.iter().enumerate() {
             if let Some(&dependency_index) = self.pool.file_names.get(dependency.as_str()) {
                 self.pool.files[index as usize]
                     .dependencies
                     .push(dependency_index);
+
+                transitive_dependencies.insert(dependency_index);
+                self.resolve_public_dependencies(&mut transitive_dependencies, dependency_index);
             } else {
                 self.errors.push(DescriptorErrorKind::FileNotFound {
                     name: dependency.clone(),
@@ -66,6 +76,9 @@ impl<'a> Visitor for ResolveVisitor<'a> {
                 });
             }
         }
+
+        self.pool.files[index as usize].transitive_dependencies = transitive_dependencies;
+
         for &public_dependency in &file.public_dependency {
             if !matches!(usize::try_from(public_dependency), Ok(i) if i < file.dependency.len()) {
                 self.errors.push(DescriptorErrorKind::InvalidImportIndex);
@@ -404,6 +417,20 @@ impl<'a> Visitor for ResolveVisitor<'a> {
 }
 
 impl<'a> ResolveVisitor<'a> {
+    fn resolve_public_dependencies(&self, dependencies: &mut HashSet<FileIndex>, index: FileIndex) {
+        let file = &self.pool.files[index as usize];
+
+        for (i, dependency) in file.raw.dependency.iter().enumerate() {
+            if let Some(&dependency_index) = self.pool.file_names.get(dependency.as_str()) {
+                if file.raw.public_dependency.contains(&(i as i32))
+                    && !dependencies.insert(dependency_index)
+                {
+                    self.resolve_public_dependencies(dependencies, dependency_index);
+                }
+            }
+        }
+    }
+
     fn check_field_number(
         &mut self,
         message: MessageIndex,
@@ -578,7 +605,7 @@ impl<'a> ResolveVisitor<'a> {
             }
         } else {
             match self.resolve_name(scope, ty_name, file, path, tag::field::TYPE_NAME) {
-                Some(Definition {
+                Ok(Definition {
                     kind: DefinitionKind::Message(message),
                     ..
                 }) => {
@@ -588,11 +615,11 @@ impl<'a> ResolveVisitor<'a> {
                         Ok(KindIndex::Message(*message))
                     }
                 }
-                Some(Definition {
+                Ok(Definition {
                     kind: DefinitionKind::Enum(enum_),
                     ..
                 }) => Ok(KindIndex::Enum(*enum_)),
-                Some(def) => {
+                Ok(def) => {
                     let def_file = def.file;
                     let def_path = def.path.clone();
 
@@ -609,7 +636,7 @@ impl<'a> ResolveVisitor<'a> {
                     });
                     Err(())
                 }
-                None => {
+                Err(help) => {
                     self.errors.push(DescriptorErrorKind::NameNotFound {
                         name: ty_name.to_owned(),
                         found: Label::new(
@@ -618,6 +645,7 @@ impl<'a> ResolveVisitor<'a> {
                             file,
                             join_path(path, &[tag::field::TYPE_NAME]),
                         ),
+                        help: fmt_name_not_found_help(&self.pool.files, file, help),
                     });
                     Err(())
                 }
@@ -711,11 +739,11 @@ impl<'a> ResolveVisitor<'a> {
         path2: i32,
     ) -> Option<MessageIndex> {
         match self.resolve_name(scope, name, file, path1, path2) {
-            Some(Definition {
+            Ok(Definition {
                 kind: DefinitionKind::Message(message),
                 ..
             }) => Some(*message),
-            Some(def) => {
+            Ok(def) => {
                 let def_file = def.file;
                 let def_path = def.path.clone();
 
@@ -732,7 +760,7 @@ impl<'a> ResolveVisitor<'a> {
                 });
                 None
             }
-            None => {
+            Err(help) => {
                 self.errors.push(DescriptorErrorKind::NameNotFound {
                     name: name.to_owned(),
                     found: Label::new(
@@ -741,6 +769,7 @@ impl<'a> ResolveVisitor<'a> {
                         file,
                         join_path(path1, &[path2]),
                     ),
+                    help: fmt_name_not_found_help(&self.pool.files, file, help),
                 });
                 None
             }
@@ -754,30 +783,32 @@ impl<'a> ResolveVisitor<'a> {
         file: FileIndex,
         path: &[i32],
         tag: i32,
-    ) -> Option<&Definition> {
-        if let Some((type_name, def)) = resolve_name(&self.pool.names, scope, name) {
-            let ty = if matches!(
-                def,
-                Definition {
-                    kind: DefinitionKind::Message(_),
-                    ..
-                }
-            ) {
-                field_descriptor_proto::Type::Message
-            } else {
-                field_descriptor_proto::Type::Enum
-            };
-            set_type_name(
-                &mut self.pool.files[file as usize].raw,
-                path,
-                tag,
-                type_name.into_owned(),
-                ty,
-            );
-            Some(def)
+    ) -> Result<&Definition, NameNotFoundHelp> {
+        let (type_name, def) = resolve_name(
+            &self.pool.files[file as usize].transitive_dependencies,
+            &self.pool.names,
+            scope,
+            name,
+        )?;
+        let ty = if matches!(
+            def,
+            Definition {
+                kind: DefinitionKind::Message(_),
+                ..
+            }
+        ) {
+            field_descriptor_proto::Type::Message
         } else {
-            None
-        }
+            field_descriptor_proto::Type::Enum
+        };
+        set_type_name(
+            &mut self.pool.files[file as usize].raw,
+            path,
+            tag,
+            type_name.into_owned(),
+            ty,
+        );
+        Ok(def)
     }
 
     fn add_missing_required_field_error(&mut self, file: FileIndex, path: Box<[i32]>) {

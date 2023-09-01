@@ -1,0 +1,11 @@
+---
+source: prost-reflect/tests/main.rs
+expression: actual
+---
+causes: []
+help: "'Dependency' is defined in 'dep.proto', which is not imported by 'root.proto'"
+labels: []
+message: "name 'Dependency' is not defined"
+related: []
+severity: error
+

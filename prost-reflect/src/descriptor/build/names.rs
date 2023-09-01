@@ -1,4 +1,4 @@
-use std::collections::{hash_map, BTreeMap, HashMap};
+use std::collections::{hash_map, BTreeMap, HashMap, HashSet};
 
 use crate::{
     descriptor::{
@@ -83,6 +83,7 @@ impl<'a> Visitor for NameVisitor<'a> {
             raw: file.clone(),
             prost: Default::default(), // the prost descriptor is initialized from the internal descriptor once resolution is complete, to avoid needing to duplicate all modifications
             dependencies: Vec::with_capacity(file.dependency.len()),
+            transitive_dependencies: HashSet::default(),
         });
 
         if !file.package().is_empty() {
