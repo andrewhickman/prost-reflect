@@ -12,6 +12,5 @@ members = [
 allow-branch = ["main"]
 consolidate-commits = false
 
-# [patch.crates-io]
-# prost-reflect = { path = "prost-reflect" }
-# prost = "0.12.0"
+[patch.crates-io]
+prost-reflect = { path = "prost-reflect" }
