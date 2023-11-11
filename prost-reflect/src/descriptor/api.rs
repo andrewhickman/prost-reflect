@@ -232,7 +232,7 @@ impl DescriptorPool {
     /// All types referenced by the file must be defined either in the file itself, or in a file
     /// previously added to the pool.
     ///
-    /// If the file is a duplicate of a files already in the pool, it will be skipped. Note this may cause issues when trying to add two different versions of a file with the same name.
+    /// If the file is a duplicate of a file already in the pool, it will be skipped. Note this may cause issues when trying to add two different versions of a file with the same name.
     ///
     /// # Errors
     ///
@@ -253,7 +253,7 @@ impl DescriptorPool {
     /// Unlike when using [`add_file_descriptor_proto()`][DescriptorPool::add_file_descriptor_proto], any extension options
     /// defined in the file descriptor are preserved.
     ///
-    /// If the file is a duplicate of a files already in the pool, it will be skipped. Note this may cause issues when trying to add two different versions of a file with the same name.
+    /// If the file is a duplicate of a file already in the pool, it will be skipped. Note this may cause issues when trying to add two different versions of a file with the same name.
     ///
     /// # Errors
     ///

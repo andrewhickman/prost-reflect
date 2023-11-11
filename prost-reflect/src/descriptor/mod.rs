@@ -128,7 +128,7 @@ type EnumValueIndex = DescriptorIndex;
 /// Methods like [`MessageDescriptor::extensions`] will be scoped to just the files contained within the parent
 /// `DescriptorPool`.
 ///
-/// This type is uses reference counting internally so it is cheap to clone. Modifying an instance of a
+/// This type uses reference counting internally so it is cheap to clone. Modifying an instance of a
 /// pool will not update any existing clones of the instance.
 #[derive(Clone, Default)]
 pub struct DescriptorPool {

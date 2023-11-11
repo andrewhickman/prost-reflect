@@ -1,5 +1,3 @@
-The [`ReflectMessage`] trait provides a `.descriptor()` method to get type information for a message. By default it is just implemented for `DynamicMessage`.
-
 The [`ReflectMessage`] trait provides a `.descriptor()` method to get type information for a message. It is implemented for `DynamicMessage` and the well-known-types provided by [`prost-types`](https://docs.rs/prost-types/0.10.0/prost_types).
 
 When the `derive` feature is enabled, it can be derived for [`Message`][prost::Message] implementations. The
