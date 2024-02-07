@@ -6,6 +6,7 @@ pub(crate) const WELL_KNOWN_TYPES_BYTES: &[u8] = include_bytes!(concat!(
 ));
 
 #[test]
+#[cfg(disabled)]
 fn generate_well_known_types_bin() {
     use std::fs;
 

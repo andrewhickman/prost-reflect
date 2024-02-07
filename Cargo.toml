@@ -11,3 +11,6 @@ members = [
 [workspace.metadata.release]
 allow-branch = ["main"]
 consolidate-commits = false
+
+[patch.crates-io]
+prost-reflect = { path = "prost-reflect" }
