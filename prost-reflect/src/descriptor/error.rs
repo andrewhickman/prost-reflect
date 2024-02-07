@@ -9,7 +9,7 @@ use crate::descriptor::{FileDescriptorInner, FileIndex};
 pub struct DescriptorError {
     errors: Box<[DescriptorErrorKind]>,
     #[cfg(feature = "miette")]
-    source: Option<miette::NamedSource>,
+    source: Option<miette::NamedSource<String>>,
 }
 
 #[derive(Debug)]
