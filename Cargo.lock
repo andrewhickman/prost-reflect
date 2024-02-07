@@ -855,6 +855,7 @@ dependencies = [
  "prost-reflect-build",
  "prost-reflect-derive",
  "prost-types",
+ "protox",
  "serde",
  "serde-value",
  "serde_json",
@@ -863,11 +864,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "prost-reflect"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9ae9372e3227f3685376a0836e5c248611eafc95a0be900d44bc6cdf225b700f"
+dependencies = [
+ "logos",
+ "miette",
+ "once_cell",
+ "prost",
+ "prost-types",
+]
+
+[[package]]
 name = "prost-reflect-build"
 version = "0.13.0"
 dependencies = [
  "prost-build",
- "prost-reflect",
+ "prost-reflect 0.13.0",
 ]
 
 [[package]]
@@ -880,7 +894,7 @@ dependencies = [
  "once_cell",
  "prost",
  "prost-build",
- "prost-reflect",
+ "prost-reflect 0.13.0",
  "prost-types",
  "serde",
  "serde_json",
@@ -896,7 +910,7 @@ dependencies = [
  "once_cell",
  "proc-macro2",
  "prost",
- "prost-reflect",
+ "prost-reflect 0.13.0",
  "quote",
  "syn 2.0.48",
  "trybuild",
@@ -912,7 +926,7 @@ dependencies = [
  "proptest-derive",
  "prost",
  "prost-build",
- "prost-reflect",
+ "prost-reflect 0.13.0",
  "prost-reflect-build",
  "prost-types",
  "rayon",
@@ -927,6 +941,33 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "193898f59edcf43c26227dcd4c8427f00d99d61e95dcde58dabd49fa291d470e"
 dependencies = [
  "prost",
+]
+
+[[package]]
+name = "protox"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a29b3c5596eb23a849deba860b53ffd468199d9ad5fe4402a7d55379e16aa2d2"
+dependencies = [
+ "bytes",
+ "miette",
+ "prost",
+ "prost-reflect 0.13.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "prost-types",
+ "protox-parse",
+ "thiserror",
+]
+
+[[package]]
+name = "protox-parse"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "033b939d76d358f7c32120c86c71f515bae45e64f2bde455200356557276276c"
+dependencies = [
+ "logos",
+ "miette",
+ "prost-types",
+ "thiserror",
 ]
 
 [[package]]
