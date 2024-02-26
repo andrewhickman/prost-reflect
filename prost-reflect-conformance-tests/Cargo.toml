@@ -21,9 +21,9 @@ doctest = false
 prost = "0.12.0"
 prost-types = "0.12.0"
 prost-reflect = { path = "../prost-reflect", features = ["serde", "text-format"] }
-env_logger = "0.10.0"
-serde_json = { version = "1.0.106", features = ["float_roundtrip"] }
-serde = "1.0.190"
+env_logger = "0.11.2"
+serde_json = { version = "1.0.114", features = ["float_roundtrip"] }
+serde = "1.0.197"
 once_cell = "1.9.0"
 
 [dev-dependencies]
@@ -31,8 +31,8 @@ once_cell = "1.9.0"
 [build-dependencies]
 tar = "0.4.38"
 flate2 = "1.0.24"
-ureq = "2.5.0"
-anyhow = "1.0.58"
+ureq = "2.9.6"
+anyhow = "1.0.80"
 prost-build = "0.12.0"
 tempfile = "3.3.0"
 
