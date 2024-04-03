@@ -123,6 +123,41 @@ fn resolve_message_name() {
 }
 
 #[test]
+fn resolve_message_name_conflict_with_field_name() {
+    let file_descriptor_set = FileDescriptorSet {
+        file: vec![FileDescriptorProto {
+            name: Some("myfile.proto".to_owned()),
+            package: Some("my.package".to_owned()),
+            syntax: Some("proto3".to_owned()),
+            message_type: vec![DescriptorProto {
+                name: Some("MyMessage".to_owned()),
+                field: vec![FieldDescriptorProto {
+                    name: Some("MyMessage".to_owned()),
+                    number: Some(1),
+                    label: Some(Label::Optional as i32),
+                    r#type: Some(Type::Message as i32),
+                    type_name: Some("MyMessage".to_owned()),
+                    json_name: Some("mymessage".to_owned()),
+                    ..Default::default()
+                }],
+                ..Default::default()
+            }],
+            ..Default::default()
+        }],
+    };
+
+    let descriptor_pool = DescriptorPool::from_file_descriptor_set(file_descriptor_set).unwrap();
+    let message = descriptor_pool
+        .get_message_by_name("my.package.MyMessage")
+        .unwrap();
+    let field = message.get_field_by_name("MyMessage").unwrap();
+    assert_eq!(
+        field.kind().as_message().unwrap().full_name(),
+        "my.package.MyMessage"
+    );
+}
+
+#[test]
 fn resolve_message_name_nested() {
     let file_descriptor_set = FileDescriptorSet {
         file: vec![FileDescriptorProto {
