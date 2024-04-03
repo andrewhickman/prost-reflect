@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.13.1] - 2024-04-03
+
 ### Fixed
 
 - Fixed resolution of field types when the type name is the same as the field name ([#99])
@@ -351,7 +353,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial release, including support for inspecting message types at runtime.
 
-[Unreleased]: https://github.com/andrewhickman/prost-reflect/compare/0.13.0...HEAD
+[Unreleased]: https://github.com/andrewhickman/prost-reflect/compare/0.13.1...HEAD
+[0.13.1]: https://github.com/andrewhickman/prost-reflect/compare/0.13.0...0.13.1
 [0.13.0]: https://github.com/andrewhickman/prost-reflect/compare/0.12.0...0.13.0
 [0.12.0]: https://github.com/andrewhickman/prost-reflect/compare/0.11.5...0.12.0
 [0.11.5]: https://github.com/andrewhickman/prost-reflect/compare/0.11.4...0.11.5
