@@ -51,7 +51,7 @@ pub(super) enum ValueOrUnknown {
 pub(super) enum ValueAndDescriptor<'a> {
     Field(Cow<'a, Value>, FieldDescriptor),
     Extension(Cow<'a, Value>, ExtensionDescriptor),
-    Unknown(u32, &'a UnknownFieldSet),
+    Unknown(&'a UnknownFieldSet),
 }
 
 impl DynamicMessageFieldSet {
@@ -171,9 +171,7 @@ impl DynamicMessageFieldSet {
                         panic!("no field found with number {}", number)
                     }
                 }
-                ValueOrUnknown::Unknown(unknown) => {
-                    Some(ValueAndDescriptor::Unknown(number, unknown))
-                }
+                ValueOrUnknown::Unknown(unknown) => Some(ValueAndDescriptor::Unknown(unknown)),
                 ValueOrUnknown::Taken => None,
             })
     }
@@ -205,9 +203,7 @@ impl DynamicMessageFieldSet {
                         None
                     }
                 }
-                ValueOrUnknown::Unknown(unknown) => {
-                    Some(ValueAndDescriptor::Unknown(number, unknown))
-                }
+                ValueOrUnknown::Unknown(unknown) => Some(ValueAndDescriptor::Unknown(unknown)),
                 ValueOrUnknown::Taken => None,
             });
         fields.chain(others)

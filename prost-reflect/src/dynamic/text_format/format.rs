@@ -160,7 +160,7 @@ where
                 write!(self.f, "[{}]", desc.full_name())?;
                 self.fmt_field_value(&value, Some(&desc.kind()))
             }
-            ValueAndDescriptor::Unknown(_, values) => {
+            ValueAndDescriptor::Unknown(values) => {
                 self.fmt_delimited(values.iter(), Writer::fmt_unknown_field)
             }
         }

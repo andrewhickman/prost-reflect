@@ -757,25 +757,6 @@ impl miette::Diagnostic for DescriptorErrorKind {
     }
 }
 
-pub(super) type NameNotFoundHelp = Vec<(String, FileIndex)>;
-
-pub(super) fn fmt_name_not_found_help(
-    files: &[FileDescriptorInner],
-    root: FileIndex,
-    help: NameNotFoundHelp,
-) -> Option<String> {
-    let root_name = files[root as usize].raw.name();
-    help.into_iter()
-        .map(|(name, dep)| {
-            let dep_name = files[dep as usize].raw.name();
-            format!(
-                "'{}' is defined in '{}', which is not imported by '{}'",
-                name, dep_name, root_name
-            )
-        })
-        .next()
-}
-
 impl Label {
     pub fn new(
         files: &[FileDescriptorInner],

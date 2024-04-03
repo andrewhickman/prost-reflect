@@ -165,12 +165,12 @@ struct Definition {
 enum DefinitionKind {
     Package,
     Message(MessageIndex),
-    Field(MessageIndex, FieldIndex),
-    Oneof(MessageIndex, OneofIndex),
+    Field(MessageIndex),
+    Oneof(MessageIndex),
     Service(ServiceIndex),
-    Method(ServiceIndex, MethodIndex),
+    Method(ServiceIndex),
     Enum(EnumIndex),
-    EnumValue(EnumIndex, EnumValueIndex),
+    EnumValue(EnumIndex),
     Extension(ExtensionIndex),
 }
 
