@@ -3,16 +3,21 @@ mod options;
 mod resolve;
 mod visit;
 
+use core::fmt;
 use std::{
     borrow::Cow,
     collections::{HashMap, HashSet},
+    iter,
     sync::Arc,
 };
 
 use crate::{
     descriptor::{
-        error::NameNotFoundHelp, to_index, types::FileDescriptorProto, Definition, DefinitionKind,
-        DescriptorPoolInner, EnumIndex, ExtensionIndex, FileIndex, MessageIndex, ServiceIndex,
+        error::{DescriptorErrorKind, Label},
+        to_index,
+        types::FileDescriptorProto,
+        Definition, DefinitionKind, DescriptorPoolInner, EnumIndex, ExtensionIndex,
+        FileDescriptorInner, FileIndex, MessageIndex, ServiceIndex,
     },
     DescriptorError, DescriptorPool,
 };
@@ -24,6 +29,30 @@ struct DescriptorPoolOffsets {
     enum_: EnumIndex,
     service: ServiceIndex,
     extension: ExtensionIndex,
+}
+
+#[derive(Copy, Clone, Debug)]
+enum ResolveNameFilter {
+    Message,
+    Extension,
+    FieldType,
+}
+
+enum ResolveNameResult<'a, 'b> {
+    Found {
+        name: Cow<'b, str>,
+        def: &'a Definition,
+    },
+    InvalidType {
+        name: Cow<'b, str>,
+        def: &'a Definition,
+        filter: ResolveNameFilter,
+    },
+    NotImported {
+        name: Cow<'b, str>,
+        file: FileIndex,
+    },
+    NotFound,
 }
 
 impl DescriptorPoolOffsets {
@@ -115,6 +144,134 @@ impl DescriptorPool {
     }
 }
 
+impl ResolveNameFilter {
+    fn is_match(&self, def: &DefinitionKind) -> bool {
+        matches!(
+            (self, def),
+            (ResolveNameFilter::Message, DefinitionKind::Message(_))
+                | (ResolveNameFilter::Extension, DefinitionKind::Extension(_))
+                | (
+                    ResolveNameFilter::FieldType,
+                    DefinitionKind::Message(_) | DefinitionKind::Enum(_),
+                )
+        )
+    }
+}
+
+impl fmt::Display for ResolveNameFilter {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ResolveNameFilter::Message => f.write_str("a message type"),
+            ResolveNameFilter::Extension => f.write_str("an extension"),
+            ResolveNameFilter::FieldType => f.write_str("a message or enum type"),
+        }
+    }
+}
+
+impl<'a, 'b> ResolveNameResult<'a, 'b> {
+    fn new(
+        dependencies: &HashSet<FileIndex>,
+        names: &'a HashMap<Box<str>, Definition>,
+        name: impl Into<Cow<'b, str>>,
+        filter: ResolveNameFilter,
+    ) -> Self {
+        let name = name.into();
+        if let Some(def) = names.get(name.as_ref()) {
+            if !dependencies.contains(&def.file) {
+                ResolveNameResult::NotImported {
+                    name,
+                    file: def.file,
+                }
+            } else if !filter.is_match(&def.kind) {
+                ResolveNameResult::InvalidType { name, def, filter }
+            } else {
+                ResolveNameResult::Found { name, def }
+            }
+        } else {
+            ResolveNameResult::NotFound
+        }
+    }
+
+    fn into_owned(self) -> ResolveNameResult<'a, 'static> {
+        match self {
+            ResolveNameResult::Found { name, def } => ResolveNameResult::Found {
+                name: Cow::Owned(name.into_owned()),
+                def,
+            },
+            ResolveNameResult::InvalidType { name, def, filter } => {
+                ResolveNameResult::InvalidType {
+                    name: Cow::Owned(name.into_owned()),
+                    def,
+                    filter,
+                }
+            }
+            ResolveNameResult::NotImported { name, file } => ResolveNameResult::NotImported {
+                name: Cow::Owned(name.into_owned()),
+                file,
+            },
+            ResolveNameResult::NotFound => ResolveNameResult::NotFound,
+        }
+    }
+
+    fn is_found(&self) -> bool {
+        matches!(self, ResolveNameResult::Found { .. })
+    }
+
+    #[allow(clippy::result_large_err)]
+    fn into_result(
+        self,
+        orig_name: impl Into<String>,
+        files: &[FileDescriptorInner],
+        found_file: FileIndex,
+        found_path1: &[i32],
+        found_path2: &[i32],
+    ) -> Result<(Cow<'b, str>, &'a Definition), DescriptorErrorKind> {
+        match self {
+            ResolveNameResult::Found { name, def } => Ok((name, def)),
+            ResolveNameResult::InvalidType { name, def, filter } => {
+                Err(DescriptorErrorKind::InvalidType {
+                    name: name.into_owned(),
+                    expected: filter.to_string(),
+                    found: Label::new(
+                        files,
+                        "found here",
+                        found_file,
+                        join_path(found_path1, found_path2),
+                    ),
+                    defined: Label::new(files, "defined here", def.file, def.path.clone()),
+                })
+            }
+            ResolveNameResult::NotImported { name, file } => {
+                let root_name = files[found_file as usize].raw.name();
+                let dep_name = files[file as usize].raw.name();
+                Err(DescriptorErrorKind::NameNotFound {
+                    found: Label::new(
+                        files,
+                        "found here",
+                        found_file,
+                        join_path(found_path1, found_path2),
+                    ),
+                    help: Some(format!(
+                        "'{}' is defined in '{}', which is not imported by '{}'",
+                        name, dep_name, root_name
+                    )),
+                    name: name.into_owned(),
+                })
+            }
+            ResolveNameResult::NotFound => Err(DescriptorErrorKind::NameNotFound {
+                name: orig_name.into(),
+                found: Label::new(
+                    files,
+                    "found here",
+                    found_file,
+                    join_path(found_path1, found_path2),
+                ),
+                help: None,
+            }),
+        }
+    }
+}
+
 fn to_json_name(name: &str) -> String {
     let mut result = String::with_capacity(name.len());
     let mut uppercase_next = false;
@@ -138,22 +295,12 @@ fn resolve_name<'a, 'b>(
     names: &'a HashMap<Box<str>, Definition>,
     scope: &str,
     name: &'b str,
-) -> Result<(Cow<'b, str>, &'a Definition), NameNotFoundHelp> {
+    filter: ResolveNameFilter,
+) -> ResolveNameResult<'a, 'b> {
     match name.strip_prefix('.') {
-        Some(full_name) => match names.get(full_name) {
-            Some(def) => {
-                if dependencies.contains(&def.file) {
-                    Ok((Cow::Borrowed(name), def))
-                } else {
-                    Err(vec![(full_name.to_owned(), def.file)])
-                }
-            }
-            None => Err(vec![]),
-        },
-        None => {
-            let (resolved_name, def) = resolve_relative_name(dependencies, names, scope, name)?;
-            Ok((Cow::Owned(resolved_name), def))
-        }
+        Some(full_name) => ResolveNameResult::new(dependencies, names, full_name, filter),
+        None if scope.is_empty() => ResolveNameResult::new(dependencies, names, name, filter),
+        None => resolve_relative_name(dependencies, names, scope, name, filter),
     }
 }
 
@@ -162,42 +309,33 @@ fn resolve_relative_name<'a>(
     names: &'a HashMap<Box<str>, Definition>,
     scope: &str,
     relative_name: &str,
-) -> Result<(String, &'a Definition), NameNotFoundHelp> {
-    let mut buf = format!(".{}.{}", scope, relative_name);
-    let mut help = Vec::new();
+    filter: ResolveNameFilter,
+) -> ResolveNameResult<'a, 'static> {
+    let mut err = ResolveNameResult::NotFound;
 
-    if let Some(def) = names.get(&buf[1..]) {
-        if dependencies.contains(&def.file) {
-            return Ok((buf, def));
-        } else {
-            help.push((buf[1..].to_owned(), def.file));
+    for candidate in resolve_relative_name_candidates(scope, relative_name) {
+        let res = ResolveNameResult::new(dependencies, names, candidate, filter);
+        if res.is_found() {
+            return res.into_owned();
+        } else if matches!(err, ResolveNameResult::NotFound) {
+            err = res;
         }
     }
 
-    for (i, _) in scope.rmatch_indices('.') {
-        buf.truncate(i + 2);
-        buf.push_str(relative_name);
+    err.into_owned()
+}
 
-        if let Some(def) = names.get(&buf[1..]) {
-            if dependencies.contains(&def.file) {
-                return Ok((buf, def));
-            } else {
-                help.push((buf[1..].to_owned(), def.file));
-            }
-        }
-    }
-
-    buf.truncate(1);
-    buf.push_str(relative_name);
-    if let Some(def) = names.get(&buf[1..]) {
-        if dependencies.contains(&def.file) {
-            return Ok((buf, def));
-        } else {
-            help.push((buf[1..].to_owned(), def.file));
-        }
-    }
-
-    Err(help)
+fn resolve_relative_name_candidates<'b: 'c, 'c>(
+    scope: &'c str,
+    relative_name: &'b str,
+) -> impl Iterator<Item = Cow<'b, str>> + 'c {
+    iter::once(Cow::Owned(format!("{scope}.{relative_name}")))
+        .chain(
+            scope
+                .rmatch_indices('.')
+                .map(move |(i, _)| Cow::Owned(format!("{}.{relative_name}", &scope[..i]))),
+        )
+        .chain(iter::once(Cow::Borrowed(relative_name)))
 }
 
 fn join_path(path1: &[i32], path2: &[i32]) -> Box<[i32]> {

@@ -1862,6 +1862,7 @@ where
     Wrapper(i.collect())
 }
 
+#[allow(clippy::ptr_arg)]
 fn indices<T>(f: &Vec<T>) -> Range<DescriptorIndex> {
     0..to_index(f.len())
 }

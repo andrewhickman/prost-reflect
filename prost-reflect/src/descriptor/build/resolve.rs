@@ -9,9 +9,7 @@ use crate::{
             visit::{visit, Visitor},
             DescriptorPoolOffsets,
         },
-        error::{
-            fmt_name_not_found_help, DescriptorError, DescriptorErrorKind, Label, NameNotFoundHelp,
-        },
+        error::{DescriptorError, DescriptorErrorKind, Label},
         find_enum_proto, find_message_proto, tag, to_index,
         types::{
             field_descriptor_proto, DescriptorProto, EnumValueDescriptorProto,
@@ -26,6 +24,8 @@ use crate::{
     },
     Cardinality, Syntax, Value,
 };
+
+use super::ResolveNameFilter;
 
 impl DescriptorPoolInner {
     pub(super) fn resolve_names(
@@ -132,7 +132,7 @@ impl<'a> Visitor for ResolveVisitor<'a> {
             || (cardinality != Cardinality::Repeated
                 && (kind.map_or(false, |k| k.is_message()) || syntax == Syntax::Proto2));
 
-        let default = kind.ok().and_then(|kind| {
+        let default = kind.and_then(|kind| {
             self.parse_field_default_value(kind, field.default_value.as_deref(), file, path)
         });
 
@@ -398,7 +398,7 @@ impl<'a> Visitor for ResolveVisitor<'a> {
                 .as_ref()
                 .map_or(syntax == Syntax::Proto3, |o| o.value.packed()));
 
-        let default = kind.ok().and_then(|kind| {
+        let default = kind.and_then(|kind| {
             self.parse_field_default_value(kind, extension.default_value.as_deref(), file, path)
         });
 
@@ -575,24 +575,24 @@ impl<'a> ResolveVisitor<'a> {
         scope: &str,
         file: FileIndex,
         path: &[i32],
-    ) -> Result<KindIndex, ()> {
+    ) -> Option<KindIndex> {
         if ty_name.is_empty() {
             match ty {
-                field_descriptor_proto::Type::Double => Ok(KindIndex::Double),
-                field_descriptor_proto::Type::Float => Ok(KindIndex::Float),
-                field_descriptor_proto::Type::Int64 => Ok(KindIndex::Int64),
-                field_descriptor_proto::Type::Uint64 => Ok(KindIndex::Uint64),
-                field_descriptor_proto::Type::Int32 => Ok(KindIndex::Int32),
-                field_descriptor_proto::Type::Fixed64 => Ok(KindIndex::Fixed64),
-                field_descriptor_proto::Type::Fixed32 => Ok(KindIndex::Fixed32),
-                field_descriptor_proto::Type::Bool => Ok(KindIndex::Bool),
-                field_descriptor_proto::Type::String => Ok(KindIndex::String),
-                field_descriptor_proto::Type::Bytes => Ok(KindIndex::Bytes),
-                field_descriptor_proto::Type::Uint32 => Ok(KindIndex::Uint32),
-                field_descriptor_proto::Type::Sfixed32 => Ok(KindIndex::Sfixed32),
-                field_descriptor_proto::Type::Sfixed64 => Ok(KindIndex::Sfixed64),
-                field_descriptor_proto::Type::Sint32 => Ok(KindIndex::Sint32),
-                field_descriptor_proto::Type::Sint64 => Ok(KindIndex::Sint64),
+                field_descriptor_proto::Type::Double => Some(KindIndex::Double),
+                field_descriptor_proto::Type::Float => Some(KindIndex::Float),
+                field_descriptor_proto::Type::Int64 => Some(KindIndex::Int64),
+                field_descriptor_proto::Type::Uint64 => Some(KindIndex::Uint64),
+                field_descriptor_proto::Type::Int32 => Some(KindIndex::Int32),
+                field_descriptor_proto::Type::Fixed64 => Some(KindIndex::Fixed64),
+                field_descriptor_proto::Type::Fixed32 => Some(KindIndex::Fixed32),
+                field_descriptor_proto::Type::Bool => Some(KindIndex::Bool),
+                field_descriptor_proto::Type::String => Some(KindIndex::String),
+                field_descriptor_proto::Type::Bytes => Some(KindIndex::Bytes),
+                field_descriptor_proto::Type::Uint32 => Some(KindIndex::Uint32),
+                field_descriptor_proto::Type::Sfixed32 => Some(KindIndex::Sfixed32),
+                field_descriptor_proto::Type::Sfixed64 => Some(KindIndex::Sfixed64),
+                field_descriptor_proto::Type::Sint32 => Some(KindIndex::Sint32),
+                field_descriptor_proto::Type::Sint64 => Some(KindIndex::Sint64),
                 field_descriptor_proto::Type::Group
                 | field_descriptor_proto::Type::Message
                 | field_descriptor_proto::Type::Enum => {
@@ -600,55 +600,28 @@ impl<'a> ResolveVisitor<'a> {
                         file,
                         join_path(path, &[tag::field::TYPE_NAME]),
                     );
-                    Err(())
+                    None
                 }
             }
         } else {
-            match self.resolve_name(scope, ty_name, file, path, tag::field::TYPE_NAME) {
-                Ok(Definition {
-                    kind: DefinitionKind::Message(message),
-                    ..
-                }) => {
+            let def = self.resolve_name(
+                scope,
+                ty_name,
+                file,
+                path,
+                tag::field::TYPE_NAME,
+                ResolveNameFilter::FieldType,
+            )?;
+            match def.kind {
+                DefinitionKind::Message(message) => {
                     if ty == field_descriptor_proto::Type::Group {
-                        Ok(KindIndex::Group(*message))
+                        Some(KindIndex::Group(message))
                     } else {
-                        Ok(KindIndex::Message(*message))
+                        Some(KindIndex::Message(message))
                     }
                 }
-                Ok(Definition {
-                    kind: DefinitionKind::Enum(enum_),
-                    ..
-                }) => Ok(KindIndex::Enum(*enum_)),
-                Ok(def) => {
-                    let def_file = def.file;
-                    let def_path = def.path.clone();
-
-                    self.errors.push(DescriptorErrorKind::InvalidType {
-                        name: ty_name.to_owned(),
-                        expected: "a message or enum type".to_owned(),
-                        found: Label::new(
-                            &self.pool.files,
-                            "found here",
-                            file,
-                            join_path(path, &[tag::field::TYPE_NAME]),
-                        ),
-                        defined: Label::new(&self.pool.files, "defined here", def_file, def_path),
-                    });
-                    Err(())
-                }
-                Err(help) => {
-                    self.errors.push(DescriptorErrorKind::NameNotFound {
-                        name: ty_name.to_owned(),
-                        found: Label::new(
-                            &self.pool.files,
-                            "found here",
-                            file,
-                            join_path(path, &[tag::field::TYPE_NAME]),
-                        ),
-                        help: fmt_name_not_found_help(&self.pool.files, file, help),
-                    });
-                    Err(())
-                }
+                DefinitionKind::Enum(enum_) => Some(KindIndex::Enum(enum_)),
+                _ => unreachable!(),
             }
         }
     }
@@ -738,41 +711,10 @@ impl<'a> ResolveVisitor<'a> {
         path1: &[i32],
         path2: i32,
     ) -> Option<MessageIndex> {
-        match self.resolve_name(scope, name, file, path1, path2) {
-            Ok(Definition {
-                kind: DefinitionKind::Message(message),
-                ..
-            }) => Some(*message),
-            Ok(def) => {
-                let def_file = def.file;
-                let def_path = def.path.clone();
-
-                self.errors.push(DescriptorErrorKind::InvalidType {
-                    name: name.to_owned(),
-                    expected: "a message type".to_owned(),
-                    found: Label::new(
-                        &self.pool.files,
-                        "found here",
-                        file,
-                        join_path(path1, &[path2]),
-                    ),
-                    defined: Label::new(&self.pool.files, "defined here", def_file, def_path),
-                });
-                None
-            }
-            Err(help) => {
-                self.errors.push(DescriptorErrorKind::NameNotFound {
-                    name: name.to_owned(),
-                    found: Label::new(
-                        &self.pool.files,
-                        "found here",
-                        file,
-                        join_path(path1, &[path2]),
-                    ),
-                    help: fmt_name_not_found_help(&self.pool.files, file, help),
-                });
-                None
-            }
+        let def = self.resolve_name(scope, name, file, path1, path2, ResolveNameFilter::Message)?;
+        match def.kind {
+            DefinitionKind::Message(message) => Some(message),
+            _ => unreachable!(),
         }
     }
 
@@ -783,13 +725,24 @@ impl<'a> ResolveVisitor<'a> {
         file: FileIndex,
         path: &[i32],
         tag: i32,
-    ) -> Result<&Definition, NameNotFoundHelp> {
-        let (type_name, def) = resolve_name(
+        filter: ResolveNameFilter,
+    ) -> Option<&Definition> {
+        let (type_name, def) = match resolve_name(
             &self.pool.files[file as usize].transitive_dependencies,
             &self.pool.names,
             scope,
             name,
-        )?;
+            filter,
+        )
+        .into_result(name, &self.pool.files, file, path, &[tag])
+        {
+            Ok((type_name, def)) => (type_name, def),
+            Err(err) => {
+                self.errors.push(err);
+                return None;
+            }
+        };
+
         let ty = if matches!(
             def,
             Definition {
@@ -805,10 +758,10 @@ impl<'a> ResolveVisitor<'a> {
             &mut self.pool.files[file as usize].raw,
             path,
             tag,
-            type_name.into_owned(),
+            format!(".{}", type_name),
             ty,
         );
-        Ok(def)
+        Some(def)
     }
 
     fn add_missing_required_field_error(&mut self, file: FileIndex, path: Box<[i32]>) {

@@ -9,7 +9,7 @@ use crate::{
             visit::{visit, Visitor},
             DescriptorPoolOffsets,
         },
-        error::{fmt_name_not_found_help, DescriptorErrorKind, Label},
+        error::{DescriptorErrorKind, Label},
         tag,
         types::{
             uninterpreted_option, DescriptorProto, EnumDescriptorProto, EnumValueDescriptorProto,
@@ -25,7 +25,7 @@ use crate::{
     ExtensionDescriptor, MapKey, MessageDescriptor, ReflectMessage, Value,
 };
 
-use super::resolve_name;
+use super::{resolve_name, ResolveNameFilter};
 
 impl DescriptorPool {
     pub(super) fn resolve_options(
@@ -522,51 +522,37 @@ impl<'a> OptionsVisitor<'a> {
         path: &[i32],
         extendee: &MessageDescriptor,
     ) -> Result<ExtensionDescriptor, DescriptorErrorKind> {
-        match resolve_name(
+        let (_, def) = resolve_name(
             &self.pool.inner.files[file as usize].transitive_dependencies,
             &self.pool.inner.names,
             scope,
             name,
-        ) {
-            Ok((
-                _,
-                &Definition {
-                    kind: DefinitionKind::Extension(index),
-                    ..
-                },
-            )) => {
-                let desc = ExtensionDescriptor {
-                    pool: self.pool.clone(),
-                    index,
-                };
+            ResolveNameFilter::Extension,
+        )
+        .into_result(name, &self.pool.inner.files, file, path, &[])?;
 
-                if desc.containing_message() == *extendee {
-                    Ok(desc)
-                } else {
-                    Err(DescriptorErrorKind::InvalidOptionExtendee {
-                        name: desc.full_name().to_owned(),
-                        expected_extendee: extendee.full_name().to_owned(),
-                        actual_extendee: desc.containing_message().full_name().to_owned(),
-                        found: Label::new(&self.pool.inner.files, "found here", file, path.into()),
-                    })
-                }
-            }
-            Ok((_, def)) => {
-                let def_file = def.file;
-                let def_path = def.path.clone();
+        let &Definition {
+            kind: DefinitionKind::Extension(index),
+            ..
+        } = def
+        else {
+            unreachable!()
+        };
 
-                Err(DescriptorErrorKind::InvalidType {
-                    name: name.to_owned(),
-                    expected: "an extension".to_owned(),
-                    found: Label::new(&self.pool.inner.files, "found here", file, path.into()),
-                    defined: Label::new(&self.pool.inner.files, "defined here", def_file, def_path),
-                })
-            }
-            Err(help) => Err(DescriptorErrorKind::NameNotFound {
-                name: name.to_owned(),
+        let desc = ExtensionDescriptor {
+            pool: self.pool.clone(),
+            index,
+        };
+
+        if desc.containing_message() == *extendee {
+            Ok(desc)
+        } else {
+            Err(DescriptorErrorKind::InvalidOptionExtendee {
+                name: desc.full_name().to_owned(),
+                expected_extendee: extendee.full_name().to_owned(),
+                actual_extendee: desc.containing_message().full_name().to_owned(),
                 found: Label::new(&self.pool.inner.files, "found here", file, path.into()),
-                help: fmt_name_not_found_help(&self.pool.inner.files, file, help),
-            }),
+            })
         }
     }
 }

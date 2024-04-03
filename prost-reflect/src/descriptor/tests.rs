@@ -385,7 +385,7 @@ fn service_method_type_not_message() {
     let err = DescriptorPool::from_file_descriptor_set(file_descriptor_set).unwrap_err();
     assert_eq!(
         err.to_string(),
-        "'.my.package.MyMessage' is not a message type"
+        "'my.package.MyMessage' is not a message type"
     );
 }
 

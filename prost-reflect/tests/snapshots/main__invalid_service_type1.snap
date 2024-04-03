@@ -4,7 +4,7 @@ expression: actual
 ---
 causes: []
 labels: []
-message: "'.Enum' is not a message type"
+message: "'Enum' is not a message type"
 related: []
 severity: error
 
