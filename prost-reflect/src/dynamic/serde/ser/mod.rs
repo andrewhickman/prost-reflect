@@ -68,7 +68,7 @@ where
                 ValueAndDescriptor::Extension(value, ref extension_desc) => {
                     (extension_desc.json_name(), value, extension_desc.kind())
                 }
-                ValueAndDescriptor::Unknown(_, _) => continue,
+                ValueAndDescriptor::Unknown(_) => continue,
             };
 
             map.serialize_entry(
@@ -96,7 +96,7 @@ where
                 ValueAndDescriptor::Extension(value, ref extension_desc) => {
                     (extension_desc.json_name(), value, extension_desc.kind())
                 }
-                ValueAndDescriptor::Unknown(_, _) => continue,
+                ValueAndDescriptor::Unknown(_) => continue,
             };
 
             map.serialize_entry(

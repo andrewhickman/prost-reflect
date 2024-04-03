@@ -28,7 +28,7 @@ impl Message for DynamicMessage {
                 ValueAndDescriptor::Extension(value, extension_desc) => {
                     value.encode_field(&extension_desc, buf)
                 }
-                ValueAndDescriptor::Unknown(_, unknowns) => unknowns.encode_raw(buf),
+                ValueAndDescriptor::Unknown(unknowns) => unknowns.encode_raw(buf),
             }
         }
     }
@@ -71,7 +71,7 @@ impl Message for DynamicMessage {
                 ValueAndDescriptor::Extension(value, extension_desc) => {
                     len += value.encoded_len(&extension_desc);
                 }
-                ValueAndDescriptor::Unknown(_, unknowns) => len += unknowns.encoded_len(),
+                ValueAndDescriptor::Unknown(unknowns) => len += unknowns.encoded_len(),
             }
         }
         len
