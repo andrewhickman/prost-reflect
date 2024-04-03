@@ -7,7 +7,7 @@ use crate::{
         build::{
             join_path, resolve_name, to_json_name,
             visit::{visit, Visitor},
-            DescriptorPoolOffsets,
+            DescriptorPoolOffsets, ResolveNameFilter,
         },
         error::{DescriptorError, DescriptorErrorKind, Label},
         find_enum_proto, find_message_proto, tag, to_index,
@@ -24,8 +24,6 @@ use crate::{
     },
     Cardinality, Syntax, Value,
 };
-
-use super::ResolveNameFilter;
 
 impl DescriptorPoolInner {
     pub(super) fn resolve_names(

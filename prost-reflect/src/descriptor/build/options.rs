@@ -5,9 +5,9 @@ use prost::{bytes::Bytes, Message};
 use crate::{
     descriptor::{
         build::{
-            join_path,
+            join_path, resolve_name,
             visit::{visit, Visitor},
-            DescriptorPoolOffsets,
+            DescriptorPoolOffsets, ResolveNameFilter,
         },
         error::{DescriptorErrorKind, Label},
         tag,
@@ -24,8 +24,6 @@ use crate::{
     Cardinality, DescriptorError, DescriptorPool, DynamicMessage, EnumDescriptor,
     ExtensionDescriptor, MapKey, MessageDescriptor, ReflectMessage, Value,
 };
-
-use super::{resolve_name, ResolveNameFilter};
 
 impl DescriptorPool {
     pub(super) fn resolve_options(
