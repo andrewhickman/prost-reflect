@@ -146,7 +146,7 @@ impl<'a> Visitor for NameVisitor<'a> {
         full_name: &str,
         file: FileIndex,
         message: MessageIndex,
-        index: FieldIndex,
+        _: FieldIndex,
         _: &FieldDescriptorProto,
     ) {
         self.add_name(
@@ -154,7 +154,7 @@ impl<'a> Visitor for NameVisitor<'a> {
             full_name,
             path,
             &[tag::field::NAME],
-            DefinitionKind::Field(message, index),
+            DefinitionKind::Field(message),
         );
     }
 
@@ -172,7 +172,7 @@ impl<'a> Visitor for NameVisitor<'a> {
             full_name,
             path,
             &[tag::oneof::NAME],
-            DefinitionKind::Oneof(message, index),
+            DefinitionKind::Oneof(message),
         );
 
         debug_assert_eq!(
@@ -210,7 +210,7 @@ impl<'a> Visitor for NameVisitor<'a> {
         full_name: &str,
         file: FileIndex,
         service: ServiceIndex,
-        index: MethodIndex,
+        _: MethodIndex,
         _: &MethodDescriptorProto,
     ) {
         self.add_name(
@@ -218,7 +218,7 @@ impl<'a> Visitor for NameVisitor<'a> {
             full_name,
             path,
             &[tag::service::NAME],
-            DefinitionKind::Method(service, index),
+            DefinitionKind::Method(service),
         );
     }
 
@@ -292,7 +292,7 @@ impl<'a> Visitor for NameVisitor<'a> {
             full_name,
             path,
             &[tag::enum_value::NAME],
-            DefinitionKind::EnumValue(enum_, index),
+            DefinitionKind::EnumValue(enum_),
         );
 
         debug_assert_eq!(

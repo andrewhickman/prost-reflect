@@ -81,12 +81,12 @@ impl DescriptorPoolOffsets {
                     )
             }),
             DefinitionKind::Message(message)
-            | DefinitionKind::Field(message, _)
-            | DefinitionKind::Oneof(message, _) => message < self.message,
-            DefinitionKind::Service(service) | DefinitionKind::Method(service, _) => {
+            | DefinitionKind::Field(message)
+            | DefinitionKind::Oneof(message) => message < self.message,
+            DefinitionKind::Service(service) | DefinitionKind::Method(service) => {
                 service < self.service
             }
-            DefinitionKind::Enum(enum_) | DefinitionKind::EnumValue(enum_, _) => enum_ < self.enum_,
+            DefinitionKind::Enum(enum_) | DefinitionKind::EnumValue(enum_) => enum_ < self.enum_,
             DefinitionKind::Extension(extension) => extension < self.extension,
         });
         pool.file_names.retain(|_, &mut file| file < self.file);
