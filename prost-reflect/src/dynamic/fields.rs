@@ -6,13 +6,13 @@ use std::{
 };
 
 use crate::{
-    Cardinality, ExtensionDescriptor, FieldDescriptor, Kind, MessageDescriptor, OneofDescriptor,
-    Value,
+    ExtensionDescriptor, FieldDescriptor, Kind, MessageDescriptor, OneofDescriptor, Value,
 };
 
 use super::unknown::{UnknownField, UnknownFieldSet};
 
 pub(crate) trait FieldDescriptorLike: fmt::Debug {
+    #[cfg(feature = "text-format")]
     fn text_name(&self) -> &str;
     fn number(&self) -> u32;
     fn default_value(&self) -> Value;
@@ -22,7 +22,6 @@ pub(crate) trait FieldDescriptorLike: fmt::Debug {
     fn supports_presence(&self) -> bool;
     fn kind(&self) -> Kind;
     fn is_group(&self) -> bool;
-    fn cardinality(&self) -> Cardinality;
     fn is_list(&self) -> bool;
     fn is_map(&self) -> bool;
     fn is_packed(&self) -> bool;
@@ -392,6 +391,7 @@ impl ValueOrUnknown {
 }
 
 impl FieldDescriptorLike for FieldDescriptor {
+    #[cfg(feature = "text-format")]
     fn text_name(&self) -> &str {
         self.name()
     }
@@ -428,10 +428,6 @@ impl FieldDescriptorLike for FieldDescriptor {
         self.is_group()
     }
 
-    fn cardinality(&self) -> Cardinality {
-        self.cardinality()
-    }
-
     fn is_list(&self) -> bool {
         self.is_list()
     }
@@ -450,6 +446,7 @@ impl FieldDescriptorLike for FieldDescriptor {
 }
 
 impl FieldDescriptorLike for ExtensionDescriptor {
+    #[cfg(feature = "text-format")]
     fn text_name(&self) -> &str {
         self.json_name()
     }
@@ -484,10 +481,6 @@ impl FieldDescriptorLike for ExtensionDescriptor {
 
     fn is_group(&self) -> bool {
         self.is_group()
-    }
-
-    fn cardinality(&self) -> Cardinality {
-        self.cardinality()
     }
 
     fn is_list(&self) -> bool {
