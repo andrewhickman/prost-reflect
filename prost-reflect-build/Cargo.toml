@@ -20,7 +20,7 @@ default = []
 prost-reflect = { path = "../prost-reflect", version = "0.13.1", features = [
     "derive"
 ] }
-prost-build = "0.12.0"
+prost-build = "0.12.6"
 
 [[package.metadata.release.pre-release-replacements]]
 file = "src/lib.rs"
