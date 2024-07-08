@@ -15,9 +15,8 @@ use super::{
 };
 
 impl Message for DynamicMessage {
-    fn encode_raw<B>(&self, buf: &mut B)
+    fn encode_raw(&self, buf: &mut impl BufMut)
     where
-        B: BufMut,
         Self: Sized,
     {
         for field in self.fields.iter(&self.desc) {
@@ -33,15 +32,14 @@ impl Message for DynamicMessage {
         }
     }
 
-    fn merge_field<B>(
+    fn merge_field(
         &mut self,
         number: u32,
         wire_type: WireType,
-        buf: &mut B,
+        buf: &mut impl Buf,
         ctx: DecodeContext,
     ) -> Result<(), DecodeError>
     where
-        B: Buf,
         Self: Sized,
     {
         if let Some(field_desc) = self.desc.get_field(number) {

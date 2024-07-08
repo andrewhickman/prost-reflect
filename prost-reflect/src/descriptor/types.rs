@@ -523,23 +523,21 @@ impl<T> Message for Options<T>
 where
     T: Message + Default,
 {
-    fn encode_raw<B>(&self, buf: &mut B)
+    fn encode_raw(&self, buf: &mut impl BufMut)
     where
-        B: BufMut,
         Self: Sized,
     {
         buf.put(self.encoded.as_slice());
     }
 
-    fn merge_field<B>(
+    fn merge_field(
         &mut self,
         tag: u32,
         wire_type: WireType,
-        buf: &mut B,
+        buf: &mut impl Buf,
         ctx: DecodeContext,
     ) -> Result<(), DecodeError>
     where
-        B: Buf,
         Self: Sized,
     {
         struct CopyBufAdapter<'a, B> {
