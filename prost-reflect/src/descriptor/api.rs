@@ -345,9 +345,8 @@ impl DescriptorPool {
         }
 
         impl<'a> Message for FileDescriptorSet<'a> {
-            fn encode_raw<B>(&self, buf: &mut B)
+            fn encode_raw(&self, buf: &mut impl BufMut)
             where
-                B: BufMut,
                 Self: Sized,
             {
                 for file in self.files {
@@ -370,15 +369,14 @@ impl DescriptorPool {
                         .sum::<usize>()
             }
 
-            fn merge_field<B>(
+            fn merge_field(
                 &mut self,
                 _: u32,
                 _: WireType,
-                _: &mut B,
+                _: &mut impl Buf,
                 _: DecodeContext,
             ) -> Result<(), DecodeError>
             where
-                B: Buf,
                 Self: Sized,
             {
                 unimplemented!()

@@ -238,9 +238,8 @@ impl UnknownFieldSet {
 }
 
 impl Message for UnknownFieldSet {
-    fn encode_raw<B>(&self, buf: &mut B)
+    fn encode_raw(&self, buf: &mut impl BufMut)
     where
-        B: BufMut,
         Self: Sized,
     {
         for field in &self.fields {
@@ -248,15 +247,14 @@ impl Message for UnknownFieldSet {
         }
     }
 
-    fn merge_field<B>(
+    fn merge_field(
         &mut self,
         number: u32,
         wire_type: WireType,
-        buf: &mut B,
+        buf: &mut impl Buf,
         ctx: DecodeContext,
     ) -> Result<(), DecodeError>
     where
-        B: Buf,
         Self: Sized,
     {
         let field = UnknownField::decode_value(number, wire_type, buf, ctx)?;
