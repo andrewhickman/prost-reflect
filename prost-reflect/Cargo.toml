@@ -35,7 +35,7 @@ logos = { version = "0.14.0", optional = true }
 miette = { version = "7.0.0", optional = true }
 once_cell = { version = "1.9.0" }
 prost = "0.13.0"
-prost-reflect-derive = { path = '../prost-reflect-derive', version = "0.13.0", optional = true }
+prost-reflect-derive = { path = '../prost-reflect-derive', version = "0.14.0", optional = true }
 prost-types = "0.13.0"
 serde-value = { version = "0.7.0", optional = true }
 serde1 = { package = "serde", version = "1.0.132", optional = true }
