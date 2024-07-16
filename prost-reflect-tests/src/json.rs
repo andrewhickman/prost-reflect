@@ -13,8 +13,7 @@ use serde_json::json;
 use crate::{
     arbitrary,
     proto::{
-        contains_group, message_with_oneof, ComplexType, ContainsGroup, MessageWithAliasedEnum,
-        MessageWithOneof, Point, ScalarArrays, Scalars, WellKnownTypes,
+        contains_group, message_with_oneof, options::Aggregate, ComplexType, ContainsGroup, MessageWithAliasedEnum, MessageWithOneof, Point, ScalarArrays, Scalars, WellKnownTypes
     },
     test_file_descriptor,
 };
@@ -881,6 +880,19 @@ fn serialize_any_wkt() {
             "@type": "type.googleapis.com/google.protobuf.Int32Value",
             "value": 5,
         })
+    );
+}
+
+#[test]
+fn serialize_options() {
+    let json = to_json(
+    Aggregate::default().descriptor().descriptor_proto()
+    );
+    let options = json.get("options").unwrap();
+    // Aggregate message descriptor should have some options
+    assert_ne!(
+        options.as_object().unwrap().len(),
+        0
     );
 }
 
