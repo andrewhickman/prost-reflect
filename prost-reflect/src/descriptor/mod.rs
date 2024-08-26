@@ -154,14 +154,14 @@ struct Identity {
     name_index: usize,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct Definition {
     file: FileIndex,
     path: Box<[i32]>,
     kind: DefinitionKind,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 enum DefinitionKind {
     Package,
     Message(MessageIndex),

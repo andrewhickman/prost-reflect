@@ -12,7 +12,7 @@ file:
   messageType:
   - name: Bar
     field:
-    - name: foo
+    - name: foo_field
       number: 1
       label: LABEL_OPTIONAL
       typeName: foo.Foo
