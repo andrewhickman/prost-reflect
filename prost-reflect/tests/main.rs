@@ -132,6 +132,7 @@ check_err!(invalid_service_type3);
 check_err!(name_resolution1);
 check_err!(name_resolution2);
 check_ok!(name_resolution3);
+check_err!(name_resolution4);
 check_err!(name_collision1);
 check_err!(name_collision2);
 check_err!(name_collision3);

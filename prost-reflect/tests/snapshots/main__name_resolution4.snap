@@ -1,0 +1,11 @@
+---
+source: prost-reflect/tests/main.rs
+assertion_line: 79
+expression: actual
+---
+causes: []
+help: "'foo.FooBar' is is resolved to 'com.foo.FooBar', which is not defined. The innermost scope is searched first in name resolution. Consider using a leading '.'(i.e., '.foo.FooBar') to start from the outermost scope."
+labels: []
+message: "name 'foo.FooBar' is shadowed"
+related: []
+severity: error
