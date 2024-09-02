@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed a case where resolution of names was less strict than protoc ([protox#82])
+
 ## [0.14.0] - 2024-07-08
 
 ### Changed
@@ -414,3 +418,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#40]: https://github.com/andrewhickman/prost-reflect/pull/40
 [#41]: https://github.com/andrewhickman/prost-reflect/pull/41
 [#99]: https://github.com/andrewhickman/prost-reflect/issues/99
+[protox#82]: https://github.com/andrewhickman/protox/issues/82
