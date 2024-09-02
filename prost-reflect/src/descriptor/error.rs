@@ -83,6 +83,12 @@ pub(super) enum DescriptorErrorKind {
         #[cfg_attr(not(feature = "miette"), allow(dead_code))]
         help: Option<String>,
     },
+    NameShadowed {
+        name: String,
+        found: Label,
+        #[cfg_attr(not(feature = "miette"), allow(dead_code))]
+        help: Option<String>,
+    },
     InvalidType {
         name: String,
         expected: String,
@@ -316,6 +322,7 @@ impl DescriptorErrorKind {
             DescriptorErrorKind::FieldNumberInExtensionRange { found, .. } => Some(found),
             DescriptorErrorKind::ExtensionNumberOutOfRange { found, .. } => Some(found),
             DescriptorErrorKind::NameNotFound { found, .. } => Some(found),
+            DescriptorErrorKind::NameShadowed { found, .. } => Some(found),
             DescriptorErrorKind::InvalidType { found, .. } => Some(found),
             DescriptorErrorKind::InvalidFieldDefault { found, .. } => Some(found),
             DescriptorErrorKind::EmptyEnum { found } => Some(found),
@@ -378,6 +385,9 @@ impl DescriptorErrorKind {
                 found.resolve_span(file, source);
             }
             DescriptorErrorKind::NameNotFound { found, .. } => {
+                found.resolve_span(file, source);
+            }
+            DescriptorErrorKind::NameShadowed { found, .. } => {
                 found.resolve_span(file, source);
             }
             DescriptorErrorKind::InvalidType { found, defined, .. } => {
@@ -522,6 +532,9 @@ impl fmt::Display for DescriptorErrorKind {
             DescriptorErrorKind::NameNotFound { name, .. } => {
                 write!(f, "name '{}' is not defined", name)
             }
+            DescriptorErrorKind::NameShadowed { name, .. } => {
+                write!(f, "name '{}' is shadowed", name)
+            }
             DescriptorErrorKind::InvalidType { name, expected, .. } => {
                 write!(f, "'{}' is not {}", name, expected)
             }
@@ -634,7 +647,8 @@ impl miette::Diagnostic for DescriptorErrorKind {
             DescriptorErrorKind::FieldNumberInExtensionRange { .. } => None,
             DescriptorErrorKind::DuplicateFieldJsonName { .. } => None,
             DescriptorErrorKind::DuplicateFieldCamelCaseName { .. } => None,
-            DescriptorErrorKind::NameNotFound { help, .. } => help
+            DescriptorErrorKind::NameNotFound { help, .. }
+            | DescriptorErrorKind::NameShadowed { help, .. } => help
                 .as_ref()
                 .map(|h| -> Box<dyn fmt::Display> { Box::new(h.clone()) }),
             DescriptorErrorKind::InvalidType { .. } => None,
@@ -685,7 +699,8 @@ impl miette::Diagnostic for DescriptorErrorKind {
                 spans.extend(first.to_span());
                 spans.extend(second.to_span());
             }
-            DescriptorErrorKind::NameNotFound { found, .. } => {
+            DescriptorErrorKind::NameNotFound { found, .. }
+            | DescriptorErrorKind::NameShadowed { found, .. } => {
                 spans.extend(found.to_span());
             }
             DescriptorErrorKind::InvalidFieldNumber { found, .. } => {
