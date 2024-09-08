@@ -5,6 +5,6 @@ expression: actual
 causes: []
 help: "The innermost scope is searched first in name resolution. Consider using a leading '.'(i.e., '.foo.FooBar') to start from the outermost scope."
 labels: []
-message: "'foo.FooBar' is is resolved to 'com.foo.FooBar', which is not defined"
+message: "'foo.FooBar' resolves to 'com.foo.FooBar', which is not defined"
 related: []
 severity: error
