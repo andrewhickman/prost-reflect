@@ -287,7 +287,7 @@ impl<'a, 'b> ResolveNameResult<'a, 'b> {
                     join_path(found_path1, found_path2),
                 ),
                 help: Some(format!(
-                    "The innermost scope is searched first in name resolution. Consider using a leading '.'(i.e., '.{name}') to start from the outermost scope.",
+                    "The innermost scope is searched first in name resolution. Consider using a leading '.' (i.e., '.{name}') to start from the outermost scope.",
                 )),
                 name: name.into_owned(),
                 shadowed_name: shadowed_name.into_owned(),
