@@ -146,8 +146,15 @@ fn resolve_message_name_conflict_with_field_name() {
         }],
     };
 
-    let e = DescriptorPool::from_file_descriptor_set(file_descriptor_set).unwrap_err();
-    assert_eq!(e.to_string(), "name 'MyMessage' is shadowed");
+    let descriptor_pool = DescriptorPool::from_file_descriptor_set(file_descriptor_set).unwrap();
+    let message = descriptor_pool
+        .get_message_by_name("my.package.MyMessage")
+        .unwrap();
+    let field = message.get_field_by_name("MyMessage").unwrap();
+    assert_eq!(
+        field.kind().as_message().unwrap().full_name(),
+        "my.package.MyMessage"
+    );
 }
 
 #[test]

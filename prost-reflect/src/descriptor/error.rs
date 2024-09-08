@@ -85,6 +85,7 @@ pub(super) enum DescriptorErrorKind {
     },
     NameShadowed {
         name: String,
+        shadowed_name: String,
         found: Label,
         #[cfg_attr(not(feature = "miette"), allow(dead_code))]
         help: Option<String>,
@@ -532,8 +533,15 @@ impl fmt::Display for DescriptorErrorKind {
             DescriptorErrorKind::NameNotFound { name, .. } => {
                 write!(f, "name '{}' is not defined", name)
             }
-            DescriptorErrorKind::NameShadowed { name, .. } => {
-                write!(f, "name '{}' is shadowed", name)
+            DescriptorErrorKind::NameShadowed {
+                name,
+                shadowed_name,
+                ..
+            } => {
+                write!(
+                    f,
+                    "'{name}' resolves to '{shadowed_name}', which is not defined",
+                )
             }
             DescriptorErrorKind::InvalidType { name, expected, .. } => {
                 write!(f, "'{}' is not {}", name, expected)

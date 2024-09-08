@@ -173,7 +173,7 @@ impl Builder {
                 .type_attribute(full_name, "#[derive(::prost_reflect::ReflectMessage)]")
                 .type_attribute(
                     full_name,
-                    &format!(r#"#[prost_reflect(message_name = "{}")]"#, full_name,),
+                    format!(r#"#[prost_reflect(message_name = "{}")]"#, full_name,),
                 )
                 .type_attribute(full_name, &pool_attribute);
         }

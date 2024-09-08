@@ -38,7 +38,7 @@ enum ResolveNameFilter {
     FieldType,
 }
 
-enum ResolveNameResult<'a, 'b, 'c> {
+enum ResolveNameResult<'a, 'b> {
     Found {
         name: Cow<'b, str>,
         def: &'a Definition,
@@ -54,7 +54,7 @@ enum ResolveNameResult<'a, 'b, 'c> {
     },
     Shadowed {
         name: Cow<'b, str>,
-        shadowed_name: Cow<'c, str>,
+        shadowed_name: Cow<'b, str>,
     },
     NotFound,
 }
@@ -172,7 +172,7 @@ impl fmt::Display for ResolveNameFilter {
     }
 }
 
-impl<'a, 'b, 'c> ResolveNameResult<'a, 'b, 'c> {
+impl<'a, 'b> ResolveNameResult<'a, 'b> {
     fn new(
         dependencies: &HashSet<FileIndex>,
         names: &'a HashMap<Box<str>, Definition>,
@@ -196,7 +196,7 @@ impl<'a, 'b, 'c> ResolveNameResult<'a, 'b, 'c> {
         }
     }
 
-    fn into_owned(self) -> ResolveNameResult<'a, 'static, 'static> {
+    fn into_owned(self) -> ResolveNameResult<'a, 'static> {
         match self {
             ResolveNameResult::Found { name, def } => ResolveNameResult::Found {
                 name: Cow::Owned(name.into_owned()),
@@ -287,10 +287,10 @@ impl<'a, 'b, 'c> ResolveNameResult<'a, 'b, 'c> {
                     join_path(found_path1, found_path2),
                 ),
                 help: Some(format!(
-                    "'{}' is is resolved to '{}', which is not defined. The innermost scope is searched first in name resolution. Consider using a leading '.'(i.e., '.{}') to start from the outermost scope.",
-                    name, shadowed_name, name
+                    "The innermost scope is searched first in name resolution. Consider using a leading '.' (i.e., '.{name}') to start from the outermost scope.",
                 )),
                 name: name.into_owned(),
+                shadowed_name: shadowed_name.into_owned(),
             }),
         }
     }
@@ -314,13 +314,13 @@ fn to_json_name(name: &str) -> String {
     result
 }
 
-fn resolve_name<'a, 'b, 'c>(
+fn resolve_name<'a, 'b>(
     dependencies: &HashSet<FileIndex>,
     names: &'a HashMap<Box<str>, Definition>,
-    scope: &'c str,
+    scope: &str,
     name: &'b str,
     filter: ResolveNameFilter,
-) -> ResolveNameResult<'a, 'b, 'c> {
+) -> ResolveNameResult<'a, 'b> {
     match name.strip_prefix('.') {
         Some(full_name) => ResolveNameResult::new(dependencies, names, full_name, filter),
         None if scope.is_empty() => ResolveNameResult::new(dependencies, names, name, filter),
@@ -328,38 +328,53 @@ fn resolve_name<'a, 'b, 'c>(
     }
 }
 
-fn resolve_relative_name<'a, 'b, 'c>(
+fn resolve_relative_name<'a, 'b>(
     dependencies: &HashSet<FileIndex>,
     names: &'a HashMap<Box<str>, Definition>,
-    scope: &'c str,
+    scope: &str,
     relative_name: &'b str,
     filter: ResolveNameFilter,
-) -> ResolveNameResult<'a, 'b, 'c> {
+) -> ResolveNameResult<'a, 'b> {
     let mut err = ResolveNameResult::NotFound;
-    let relative_first_part = relative_name.split('.').next();
-    let mut last_candidate_last_part = None;
+    let relative_first_part = relative_name.split('.').next().unwrap_or_default();
+
     for candidate_parent in resolve_relative_candidate_parents(scope) {
         let candidate = match candidate_parent {
-            "" => Cow::Borrowed(relative_name),
-            _ => Cow::Owned(format!("{}.{}", candidate_parent, relative_name)),
+            "" => Cow::Borrowed(relative_first_part),
+            _ => Cow::Owned(format!("{}.{}", candidate_parent, relative_first_part)),
         };
-        let res = ResolveNameResult::new(dependencies, names, candidate, filter);
-        if res.is_found() {
-            return res.into_owned();
-        } else if matches!(err, ResolveNameResult::NotFound) {
-            err = res;
+
+        if relative_first_part.len() == relative_name.len() {
+            // Looking up a simple name e.g. `Foo`
+            let res = ResolveNameResult::new(dependencies, names, candidate, filter);
+            if res.is_found() {
+                return res.into_owned();
+            } else if matches!(err, ResolveNameResult::NotFound) {
+                err = res;
+            }
+        } else {
+            // Looking up a name including a namespace e.g. `foo.Foo`. First determine the scope using the first component of the name.
+            match names.get(candidate.as_ref()) {
+                Some(def) if def.kind.is_parent() => {
+                    let candidate_full = match candidate_parent {
+                        "" => Cow::Borrowed(relative_name),
+                        _ => Cow::Owned(format!("{}.{}", candidate_parent, relative_name)),
+                    };
+
+                    let res =
+                        ResolveNameResult::new(dependencies, names, candidate_full.clone(), filter);
+                    if matches!(res, ResolveNameResult::NotFound) {
+                        return ResolveNameResult::Shadowed {
+                            name: Cow::Borrowed(relative_name),
+                            shadowed_name: candidate_full,
+                        };
+                    } else {
+                        return res;
+                    }
+                }
+                _ => continue,
+            }
         }
-        // Check if the name is shadowed by last parent scope, but this is not the last candidate
-        if Some(relative_first_part) == Some(last_candidate_last_part)
-            && !candidate_parent.is_empty()
-        {
-            let shadowed_name = format!("{}.{}", candidate_parent, relative_name);
-            return ResolveNameResult::Shadowed {
-                name: Cow::Borrowed(relative_name),
-                shadowed_name: Cow::Owned(shadowed_name),
-            };
-        }
-        last_candidate_last_part = candidate_parent.rsplit('.').next();
     }
 
     err.into_owned()

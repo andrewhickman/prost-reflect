@@ -133,6 +133,8 @@ check_err!(name_resolution1);
 check_err!(name_resolution2);
 check_ok!(name_resolution3);
 check_err!(name_resolution4);
+check_ok!(name_resolution5);
+check_ok!(name_resolution6);
 check_err!(name_collision1);
 check_err!(name_collision2);
 check_err!(name_collision3);

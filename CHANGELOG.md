@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed an issue with the name resolution changes in the previous release, causing some valid files to be rejected (protox#86)
+
 ## [0.14.1] - 2024-09-02
 
 ### Fixed
@@ -422,3 +426,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#41]: https://github.com/andrewhickman/prost-reflect/pull/41
 [#99]: https://github.com/andrewhickman/prost-reflect/issues/99
 [protox#82]: https://github.com/andrewhickman/protox/issues/82
+[protox#86]: https://github.com/andrewhickman/protox/issues/86

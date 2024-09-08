@@ -115,7 +115,7 @@ fn install_conformance_test_runner(src_dir: &Path, prefix_dir: &Path) -> Result<
         .arg("-GNinja")
         .arg("cmake/")
         .arg("-DCMAKE_BUILD_TYPE=DEBUG")
-        .arg(&format!("-DCMAKE_INSTALL_PREFIX={}", prefix_dir.display()))
+        .arg(format!("-DCMAKE_INSTALL_PREFIX={}", prefix_dir.display()))
         .arg("-Dprotobuf_BUILD_CONFORMANCE=ON")
         .arg("-Dprotobuf_BUILD_TESTS=OFF")
         .current_dir(src_dir)

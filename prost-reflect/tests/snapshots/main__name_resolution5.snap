@@ -1,0 +1,38 @@
+---
+source: prost-reflect/tests/main.rs
+expression: actual
+---
+file:
+  - enumType:
+      - name: ChildEnum
+        value:
+          - name: UNKNOWN
+            number: 0
+          - name: A
+            number: 1
+          - name: B
+            number: 2
+    messageType:
+      - field:
+          - jsonName: ChildMessage
+            label: LABEL_OPTIONAL
+            name: ChildMessage
+            number: 1
+            type: TYPE_MESSAGE
+            typeName: ".ChildMessage"
+          - jsonName: ChildEnum
+            label: LABEL_OPTIONAL
+            name: ChildEnum
+            number: 2
+            type: TYPE_ENUM
+            typeName: ".ChildEnum"
+        name: Parent
+      - field:
+          - jsonName: field
+            label: LABEL_OPTIONAL
+            name: field
+            number: 1
+            type: TYPE_STRING
+        name: ChildMessage
+    name: root.proto
+    syntax: proto3
