@@ -393,6 +393,22 @@ impl fmt::Debug for KindIndex {
     }
 }
 
+impl DefinitionKind {
+    fn is_parent(&self) -> bool {
+        match self {
+            DefinitionKind::Package => true,
+            DefinitionKind::Message(_) => true,
+            DefinitionKind::Field(_) => false,
+            DefinitionKind::Oneof(_) => false,
+            DefinitionKind::Service(_) => true,
+            DefinitionKind::Method(_) => false,
+            DefinitionKind::Enum(_) => true,
+            DefinitionKind::EnumValue(_) => false,
+            DefinitionKind::Extension(_) => false,
+        }
+    }
+}
+
 impl DescriptorPoolInner {
     fn get_by_name(&self, name: &str) -> Option<&Definition> {
         let name = name.strip_prefix('.').unwrap_or(name);
