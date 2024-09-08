@@ -540,7 +540,7 @@ impl fmt::Display for DescriptorErrorKind {
             } => {
                 write!(
                     f,
-                    "'{name}' is is resolved to '{shadowed_name}', which is not defined. ",
+                    "'{name}' is is resolved to '{shadowed_name}', which is not defined",
                 )
             }
             DescriptorErrorKind::InvalidType { name, expected, .. } => {
