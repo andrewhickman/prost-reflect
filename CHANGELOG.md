@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.2] - 2024-09-08
+
 ### Fixed
 
 - Fixed an issue with the name resolution changes in the previous release, causing some valid files to be rejected (protox#86)
@@ -369,7 +371,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial release, including support for inspecting message types at runtime.
 
-[Unreleased]: https://github.com/andrewhickman/prost-reflect/compare/0.14.1...HEAD
+[Unreleased]: https://github.com/andrewhickman/prost-reflect/compare/0.14.2...HEAD
+[0.14.2]: https://github.com/andrewhickman/prost-reflect/compare/0.14.1...0.14.2
 [0.14.1]: https://github.com/andrewhickman/prost-reflect/compare/0.14.0...0.14.1
 [0.14.0]: https://github.com/andrewhickman/prost-reflect/compare/0.13.1...0.14.0
 [0.13.1]: https://github.com/andrewhickman/prost-reflect/compare/0.13.0...0.13.1
