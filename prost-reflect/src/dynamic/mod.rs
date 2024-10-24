@@ -1200,3 +1200,19 @@ fn type_sizes() {
     assert_eq!(std::mem::size_of::<DynamicMessage>(), 40);
     assert_eq!(std::mem::size_of::<Value>(), 56);
 }
+
+pub(crate) enum Either<L, R> {
+    Left(L),
+    Right(R),
+}
+
+impl<L: Iterator, R: Iterator<Item = L::Item>> Iterator for Either<L, R> {
+    type Item = L::Item;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            Either::Left(left) => left.next(),
+            Either::Right(right) => right.next(),
+        }
+    }
+}

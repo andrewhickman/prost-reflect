@@ -54,62 +54,38 @@ fn serialize_dynamic_message_fields<S>(
 where
     S: SerializeMap,
 {
-    if options.skip_default_fields {
-        for field in value.fields.iter(&value.desc) {
-            let (name, value, ref kind) = match field {
-                ValueAndDescriptor::Field(value, ref field_desc) => {
-                    let name = if options.use_proto_field_name {
-                        field_desc.name()
-                    } else {
-                        field_desc.json_name()
-                    };
-                    (name, value, field_desc.kind())
-                }
-                ValueAndDescriptor::Extension(value, ref extension_desc) => {
-                    (extension_desc.json_name(), value, extension_desc.kind())
-                }
-                ValueAndDescriptor::Unknown(_) => continue,
-            };
-
-            map.serialize_entry(
-                name,
-                &SerializeWrapper {
-                    value: &ValueAndKind {
-                        value: value.as_ref(),
-                        kind,
-                    },
-                    options,
-                },
-            )?;
-        }
+    let fields = if options.skip_default_fields {
+        crate::dynamic::Either::Left(value.fields.iter(&value.desc))
     } else {
-        for field in value.fields.iter_include_default(&value.desc) {
-            let (name, value, ref kind) = match field {
-                ValueAndDescriptor::Field(value, ref field_desc) => {
-                    let name = if options.use_proto_field_name {
-                        field_desc.name()
-                    } else {
-                        field_desc.json_name()
-                    };
-                    (name, value, field_desc.kind())
-                }
-                ValueAndDescriptor::Extension(value, ref extension_desc) => {
-                    (extension_desc.json_name(), value, extension_desc.kind())
-                }
-                ValueAndDescriptor::Unknown(_) => continue,
-            };
+        crate::dynamic::Either::Right(value.fields.iter_include_default(&value.desc))
+    };
 
-            map.serialize_entry(
-                name,
-                &SerializeWrapper {
-                    value: &ValueAndKind {
-                        value: value.as_ref(),
-                        kind,
-                    },
-                    options,
+    for field in fields {
+        let (name, value, ref kind) = match field {
+            ValueAndDescriptor::Field(value, ref field_desc) => {
+                let name = if options.use_proto_field_name {
+                    field_desc.name()
+                } else {
+                    field_desc.json_name()
+                };
+                (name, value, field_desc.kind())
+            }
+            ValueAndDescriptor::Extension(value, ref extension_desc) => {
+                (extension_desc.json_name(), value, extension_desc.kind())
+            }
+            ValueAndDescriptor::Unknown(_) => continue,
+        };
+
+        map.serialize_entry(
+            name,
+            &SerializeWrapper {
+                value: &ValueAndKind {
+                    value: value.as_ref(),
+                    kind,
                 },
-            )?;
-        }
+                options,
+            },
+        )?;
     }
 
     Ok(())

@@ -175,7 +175,6 @@ impl DynamicMessageFieldSet {
             })
     }
 
-    #[cfg(feature = "serde")]
     pub(crate) fn iter_include_default<'a>(
         &'a self,
         message: &'a MessageDescriptor,
