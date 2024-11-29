@@ -481,8 +481,13 @@ impl<'a> Parser<'a> {
 
     fn parse_bool(&mut self) -> Result<(bool, Span), ParseErrorKind> {
         match self.peek()? {
-            Some((Token::Ident("false"), _)) => Ok((false, self.bump())),
-            Some((Token::Ident("true"), _)) => Ok((true, self.bump())),
+            Some((Token::Ident("false"), _))
+            | Some((Token::Ident("False"), _))
+            | Some((Token::Ident("f"), _)) => Ok((false, self.bump())),
+            Some((Token::Ident("true"), _))
+            | Some((Token::Ident("True"), _))
+            | Some((Token::Ident("t"), _)) => Ok((true, self.bump())),
+            Some((Token::IntLiteral(v), _)) => Ok((v.value == "1", self.bump())),
             _ => self.unexpected_token("'true' or 'false'"),
         }
     }
