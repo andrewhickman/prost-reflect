@@ -487,7 +487,19 @@ impl<'a> Parser<'a> {
             Some((Token::Ident("true"), _))
             | Some((Token::Ident("True"), _))
             | Some((Token::Ident("t"), _)) => Ok((true, self.bump())),
-            Some((Token::IntLiteral(v), _)) => Ok((v.value == "1", self.bump())),
+            Some((Token::IntLiteral(v), _)) => {
+                let value = match u8::from_str_radix(v.value, v.radix) {
+                    Ok(v) => v,
+                    Err(_e) => return self.unexpected_token("u8 int value"),
+                };
+                if value == 1 {
+                    Ok((true, self.bump()))
+                } else if value == 0 {
+                    Ok((false, self.bump()))
+                } else {
+                    self.unexpected_token("0 or 1 int value")
+                }
+            }
             _ => self.unexpected_token("'true' or 'false'"),
         }
     }
