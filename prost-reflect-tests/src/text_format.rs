@@ -433,6 +433,27 @@ fn parse_scalars() {
 }
 
 #[test]
+fn parse_bool() {
+    fn parse(s: &str) -> bool {
+        from_text::<Scalars>(s).bool
+    }
+
+    assert!(!parse("bool: false"));
+    assert!(!parse("bool: False"));
+    assert!(!parse("bool: f"));
+    assert!(!parse("bool: 0"));
+    assert!(!parse("bool: 00"));
+    assert!(!parse("bool: 0x0"));
+    assert!(parse("bool: true"));
+    assert!(parse("bool: True"));
+    assert!(parse("bool: t"));
+    assert!(parse("bool: t"));
+    assert!(parse("bool: 1"));
+    assert!(parse("bool: 01"));
+    assert!(parse("bool: 0x1"));
+}
+
+#[test]
 fn parse_scalars_float_extrema() {
     assert_eq!(
         from_text::<Scalars>("double: infinity, float: -INF"),
@@ -685,12 +706,17 @@ fn parse_error() {
         "expected an integer, but found 'BAR'"
     );
     assert_eq!(
-        error("bool: 1"),
-        "expected 'true' or 'false', but found '1'"
-    );
-    assert_eq!(
         error("bool: TRUE"),
         "expected 'true' or 'false', but found 'TRUE'"
+    );
+    assert_eq!(
+        error("bool: tRuE"),
+        "expected 'true' or 'false', but found 'tRuE'"
+    );
+    assert_eq!(error("bool: 3"), "expected 0 or 1, but found '3'");
+    assert_eq!(
+        error("bool: 99999999999999"),
+        "expected 0 or 1, but found '99999999999999'"
     );
     assert_eq!(error("bytes: 1.2"), "expected a string, but found '1.2'");
     assert_eq!(error("bytes: TRUE"), "expected a string, but found 'TRUE'");

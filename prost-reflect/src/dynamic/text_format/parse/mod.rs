@@ -490,14 +490,14 @@ impl<'a> Parser<'a> {
             Some((Token::IntLiteral(v), _)) => {
                 let value = match u8::from_str_radix(v.value, v.radix) {
                     Ok(v) => v,
-                    Err(_e) => return self.unexpected_token("u8 int value"),
+                    Err(_e) => return self.unexpected_token("0 or 1"),
                 };
                 if value == 1 {
                     Ok((true, self.bump()))
                 } else if value == 0 {
                     Ok((false, self.bump()))
                 } else {
-                    self.unexpected_token("0 or 1 int value")
+                    self.unexpected_token("0 or 1")
                 }
             }
             _ => self.unexpected_token("'true' or 'false'"),
