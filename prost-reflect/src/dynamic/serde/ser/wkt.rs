@@ -330,7 +330,7 @@ where
     serialize_list_inner(&raw, serializer, options)
 }
 
-impl<'a> Serialize for SerializeWrapper<'a, prost_types::Value> {
+impl Serialize for SerializeWrapper<'_, prost_types::Value> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,

@@ -49,7 +49,7 @@ struct ResolveVisitor<'a> {
     errors: Vec<DescriptorErrorKind>,
 }
 
-impl<'a> Visitor for ResolveVisitor<'a> {
+impl Visitor for ResolveVisitor<'_> {
     fn visit_file(&mut self, path: &[i32], index: FileIndex, file: &FileDescriptorProto) {
         let mut transitive_dependencies = HashSet::with_capacity(file.dependency.len() + 1);
         transitive_dependencies.insert(index);
@@ -414,7 +414,7 @@ impl<'a> Visitor for ResolveVisitor<'a> {
     }
 }
 
-impl<'a> ResolveVisitor<'a> {
+impl ResolveVisitor<'_> {
     fn resolve_public_dependencies(&self, dependencies: &mut HashSet<FileIndex>, index: FileIndex) {
         let file = &self.pool.files[index as usize];
 

@@ -87,7 +87,7 @@ where
 
 struct MessageSeed<'a>(&'a MessageDescriptor, &'a DeserializeOptions);
 
-impl<'a, 'de> DeserializeSeed<'de> for MessageSeed<'a> {
+impl<'de> DeserializeSeed<'de> for MessageSeed<'_> {
     type Value = DynamicMessage;
 
     fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
@@ -100,7 +100,7 @@ impl<'a, 'de> DeserializeSeed<'de> for MessageSeed<'a> {
 
 struct FieldDescriptorSeed<'a, T>(&'a T, &'a DeserializeOptions);
 
-impl<'a, 'de, T> DeserializeSeed<'de> for FieldDescriptorSeed<'a, T>
+impl<'de, T> DeserializeSeed<'de> for FieldDescriptorSeed<'_, T>
 where
     T: FieldDescriptorLike,
 {
@@ -126,7 +126,7 @@ where
 
 struct OptionalFieldDescriptorSeed<'a, T>(&'a T, &'a DeserializeOptions);
 
-impl<'a, 'de, T> DeserializeSeed<'de> for OptionalFieldDescriptorSeed<'a, T>
+impl<'de, T> DeserializeSeed<'de> for OptionalFieldDescriptorSeed<'_, T>
 where
     T: FieldDescriptorLike,
 {
@@ -140,7 +140,7 @@ where
     }
 }
 
-impl<'a, 'de, T> Visitor<'de> for OptionalFieldDescriptorSeed<'a, T>
+impl<'de, T> Visitor<'de> for OptionalFieldDescriptorSeed<'_, T>
 where
     T: FieldDescriptorLike,
 {

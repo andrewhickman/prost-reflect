@@ -34,7 +34,7 @@ pub struct GoogleProtobufStructVisitor;
 pub struct GoogleProtobufValueVisitor;
 pub struct GoogleProtobufEmptyVisitor;
 
-impl<'a, 'de> Visitor<'de> for GoogleProtobufAnyVisitor<'a> {
+impl<'de> Visitor<'de> for GoogleProtobufAnyVisitor<'_> {
     type Value = prost_types::Any;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -131,7 +131,7 @@ impl<'a, 'de> Visitor<'de> for GoogleProtobufAnyVisitor<'a> {
     }
 }
 
-impl<'de> Visitor<'de> for GoogleProtobufNullVisitor {
+impl Visitor<'_> for GoogleProtobufNullVisitor {
     type Value = i32;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -158,7 +158,7 @@ impl<'de> Visitor<'de> for GoogleProtobufNullVisitor {
     }
 }
 
-impl<'de> Visitor<'de> for GoogleProtobufTimestampVisitor {
+impl Visitor<'_> for GoogleProtobufTimestampVisitor {
     type Value = prost_types::Timestamp;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -179,7 +179,7 @@ impl<'de> Visitor<'de> for GoogleProtobufTimestampVisitor {
     }
 }
 
-impl<'de> Visitor<'de> for GoogleProtobufDurationVisitor {
+impl Visitor<'_> for GoogleProtobufDurationVisitor {
     type Value = prost_types::Duration;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -198,7 +198,7 @@ impl<'de> Visitor<'de> for GoogleProtobufDurationVisitor {
     }
 }
 
-impl<'de> Visitor<'de> for GoogleProtobufFieldMaskVisitor {
+impl Visitor<'_> for GoogleProtobufFieldMaskVisitor {
     type Value = prost_types::FieldMask;
 
     fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>

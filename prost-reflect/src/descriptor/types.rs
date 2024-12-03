@@ -545,7 +545,7 @@ where
             src: &'a mut B,
         }
 
-        impl<'a, B> Buf for CopyBufAdapter<'a, B>
+        impl<B> Buf for CopyBufAdapter<'_, B>
         where
             B: Buf,
         {

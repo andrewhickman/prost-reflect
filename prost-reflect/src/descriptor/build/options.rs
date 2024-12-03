@@ -74,7 +74,7 @@ struct OptionsVisitor<'a> {
     locations: Vec<(FileIndex, Box<[i32]>, Box<[i32]>)>,
 }
 
-impl<'a> Visitor for OptionsVisitor<'a> {
+impl Visitor for OptionsVisitor<'_> {
     fn visit_file(&mut self, path: &[i32], index: FileIndex, file: &FileDescriptorProto) {
         if let Some(options) = &file.options {
             let path = join_path(path, &[tag::file::OPTIONS]);
@@ -296,7 +296,7 @@ impl<'a> Visitor for OptionsVisitor<'a> {
     }
 }
 
-impl<'a> OptionsVisitor<'a> {
+impl OptionsVisitor<'_> {
     fn resolve_options<T>(
         &mut self,
         desc_name: &str,
