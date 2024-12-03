@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added the `skip_default_fields` option to the text format, which has the same behaviour as the equivalent option for the JSON format ([#131]).
+
+### Fixed
+
+- The text format now correct parses the full range of boolean values allowed by the [spec](https://protobuf.dev/reference/protobuf/textformat-spec/#value) ([#135]).
+
 ## [0.14.2] - 2024-09-08
 
 ### Fixed
@@ -428,5 +436,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#40]: https://github.com/andrewhickman/prost-reflect/pull/40
 [#41]: https://github.com/andrewhickman/prost-reflect/pull/41
 [#99]: https://github.com/andrewhickman/prost-reflect/issues/99
+[#131]: https://github.com/andrewhickman/prost-reflect/issues/131
+[#135]: https://github.com/andrewhickman/prost-reflect/issues/135
 [protox#82]: https://github.com/andrewhickman/protox/issues/82
 [protox#86]: https://github.com/andrewhickman/protox/issues/86
