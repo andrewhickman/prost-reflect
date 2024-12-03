@@ -30,7 +30,7 @@ where
     .serialize(serializer)
 }
 
-impl<'a> Serialize for SerializeWrapper<'a, DynamicMessage> {
+impl Serialize for SerializeWrapper<'_, DynamicMessage> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -237,7 +237,7 @@ impl<'a> Serialize for SerializeWrapper<'a, ValueAndKind<'a>> {
     }
 }
 
-impl<'a> Serialize for SerializeWrapper<'a, MapKey> {
+impl Serialize for SerializeWrapper<'_, MapKey> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,

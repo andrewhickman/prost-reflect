@@ -62,7 +62,7 @@ pub(crate) struct TokenExtras {
     pub error: Option<ParseErrorKind>,
 }
 
-impl<'a> fmt::Display for Token<'a> {
+impl fmt::Display for Token<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Token::Ident(value) => write!(f, "{}", value),

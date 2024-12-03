@@ -14,7 +14,7 @@ use super::{
 
 pub struct KindSeed<'a>(pub &'a Kind, pub &'a DeserializeOptions);
 
-impl<'a, 'de> DeserializeSeed<'de> for KindSeed<'a> {
+impl<'de> DeserializeSeed<'de> for KindSeed<'_> {
     type Value = Value;
 
     fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
@@ -64,7 +64,7 @@ pub struct MessageVisitor<'a>(pub &'a MessageDescriptor, pub &'a DeserializeOpti
 pub struct MessageVisitorInner<'a>(pub &'a mut DynamicMessage, pub &'a DeserializeOptions);
 pub struct EnumVisitor<'a>(pub &'a EnumDescriptor);
 
-impl<'a, 'de> Visitor<'de> for ListVisitor<'a> {
+impl<'de> Visitor<'de> for ListVisitor<'_> {
     type Value = Vec<Value>;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -86,7 +86,7 @@ impl<'a, 'de> Visitor<'de> for ListVisitor<'a> {
     }
 }
 
-impl<'a, 'de> Visitor<'de> for MapVisitor<'a> {
+impl<'de> Visitor<'de> for MapVisitor<'_> {
     type Value = HashMap<MapKey, Value>;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -133,7 +133,7 @@ impl<'a, 'de> Visitor<'de> for MapVisitor<'a> {
     }
 }
 
-impl<'de> Visitor<'de> for DoubleVisitor {
+impl Visitor<'_> for DoubleVisitor {
     type Value = f64;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -178,7 +178,7 @@ impl<'de> Visitor<'de> for DoubleVisitor {
     }
 }
 
-impl<'de> Visitor<'de> for FloatVisitor {
+impl Visitor<'_> for FloatVisitor {
     type Value = f32;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -235,7 +235,7 @@ impl<'de> Visitor<'de> for FloatVisitor {
     }
 }
 
-impl<'de> Visitor<'de> for Int32Visitor {
+impl Visitor<'_> for Int32Visitor {
     type Value = i32;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -290,7 +290,7 @@ impl<'de> Visitor<'de> for Int32Visitor {
     }
 }
 
-impl<'de> Visitor<'de> for Uint32Visitor {
+impl Visitor<'_> for Uint32Visitor {
     type Value = u32;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -345,7 +345,7 @@ impl<'de> Visitor<'de> for Uint32Visitor {
     }
 }
 
-impl<'de> Visitor<'de> for Int64Visitor {
+impl Visitor<'_> for Int64Visitor {
     type Value = i64;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -392,7 +392,7 @@ impl<'de> Visitor<'de> for Int64Visitor {
     }
 }
 
-impl<'de> Visitor<'de> for Uint64Visitor {
+impl Visitor<'_> for Uint64Visitor {
     type Value = u64;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -439,7 +439,7 @@ impl<'de> Visitor<'de> for Uint64Visitor {
     }
 }
 
-impl<'de> Visitor<'de> for StringVisitor {
+impl Visitor<'_> for StringVisitor {
     type Value = String;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -463,7 +463,7 @@ impl<'de> Visitor<'de> for StringVisitor {
     }
 }
 
-impl<'de> Visitor<'de> for BoolVisitor {
+impl Visitor<'_> for BoolVisitor {
     type Value = bool;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -479,7 +479,7 @@ impl<'de> Visitor<'de> for BoolVisitor {
     }
 }
 
-impl<'de> Visitor<'de> for BytesVisitor {
+impl Visitor<'_> for BytesVisitor {
     type Value = Bytes;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -519,7 +519,7 @@ impl<'de> Visitor<'de> for BytesVisitor {
     }
 }
 
-impl<'a, 'de> Visitor<'de> for MessageVisitor<'a> {
+impl<'de> Visitor<'de> for MessageVisitor<'_> {
     type Value = DynamicMessage;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -538,7 +538,7 @@ impl<'a, 'de> Visitor<'de> for MessageVisitor<'a> {
     }
 }
 
-impl<'a, 'de> Visitor<'de> for MessageVisitorInner<'a> {
+impl<'de> Visitor<'de> for MessageVisitorInner<'_> {
     type Value = ();
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -588,7 +588,7 @@ impl<'a, 'de> Visitor<'de> for MessageVisitorInner<'a> {
     }
 }
 
-impl<'a, 'de> Visitor<'de> for EnumVisitor<'a> {
+impl Visitor<'_> for EnumVisitor<'_> {
     type Value = i32;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
