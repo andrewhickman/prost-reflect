@@ -146,7 +146,7 @@ impl DynamicMessageFieldSet {
     pub(crate) fn iter<'a>(
         &'a self,
         message: &'a MessageDescriptor,
-    ) -> impl Iterator<Item = ValueAndDescriptor> + 'a {
+    ) -> impl Iterator<Item = ValueAndDescriptor<'a>> + 'a {
         self.fields
             .iter()
             .filter_map(move |(&number, value)| match value {
@@ -179,7 +179,7 @@ impl DynamicMessageFieldSet {
     pub(crate) fn iter_include_default<'a>(
         &'a self,
         message: &'a MessageDescriptor,
-    ) -> impl Iterator<Item = ValueAndDescriptor> + 'a {
+    ) -> impl Iterator<Item = ValueAndDescriptor<'a>> + 'a {
         let fields = message
             .fields()
             .filter(move |f| !f.supports_presence() || self.has(f))
