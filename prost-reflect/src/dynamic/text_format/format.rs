@@ -42,7 +42,12 @@ where
             }
         }
 
-        let fields = message.fields.iter(&message.desc);
+        let fields = if self.options.skip_default_fields {
+            crate::dynamic::Either::Left(message.fields.iter(&message.desc))
+        } else {
+            crate::dynamic::Either::Right(message.fields.iter_include_default(&message.desc))
+        };
+
         if self.options.skip_unknown_fields {
             self.fmt_delimited(
                 fields.filter(|f| !matches!(f, ValueAndDescriptor::Unknown(..))),
@@ -85,7 +90,15 @@ where
                 write!(self.f, "{}", value)
             }
             Value::Message(message) => {
-                if message.fields.iter(&message.desc).all(|f| {
+                let mut fields = if self.options.skip_default_fields {
+                    crate::dynamic::Either::Left(message.fields.iter(&message.desc))
+                } else {
+                    crate::dynamic::Either::Right(
+                        message.fields.iter_include_default(&message.desc),
+                    )
+                };
+
+                if fields.all(|f| {
                     self.options.skip_unknown_fields && matches!(f, ValueAndDescriptor::Unknown(..))
                 }) {
                     self.f.write_str("{}")
@@ -309,6 +322,7 @@ fn as_any(message: &DynamicMessage) -> Option<(String, DynamicMessage)> {
 #[cfg(feature = "text-format")]
 mod tests {
     use super::*;
+    use crate::ReflectMessage;
 
     fn fmt_unknown(value: &UnknownFieldSet) -> String {
         let mut string = String::new();
@@ -417,5 +431,17 @@ mod tests {
   2: 10
 }"#
         );
+    }
+
+    #[test]
+    fn fmt_include_default() {
+        let timestamp: prost_types::Timestamp = Default::default();
+        let message = timestamp.transcode_to_dynamic();
+
+        let mut string = String::new();
+        Writer::new(FormatOptions::new().skip_default_fields(false), &mut string)
+            .fmt_message(&message)
+            .unwrap();
+        assert_eq!(string, "seconds:0,nanos:0");
     }
 }

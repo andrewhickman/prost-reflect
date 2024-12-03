@@ -18,6 +18,7 @@ pub struct FormatOptions {
     pretty: bool,
     skip_unknown_fields: bool,
     expand_any: bool,
+    skip_default_fields: bool,
 }
 
 #[cfg(feature = "text-format")]
@@ -145,6 +146,18 @@ impl FormatOptions {
         self
     }
 
+    /// Whether to skip fields which have their default value.
+    ///
+    /// If `true`, any fields for which [`has_field`][DynamicMessage::has_field] returns `false` will
+    /// not be included. If `false`, they will be included with their default value.
+    ///
+    /// The default value is `true`.
+    #[cfg(feature = "text-format")]
+    pub fn skip_default_fields(mut self, yes: bool) -> Self {
+        self.skip_default_fields = yes;
+        self
+    }
+
     /// Whether to use the expanded form of the `google.protobuf.Any` type.
     ///
     /// If set to `true`, `Any` fields will use an expanded form:
@@ -193,6 +206,7 @@ impl Default for FormatOptions {
             pretty: false,
             skip_unknown_fields: true,
             expand_any: true,
+            skip_default_fields: true,
         }
     }
 }
