@@ -4,10 +4,10 @@ use once_cell::sync::Lazy;
 use prost::bytes::Buf;
 use prost_types::FileDescriptorProto;
 
-use crate::{reflect::WELL_KNOWN_TYPES_BYTES, DescriptorError, DescriptorPool};
+use crate::{DescriptorError, DescriptorPool};
 
 static INSTANCE: Lazy<Mutex<DescriptorPool>> =
-    Lazy::new(|| Mutex::new(DescriptorPool::decode(WELL_KNOWN_TYPES_BYTES).unwrap()));
+    Lazy::new(|| Mutex::new(crate::reflect::make_wkt_descriptor_pool().unwrap()));
 
 impl DescriptorPool {
     /// Gets a copy of the global descriptor pool. By default, this just contains the google well-known types.

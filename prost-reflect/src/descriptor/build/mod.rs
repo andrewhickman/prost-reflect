@@ -101,7 +101,7 @@ impl DescriptorPoolOffsets {
 }
 
 impl DescriptorPool {
-    pub(super) fn build_files<I>(&mut self, files: I) -> Result<(), DescriptorError>
+    pub(crate) fn build_files<I>(&mut self, files: I) -> Result<(), DescriptorError>
     where
         I: IntoIterator<Item = FileDescriptorProto>,
     {
