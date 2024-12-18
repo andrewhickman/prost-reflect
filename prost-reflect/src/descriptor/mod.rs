@@ -5,7 +5,7 @@ mod global;
 mod tag;
 #[cfg(test)]
 mod tests;
-mod types;
+pub(crate) mod types;
 
 pub use self::error::DescriptorError;
 use self::types::{DescriptorProto, EnumDescriptorProto};
