@@ -18,7 +18,7 @@ use crate::DescriptorError;
 use crate::{DescriptorPool, MessageDescriptor, ReflectMessage};
 
 #[allow(deprecated)]
-fn make_description() -> crate::descriptor::types::FileDescriptorSet {
+fn make_descriptor() -> FileDescriptorSet {
     FileDescriptorSet {
         file: vec![
             FileDescriptorProto {
@@ -4473,71 +4473,10 @@ fn make_description() -> crate::descriptor::types::FileDescriptorSet {
 }
 
 pub fn make_wkt_descriptor_pool() -> Result<DescriptorPool, DescriptorError> {
-    let file_descriptor_set = make_description();
+    let file_descriptor_set = make_descriptor();
     let mut pool = DescriptorPool::new();
     pool.build_files(file_descriptor_set.file.into_iter())?;
     Ok(pool)
-}
-
-#[cfg(test)]
-const WELL_KNOWN_TYPES_BYTES: &[u8] = include_bytes!(concat!(
-    env!("CARGO_MANIFEST_DIR"),
-    "/src/well_known_types.bin"
-));
-
-#[test]
-fn generate_well_known_types_bin() {
-    use std::fs;
-
-    use prost::Message;
-    use prost_types::FileDescriptorSet;
-    use protox::{file::GoogleFileResolver, Compiler};
-
-    // protox can output a FileDescriptorSet directly, but by going through bytes, this should still work
-    // when upgrading to a newer prost-types version.
-    let expected_bytes = Compiler::with_file_resolver(GoogleFileResolver::new())
-        .include_source_info(false)
-        .open_files([
-            "google/protobuf/any.proto",
-            "google/protobuf/api.proto",
-            "google/protobuf/descriptor.proto",
-            "google/protobuf/duration.proto",
-            "google/protobuf/empty.proto",
-            "google/protobuf/field_mask.proto",
-            "google/protobuf/source_context.proto",
-            "google/protobuf/struct.proto",
-            "google/protobuf/timestamp.proto",
-            "google/protobuf/type.proto",
-            "google/protobuf/wrappers.proto",
-            "google/protobuf/compiler/plugin.proto",
-        ])
-        .unwrap()
-        .encode_file_descriptor_set();
-
-    let actual = FileDescriptorSet::decode(WELL_KNOWN_TYPES_BYTES).unwrap();
-    let expected = FileDescriptorSet::decode(expected_bytes.as_ref()).unwrap();
-
-    if actual != expected {
-        fs::write(
-            concat!(
-                env!("CARGO_MANIFEST_DIR"),
-                "/src/well_known_types.expected.bin"
-            ),
-            expected_bytes,
-        )
-        .unwrap();
-
-        let actual_str = format!("{:#?}", actual);
-        let expected_str = format!("{:#?}", expected);
-
-        let diff =
-            similar_asserts::SimpleDiff::from_str(&actual_str, &expected_str, "actual", "expected");
-
-        panic!("Found differences in 'well_known_types.bin'.
-            If this is expected, replace 'well_known_types.bin' with 'well_known_types.actual.bin' to update it
-            \
-            differences: {}", diff);
-    }
 }
 
 macro_rules! impl_reflect_message {
@@ -4628,8 +4567,8 @@ impl_reflect_message! {
 fn compare_parsed_and_coded_default_descriptors() {
     use prost::Message;
 
-    let desc = crate::descriptor::types::FileDescriptorSet::decode(WELL_KNOWN_TYPES_BYTES).unwrap();
-    let built_in_desc = make_description();
+    let desc = crate::descriptor::types::FileDescriptorSet::decode(expected_well_known_types().as_slice()).unwrap();
+    let built_in_desc = make_descriptor();
 
     if desc != built_in_desc {
         let actual = format!("{built_in_desc:#?}");
@@ -4656,4 +4595,30 @@ fn compare_parsed_and_coded_default_descriptors() {
              {diff}"
         );
     }
+}
+
+#[cfg(test)]
+fn expected_well_known_types() -> Vec<u8> {
+    use protox::{Compiler, file::GoogleFileResolver};
+
+    // protox can output a FileDescriptorSet directly, but by going through bytes, this should still work
+    // when upgrading to a newer prost-types version.
+    Compiler::with_file_resolver(GoogleFileResolver::new())
+        .include_source_info(false)
+        .open_files([
+            "google/protobuf/any.proto",
+            "google/protobuf/api.proto",
+            "google/protobuf/descriptor.proto",
+            "google/protobuf/duration.proto",
+            "google/protobuf/empty.proto",
+            "google/protobuf/field_mask.proto",
+            "google/protobuf/source_context.proto",
+            "google/protobuf/struct.proto",
+            "google/protobuf/timestamp.proto",
+            "google/protobuf/type.proto",
+            "google/protobuf/wrappers.proto",
+            "google/protobuf/compiler/plugin.proto",
+        ])
+        .unwrap()
+        .encode_file_descriptor_set()
 }
