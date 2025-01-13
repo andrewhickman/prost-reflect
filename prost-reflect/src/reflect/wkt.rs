@@ -4567,7 +4567,9 @@ impl_reflect_message! {
 fn compare_parsed_and_coded_default_descriptors() {
     use prost::Message;
 
-    let desc = crate::descriptor::types::FileDescriptorSet::decode(expected_well_known_types().as_slice()).unwrap();
+    let desc =
+        crate::descriptor::types::FileDescriptorSet::decode(expected_well_known_types().as_slice())
+            .unwrap();
     let built_in_desc = make_descriptor();
 
     if desc != built_in_desc {
@@ -4599,7 +4601,7 @@ fn compare_parsed_and_coded_default_descriptors() {
 
 #[cfg(test)]
 fn expected_well_known_types() -> Vec<u8> {
-    use protox::{Compiler, file::GoogleFileResolver};
+    use protox::{file::GoogleFileResolver, Compiler};
 
     // protox can output a FileDescriptorSet directly, but by going through bytes, this should still work
     // when upgrading to a newer prost-types version.
