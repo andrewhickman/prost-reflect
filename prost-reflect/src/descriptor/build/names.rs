@@ -257,7 +257,7 @@ impl Visitor for NameVisitor<'_> {
                 });
         }
 
-        let allow_alias = enum_.options.as_ref().map_or(false, |o| {
+        let allow_alias = enum_.options.as_ref().is_some_and(|o| {
             o.value.allow_alias()
                 || o.value.uninterpreted_option.iter().any(|u| {
                     u.name.len() == 1
