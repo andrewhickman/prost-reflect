@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- The descriptors for well known types are now distributed as Rust code instead of a binary protobuf file, to make auditing of the package easier ([#
+138]).
+
 ## [0.14.3] - 2024-12-03
 
 ### Added
@@ -441,5 +446,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#99]: https://github.com/andrewhickman/prost-reflect/issues/99
 [#131]: https://github.com/andrewhickman/prost-reflect/issues/131
 [#135]: https://github.com/andrewhickman/prost-reflect/issues/135
+[#138]: https://github.com/andrewhickman/prost-reflect/issues/138
 [protox#82]: https://github.com/andrewhickman/protox/issues/82
 [protox#86]: https://github.com/andrewhickman/protox/issues/86
