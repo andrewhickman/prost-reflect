@@ -15,8 +15,10 @@ exclude = [
     "**/tests.rs",
     "proptest-regressions",
     "src/file_descriptor_set.bin",
+    "src/well_known_types.bin",
     "src/doctest.proto",
-    "tests"
+    "tests",
+    "doc/*.bin",
 ]
 
 [[test]]

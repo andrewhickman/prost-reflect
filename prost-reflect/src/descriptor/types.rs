@@ -498,7 +498,7 @@ impl<T> Options<T>
 where
     T: Message + Clone,
 {
-    fn from_prost(options: T) -> Self {
+    pub(crate) fn from_prost(options: T) -> Self {
         Options {
             encoded: options.encode_to_vec(),
             value: options,
