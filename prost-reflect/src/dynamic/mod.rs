@@ -262,7 +262,7 @@ impl DynamicMessage {
     pub fn has_field_by_number(&self, number: u32) -> bool {
         self.desc
             .get_field(number)
-            .map_or(false, |field_desc| self.has_field(&field_desc))
+            .is_some_and(|field_desc| self.has_field(&field_desc))
     }
 
     /// Gets the value of the field with the given number, or the default value if it is unset.
@@ -346,7 +346,7 @@ impl DynamicMessage {
     pub fn has_field_by_name(&self, name: &str) -> bool {
         self.desc
             .get_field_by_name(name)
-            .map_or(false, |field_desc| self.has_field(&field_desc))
+            .is_some_and(|field_desc| self.has_field(&field_desc))
     }
 
     /// Gets the value of the field with the given name, or the default value if it is unset.
