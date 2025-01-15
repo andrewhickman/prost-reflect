@@ -19,7 +19,7 @@ impl Message for DynamicMessage {
     where
         Self: Sized,
     {
-        for field in self.fields.iter(&self.desc) {
+        for field in self.fields.iter(&self.desc, false, false) {
             match field {
                 ValueAndDescriptor::Field(value, field_desc) => {
                     value.encode_field(&field_desc, buf)
@@ -61,7 +61,7 @@ impl Message for DynamicMessage {
 
     fn encoded_len(&self) -> usize {
         let mut len = 0;
-        for field in self.fields.iter(&self.desc) {
+        for field in self.fields.iter(&self.desc, false, false) {
             match field {
                 ValueAndDescriptor::Field(value, field_desc) => {
                     len += value.encoded_len(&field_desc);

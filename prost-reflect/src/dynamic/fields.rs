@@ -9,7 +9,10 @@ use crate::{
     ExtensionDescriptor, FieldDescriptor, Kind, MessageDescriptor, OneofDescriptor, Value,
 };
 
-use super::unknown::{UnknownField, UnknownFieldSet};
+use super::{
+    unknown::{UnknownField, UnknownFieldSet},
+    Either,
+};
 
 pub(crate) trait FieldDescriptorLike: fmt::Debug {
     #[cfg(feature = "text-format")]
@@ -143,68 +146,55 @@ impl DynamicMessageFieldSet {
         }
     }
 
+    /// Iterates over the fields in the message.
+    ///
+    /// If `include_default` is `true`, fields with their default value will be included.
+    /// If `index_order` is `true`, fields will be iterated in the order they were defined in the source code. Otherwise, they will be iterated in field number order.
     pub(crate) fn iter<'a>(
         &'a self,
         message: &'a MessageDescriptor,
+        include_default: bool,
+        index_order: bool,
     ) -> impl Iterator<Item = ValueAndDescriptor<'a>> + 'a {
-        self.fields
-            .iter()
-            .filter_map(move |(&number, value)| match value {
-                ValueOrUnknown::Value(value) => {
-                    if let Some(field) = message.get_field(number) {
-                        if field.has(value) {
-                            Some(ValueAndDescriptor::Field(Cow::Borrowed(value), field))
-                        } else {
-                            None
-                        }
-                    } else if let Some(extension) = message.get_extension(number) {
-                        if extension.has(value) {
-                            Some(ValueAndDescriptor::Extension(
-                                Cow::Borrowed(value),
-                                extension,
-                            ))
-                        } else {
-                            None
-                        }
-                    } else {
-                        panic!("no field found with number {}", number)
-                    }
-                }
-                ValueOrUnknown::Unknown(unknown) => Some(ValueAndDescriptor::Unknown(unknown)),
-                ValueOrUnknown::Taken => None,
-            })
-    }
+        let field_descriptors = if index_order {
+            Either::Left(message.fields_in_index_order())
+        } else {
+            Either::Right(message.fields())
+        };
 
-    pub(crate) fn iter_include_default<'a>(
-        &'a self,
-        message: &'a MessageDescriptor,
-    ) -> impl Iterator<Item = ValueAndDescriptor<'a>> + 'a {
-        let fields = message
-            .fields()
-            .filter(move |f| !f.supports_presence() || self.has(f))
-            .map(move |f| ValueAndDescriptor::Field(self.get(&f), f));
-        let others = self
-            .fields
-            .iter()
-            .filter_map(move |(&number, value)| match value {
-                ValueOrUnknown::Value(value) => {
-                    if let Some(extension) = message.get_extension(number) {
-                        if extension.has(value) {
-                            Some(ValueAndDescriptor::Extension(
-                                Cow::Borrowed(value),
-                                extension,
-                            ))
+        let fields = field_descriptors
+            .filter(move |f| {
+                if include_default {
+                    !f.supports_presence() || self.has(f)
+                } else {
+                    self.has(f)
+                }
+            })
+            .map(|f| ValueAndDescriptor::Field(self.get(&f), f));
+
+        let extensions_unknowns =
+            self.fields
+                .iter()
+                .filter_map(move |(&number, value)| match value {
+                    ValueOrUnknown::Value(value) => {
+                        if let Some(extension) = message.get_extension(number) {
+                            if extension.has(value) {
+                                Some(ValueAndDescriptor::Extension(
+                                    Cow::Borrowed(value),
+                                    extension,
+                                ))
+                            } else {
+                                None
+                            }
                         } else {
                             None
                         }
-                    } else {
-                        None
                     }
-                }
-                ValueOrUnknown::Unknown(unknown) => Some(ValueAndDescriptor::Unknown(unknown)),
-                ValueOrUnknown::Taken => None,
-            });
-        fields.chain(others)
+                    ValueOrUnknown::Unknown(unknown) => Some(ValueAndDescriptor::Unknown(unknown)),
+                    ValueOrUnknown::Taken => None,
+                });
+
+        fields.chain(extensions_unknowns)
     }
 
     pub(crate) fn iter_fields<'a>(

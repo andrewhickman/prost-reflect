@@ -42,11 +42,11 @@ where
             }
         }
 
-        let fields = if self.options.skip_default_fields {
-            crate::dynamic::Either::Left(message.fields.iter(&message.desc))
-        } else {
-            crate::dynamic::Either::Right(message.fields.iter_include_default(&message.desc))
-        };
+        let fields = message.fields.iter(
+            &message.desc,
+            !self.options.skip_default_fields,
+            self.options.print_message_fields_in_index_order,
+        );
 
         if self.options.skip_unknown_fields {
             self.fmt_delimited(
@@ -90,13 +90,11 @@ where
                 write!(self.f, "{}", value)
             }
             Value::Message(message) => {
-                let mut fields = if self.options.skip_default_fields {
-                    crate::dynamic::Either::Left(message.fields.iter(&message.desc))
-                } else {
-                    crate::dynamic::Either::Right(
-                        message.fields.iter_include_default(&message.desc),
-                    )
-                };
+                let mut fields = message.fields.iter(
+                    &message.desc,
+                    !self.options.skip_default_fields,
+                    self.options.print_message_fields_in_index_order,
+                );
 
                 if fields.all(|f| {
                     self.options.skip_unknown_fields && matches!(f, ValueAndDescriptor::Unknown(..))

@@ -54,11 +54,9 @@ fn serialize_dynamic_message_fields<S>(
 where
     S: SerializeMap,
 {
-    let fields = if options.skip_default_fields {
-        crate::dynamic::Either::Left(value.fields.iter(&value.desc))
-    } else {
-        crate::dynamic::Either::Right(value.fields.iter_include_default(&value.desc))
-    };
+    let fields = value
+        .fields
+        .iter(&value.desc, !options.skip_default_fields, false);
 
     for field in fields {
         let (name, value, ref kind) = match field {

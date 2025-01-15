@@ -107,3 +107,9 @@ enum EnumWithAlias {
 message MessageWithAliasedEnum {
   EnumWithAlias aliased = 1;
 }
+
+message IndexOrder {
+  int32 a = 3;
+  int32 b = 2;
+  int32 c = 1;
+}
