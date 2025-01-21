@@ -19,6 +19,7 @@ pub struct FormatOptions {
     skip_unknown_fields: bool,
     expand_any: bool,
     skip_default_fields: bool,
+    print_message_fields_in_index_order: bool,
 }
 
 #[cfg(feature = "text-format")]
@@ -158,6 +159,18 @@ impl FormatOptions {
         self
     }
 
+    /// Whether to print message fields in the order they were defined in source code.
+    ///
+    /// If set to `true`, message fields will be printed in the order they were defined in the source code.
+    /// Otherwise, they will be printed in field number order.
+    ///
+    /// The default value is `false`.
+    #[cfg(feature = "text-format")]
+    pub fn print_message_fields_in_index_order(mut self, yes: bool) -> Self {
+        self.print_message_fields_in_index_order = yes;
+        self
+    }
+
     /// Whether to use the expanded form of the `google.protobuf.Any` type.
     ///
     /// If set to `true`, `Any` fields will use an expanded form:
@@ -207,6 +220,7 @@ impl Default for FormatOptions {
             skip_unknown_fields: true,
             expand_any: true,
             skip_default_fields: true,
+            print_message_fields_in_index_order: false,
         }
     }
 }

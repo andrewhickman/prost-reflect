@@ -756,6 +756,19 @@ impl MessageDescriptor {
             })
     }
 
+    pub(crate) fn fields_in_index_order(
+        &self,
+    ) -> impl ExactSizeIterator<Item = FieldDescriptor> + '_ {
+        self.inner()
+            .fields
+            .iter()
+            .enumerate()
+            .map(|(index, _)| FieldDescriptor {
+                message: self.clone(),
+                index: index as u32,
+            })
+    }
+
     /// Gets an iterator yielding a [`OneofDescriptor`] for each oneof field defined in this message.
     pub fn oneofs(&self) -> impl ExactSizeIterator<Item = OneofDescriptor> + '_ {
         indices(&self.inner().oneofs).map(|index| OneofDescriptor {

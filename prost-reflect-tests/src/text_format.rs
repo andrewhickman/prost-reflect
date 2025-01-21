@@ -10,8 +10,8 @@ use prost_reflect::{text_format::FormatOptions, DynamicMessage, ReflectMessage, 
 
 use crate::{
     proto::{
-        contains_group, ComplexType, ContainsGroup, MessageWithAliasedEnum, Point, ScalarArrays,
-        Scalars, WellKnownTypes,
+        contains_group, ComplexType, ContainsGroup, IndexOrder, MessageWithAliasedEnum, Point,
+        ScalarArrays, Scalars, WellKnownTypes,
     },
     test_file_descriptor,
 };
@@ -350,6 +350,23 @@ fn fmt_group() {
     assert_eq!(
         value.to_text_format_with_options(&FormatOptions::new().pretty(true)),
         "RequiredGroup {\n  a: \"bar\"\n}\nOptionalGroup {\n  c: \"foo\"\n  d: -5\n}\nRepeatedGroup: [{\n  e: \"\"\n}, {\n  e: \"hello\"\n  f: 10\n}]"
+    );
+}
+
+#[test]
+fn fmt_index_order() {
+    let value = IndexOrder { a: 1, b: 2, c: 3 }.transcode_to_dynamic();
+    assert_eq!(
+        value.to_text_format_with_options(
+            &FormatOptions::new().print_message_fields_in_index_order(true)
+        ),
+        "a:1,b:2,c:3"
+    );
+    assert_eq!(
+        value.to_text_format_with_options(
+            &FormatOptions::new().print_message_fields_in_index_order(false)
+        ),
+        "c:3,b:2,a:1"
     );
 }
 
