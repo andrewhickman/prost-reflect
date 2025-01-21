@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.5] - 2025-01-21
+
 ### Added
 
 - Added the `print_message_fields_in_index_order` option to the text format, which causes fields to be print in the order they are defined in the protofile. ([#140]).
@@ -392,7 +394,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial release, including support for inspecting message types at runtime.
 
-[Unreleased]: https://github.com/andrewhickman/prost-reflect/compare/0.14.4...HEAD
+[Unreleased]: https://github.com/andrewhickman/prost-reflect/compare/0.14.5...HEAD
+[0.14.5]: https://github.com/andrewhickman/prost-reflect/compare/0.14.4...0.14.5
 [0.14.4]: https://github.com/andrewhickman/prost-reflect/compare/0.14.3...0.14.4
 [0.14.3]: https://github.com/andrewhickman/prost-reflect/compare/0.14.2...0.14.3
 [0.14.2]: https://github.com/andrewhickman/prost-reflect/compare/0.14.1...0.14.2
