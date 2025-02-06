@@ -250,7 +250,16 @@ impl<'a> Parser<'a> {
             Some((Token::LeftBracket, _)) => {
                 let start = self.bump();
 
-                let mut result = vec![self.parse_value(kind)?.0];
+                let mut result = Vec::new();
+
+                // Check for empty list first
+                if let Some((Token::RightBracket, _)) = self.peek()? {
+                    let end = self.bump();
+                    return Ok((Value::List(result), join_span(start, end)));
+                }
+
+                result.push(self.parse_value(kind)?.0);
+
                 loop {
                     match self.peek()? {
                         Some((Token::Comma, _)) => {
