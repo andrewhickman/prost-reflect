@@ -502,7 +502,7 @@ fn parse_aliased_enum() {
 
 #[test]
 fn parse_array() {
-    let value: ScalarArrays = from_text("double: [1.1, 2f] , float: 3 ; float: inf");
+    let value: ScalarArrays = from_text("double: [1.1, 2f] , float: 3 ; float: inf ; int32: [ ]");
     assert_eq!(
         value,
         ScalarArrays {
@@ -557,6 +557,7 @@ fn parse_complex_type() {
       my_enum: [DEFAULT, FOO]
       my_enum: [2, BAR]
       my_enum: NEG
+      my_enum: []
       optional_enum: FOO
     ",
     );
