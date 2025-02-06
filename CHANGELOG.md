@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed empty lists not being allowed in the text format. ([#143]).
+
 ## [0.14.5] - 2025-01-21
 
 ### Added
@@ -458,5 +462,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#135]: https://github.com/andrewhickman/prost-reflect/issues/135
 [#138]: https://github.com/andrewhickman/prost-reflect/issues/138
 [#140]: https://github.com/andrewhickman/prost-reflect/pull/140
+[#143]: https://github.com/andrewhickman/prost-reflect/pull/143
 [protox#82]: https://github.com/andrewhickman/protox/issues/82
 [protox#86]: https://github.com/andrewhickman/protox/issues/86
