@@ -2,6 +2,7 @@ use std::{
     borrow::Cow,
     collections::{BTreeMap, HashMap},
     fmt,
+    marker::PhantomData,
 };
 
 use prost::Message;
@@ -46,21 +47,14 @@ impl<'de> Visitor<'de> for GoogleProtobufAnyVisitor<'_> {
     {
         let mut buffered_entries = HashMap::new();
 
-        let type_url = loop {
-            match map.next_key::<Cow<str>>()? {
-                Some(key) if key == "@type" => {
-                    break map.next_value::<String>()?;
-                }
-                Some(key) => {
-                    let value: serde_value::Value = map.next_value()?;
-                    buffered_entries.insert(key, value);
-                }
-                None => return Err(Error::custom("expected '@type' field")),
-            }
-        };
+        let type_url = find_field(
+            &mut map,
+            &mut buffered_entries,
+            "@type",
+            PhantomData::<String>,
+        )?;
 
         let message_name = get_message_name(&type_url).map_err(Error::custom)?;
-
         let message_desc = self
             .0
             .get_message_by_name(message_name)
@@ -71,24 +65,12 @@ impl<'de> Visitor<'de> for GoogleProtobufAnyVisitor<'_> {
                 Some(value) => {
                     deserialize_message(&message_desc, value, self.1).map_err(Error::custom)?
                 }
-                None => loop {
-                    match map.next_key::<Cow<str>>()? {
-                        Some(key) if key == "value" => {
-                            break map.next_value_seed(MessageSeed(&message_desc, self.1))?
-                        }
-                        Some(key) => {
-                            if self.1.deny_unknown_fields {
-                                return Err(Error::custom(format!(
-                                    "unrecognized field name '{}'",
-                                    key
-                                )));
-                            } else {
-                                let _ = map.next_value::<IgnoredAny>()?;
-                            }
-                        }
-                        None => return Err(Error::custom("expected '@type' field")),
-                    }
-                },
+                None => find_field(
+                    &mut map,
+                    &mut buffered_entries,
+                    "value",
+                    MessageSeed(&message_desc, self.1),
+                )?,
             };
 
             if self.1.deny_unknown_fields {
@@ -378,6 +360,27 @@ impl<'de> Visitor<'de> for GoogleProtobufEmptyVisitor {
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "an empty map")
+    }
+}
+
+fn find_field<'de, A, D>(
+    map: &mut A,
+    buffered_entries: &mut HashMap<Cow<str>, serde_value::Value>,
+    expected: &str,
+    value_seed: D,
+) -> Result<D::Value, A::Error>
+where
+    A: MapAccess<'de>,
+    D: DeserializeSeed<'de>,
+{
+    loop {
+        match map.next_key::<Cow<str>>()? {
+            Some(key) if key == expected => return map.next_value_seed(value_seed),
+            Some(key) => {
+                buffered_entries.insert(key, map.next_value()?);
+            }
+            None => return Err(Error::custom(format!("expected '{expected}' field"))),
+        }
     }
 }
 
