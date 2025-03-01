@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.7] - 2025-03-01
+
 ### Changed
 
 - All type name domains are now permitted when deserializing `google.protobuf.Any` types in the JSON format and text format. ([#143], [#147]).
@@ -404,7 +406,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial release, including support for inspecting message types at runtime.
 
-[Unreleased]: https://github.com/andrewhickman/prost-reflect/compare/0.14.6...HEAD
+[Unreleased]: https://github.com/andrewhickman/prost-reflect/compare/0.14.7...HEAD
+[0.14.7]: https://github.com/andrewhickman/prost-reflect/compare/0.14.6...0.14.7
 [0.14.6]: https://github.com/andrewhickman/prost-reflect/compare/0.14.5...0.14.6
 [0.14.5]: https://github.com/andrewhickman/prost-reflect/compare/0.14.4...0.14.5
 [0.14.4]: https://github.com/andrewhickman/prost-reflect/compare/0.14.3...0.14.4
