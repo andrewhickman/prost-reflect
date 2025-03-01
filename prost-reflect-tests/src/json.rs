@@ -952,6 +952,17 @@ fn deserialize_any_wkt() {
 }
 
 #[test]
+#[should_panic(expected = "expected 'value' field")]
+fn deserialize_any_wkt_missing_value() {
+    from_json::<prost_types::Any>(
+        json!({
+            "@type": "type.googleapis.com/google.protobuf.Int32Value"
+        }),
+        "google.protobuf.Any",
+    );
+}
+
+#[test]
 #[should_panic(expected = "unrecognized field name 'unknown'")]
 fn deserialize_any_deny_unknown_fields() {
     from_json::<prost_types::Any>(
