@@ -11,7 +11,6 @@ use serde::de::{
 };
 
 use crate::{
-    descriptor::{GOOGLE_APIS_DOMAIN, GOOGLE_PROD_DOMAIN},
     dynamic::{
         serde::{
             case::camel_case_to_snake_case, check_duration, check_timestamp, is_well_known_type,
@@ -462,14 +461,11 @@ fn validate_strict_rfc3339(v: &str) -> Result<(), String> {
 }
 
 fn get_message_name(type_url: &str) -> Result<&str, String> {
-    if let Some(message_name) = type_url
-        .strip_prefix(GOOGLE_APIS_DOMAIN)
-        .or_else(|| type_url.strip_prefix(GOOGLE_PROD_DOMAIN))
-    {
-        Ok(message_name)
-    } else {
-        Err(format!("unsupported type url '{}'", type_url))
-    }
+    let (_type_domain_name, message_name) = type_url
+        .rsplit_once('/')
+        .ok_or_else(|| format!("unsupported type url '{type_url}': missing at least one '/'",))?;
+
+    Ok(message_name)
 }
 
 #[cfg(test)]
