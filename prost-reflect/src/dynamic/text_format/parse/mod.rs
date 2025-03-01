@@ -13,9 +13,7 @@ use self::{
     lex::{Int, Token},
 };
 use crate::{
-    descriptor::{
-        GOOGLE_APIS_DOMAIN, GOOGLE_PROD_DOMAIN, MAP_ENTRY_KEY_NUMBER, MAP_ENTRY_VALUE_NUMBER,
-    },
+    descriptor::{MAP_ENTRY_KEY_NUMBER, MAP_ENTRY_VALUE_NUMBER},
     dynamic::fields::FieldDescriptorLike,
     DynamicMessage, EnumDescriptor, FieldDescriptor, Kind, MapKey, MessageDescriptor, Value,
 };
@@ -103,10 +101,7 @@ impl<'a> Parser<'a> {
 
                 self.parse_field_value(message, &extension)?;
             }
-            FieldName::Any(domain, message_name)
-                if domain == GOOGLE_APIS_DOMAIN.trim_end_matches('/')
-                    || domain == GOOGLE_PROD_DOMAIN.trim_end_matches('/') =>
-            {
+            FieldName::Any(domain, message_name) => {
                 let value_message = match message
                     .desc
                     .parent_pool()
@@ -132,9 +127,6 @@ impl<'a> Parser<'a> {
                 {
                     return Err(ParseErrorKind::InvalidTypeForAny { span });
                 }
-            }
-            FieldName::Any(domain, _) => {
-                return Err(ParseErrorKind::UnknownTypeUrlDomain { domain, span })
             }
         }
 

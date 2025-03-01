@@ -13,6 +13,7 @@ use serde::de::{
 
 use crate::{
     dynamic::{
+        get_type_url_message_name,
         serde::{
             case::camel_case_to_snake_case, check_duration, check_timestamp, is_well_known_type,
             DeserializeOptions,
@@ -54,7 +55,7 @@ impl<'de> Visitor<'de> for GoogleProtobufAnyVisitor<'_> {
             PhantomData::<String>,
         )?;
 
-        let message_name = get_message_name(&type_url).map_err(Error::custom)?;
+        let message_name = get_type_url_message_name(&type_url).map_err(Error::custom)?;
         let message_desc = self
             .0
             .get_message_by_name(message_name)
@@ -463,14 +464,6 @@ fn validate_strict_rfc3339(v: &str) -> Result<(), String> {
     Ok(())
 }
 
-fn get_message_name(type_url: &str) -> Result<&str, String> {
-    let (_type_domain_name, message_name) = type_url
-        .rsplit_once('/')
-        .ok_or_else(|| format!("unsupported type url '{type_url}': missing at least one '/'",))?;
-
-    Ok(message_name)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -513,25 +506,5 @@ mod tests {
         case!("2019-03-26T" => Err("invalid rfc3339 timestamp: invalid time"));
         case!("2019-03-26 14:00Z" => Err("invalid rfc3339 timestamp: expected 'T' but found ' '"));
         case!("2019-03-26T14:00:00." => Err("invalid rfc3339 timestamp: empty fractional seconds"));
-    }
-
-    #[test]
-    fn test_get_message_name_type_url() {
-        macro_rules! case {
-            ($s:expr => Ok($e:expr)) => {
-                assert_eq!(get_message_name($s).unwrap(), $e)
-            };
-            ($s:expr => Err($e:expr)) => {
-                assert_eq!(get_message_name($s).unwrap_err(), $e)
-            };
-        }
-
-        case!("type.googleapis.com/my.messages.Message" => Ok("my.messages.Message"));
-        case!("type.googleprod.com/my.messages.Message" => Ok("my.messages.Message"));
-        case!("/my.messages.Message" => Ok("my.messages.Message"));
-        case!("any.url.com/my.messages.Message" => Ok("my.messages.Message"));
-        case!("http://even.multiple/slashes/my.messages.Message" => Ok("my.messages.Message"));
-        case!("/any.type.isAlsoValid" => Ok("any.type.isAlsoValid"));
-        case!("my.messages.Message" => Err("unsupported type url 'my.messages.Message': missing at least one '/'"));
     }
 }

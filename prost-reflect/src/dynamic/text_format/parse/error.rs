@@ -96,11 +96,6 @@ pub(crate) enum ParseErrorKind {
         #[cfg_attr(feature = "miette", label("set here"))]
         span: Span,
     },
-    UnknownTypeUrlDomain {
-        domain: String,
-        #[cfg_attr(feature = "miette", label("used here"))]
-        span: Span,
-    },
     MessageNotFound {
         message_name: String,
         #[cfg_attr(feature = "miette", label("used here"))]
@@ -168,9 +163,6 @@ impl Display for ParseErrorKind {
                     "extension '{}' not found for message '{}'",
                     extension_name, message_name
                 )
-            }
-            ParseErrorKind::UnknownTypeUrlDomain { domain, .. } => {
-                write!(f, "unknown domain '{}' for type url", domain)
             }
             ParseErrorKind::MessageNotFound { message_name, .. } => {
                 write!(f, "message type '{}' not found", message_name)
