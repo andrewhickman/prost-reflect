@@ -999,6 +999,30 @@ fn deserialize_any_allow_unknown_fields() {
 }
 
 #[test]
+fn deserialize_any_custom_type_url() {
+    let value: prost_types::Any = from_json(
+        json!({
+            "@type": "/test.Point",
+            "longitude": 1,
+            "latitude": 2,
+        }),
+        "google.protobuf.Any",
+    );
+
+    assert_eq!(
+        value,
+        prost_types::Any {
+            type_url: "/test.Point".to_owned(),
+            value: Point {
+                longitude: 1,
+                latitude: 2,
+            }
+            .encode_to_vec(),
+        }
+    );
+}
+
+#[test]
 fn deserialize_duration_fraction_digits() {
     let value: prost_types::Duration = from_json(json!("1.00034s"), "google.protobuf.Duration");
 
