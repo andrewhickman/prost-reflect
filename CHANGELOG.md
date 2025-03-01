@@ -471,6 +471,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#140]: https://github.com/andrewhickman/prost-reflect/pull/140
 [#143]: https://github.com/andrewhickman/prost-reflect/pull/143
 [#145]: https://github.com/andrewhickman/prost-reflect/pull/143
-[#147]: https://github.com/andrewhickman/prost-reflect/pull/143
+[#147]: https://github.com/andrewhickman/prost-reflect/pull/147
 [protox#82]: https://github.com/andrewhickman/protox/issues/82
 [protox#86]: https://github.com/andrewhickman/protox/issues/86
