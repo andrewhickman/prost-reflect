@@ -3,10 +3,9 @@ use std::fmt::{self, Write};
 use prost::Message;
 
 use crate::{
-    descriptor::{GOOGLE_APIS_DOMAIN, GOOGLE_PROD_DOMAIN},
     dynamic::{
         fields::ValueAndDescriptor,
-        fmt_string,
+        fmt_string, get_type_url_message_name,
         text_format::FormatOptions,
         unknown::{UnknownField, UnknownFieldSet, UnknownFieldValue},
     },
@@ -303,10 +302,7 @@ fn as_any(message: &DynamicMessage) -> Option<(String, DynamicMessage)> {
     }
 
     let any = message.transcode_to::<prost_types::Any>().ok()?;
-    let message_name = any
-        .type_url
-        .strip_prefix(GOOGLE_APIS_DOMAIN)
-        .or_else(|| any.type_url.strip_prefix(GOOGLE_PROD_DOMAIN))?;
+    let message_name = get_type_url_message_name(&any.type_url).ok()?;
 
     let desc = message
         .desc

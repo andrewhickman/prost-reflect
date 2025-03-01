@@ -1216,3 +1216,43 @@ impl<L: Iterator, R: Iterator<Item = L::Item>> Iterator for Either<L, R> {
         }
     }
 }
+
+fn get_type_url_message_name(type_url: &str) -> Result<&str, String> {
+    let (_type_domain_name, message_name) = type_url
+        .rsplit_once('/')
+        .ok_or_else(|| format!("unsupported type url '{type_url}': missing at least one '/'",))?;
+
+    Ok(message_name)
+}
+
+#[test]
+fn test_get_type_url_message_name() {
+    assert_eq!(
+        get_type_url_message_name("type.googleapis.com/my.messages.Message"),
+        Ok("my.messages.Message")
+    );
+    assert_eq!(
+        get_type_url_message_name("type.googleprod.com/my.messages.Message"),
+        Ok("my.messages.Message")
+    );
+    assert_eq!(
+        get_type_url_message_name("/my.messages.Message"),
+        Ok("my.messages.Message")
+    );
+    assert_eq!(
+        get_type_url_message_name("any.url.com/my.messages.Message"),
+        Ok("my.messages.Message")
+    );
+    assert_eq!(
+        get_type_url_message_name("http://even.multiple/slashes/my.messages.Message"),
+        Ok("my.messages.Message")
+    );
+    assert_eq!(
+        get_type_url_message_name("/any.type.isAlsoValid"),
+        Ok("any.type.isAlsoValid")
+    );
+    assert_eq!(
+        get_type_url_message_name("my.messages.Message"),
+        Err("unsupported type url 'my.messages.Message': missing at least one '/'".to_owned())
+    );
+}

@@ -755,10 +755,6 @@ fn parse_error() {
     );
 
     assert_eq!(
-        any_error("[example.com/my.message] <>"),
-        "unknown domain 'example.com' for type url"
-    );
-    assert_eq!(
         any_error("[type.googleapis.com/namespace.NotFound] {}"),
         "message type 'namespace.NotFound' not found"
     );

@@ -23,9 +23,6 @@ use crate::{descriptor::types::FileDescriptorProto, Value};
 pub(crate) const MAP_ENTRY_KEY_NUMBER: u32 = 1;
 pub(crate) const MAP_ENTRY_VALUE_NUMBER: u32 = 2;
 
-pub(crate) const GOOGLE_APIS_DOMAIN: &str = "type.googleapis.com/";
-pub(crate) const GOOGLE_PROD_DOMAIN: &str = "type.googleprod.com/";
-
 pub(crate) const RESERVED_MESSAGE_FIELD_NUMBERS: Range<i32> = 19_000..20_000;
 pub(crate) const VALID_MESSAGE_FIELD_NUMBERS: Range<i32> = 1..536_870_912;
 
