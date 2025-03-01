@@ -11,7 +11,6 @@ use serde::de::{
 };
 
 use crate::{
-    descriptor::{GOOGLE_APIS_DOMAIN, GOOGLE_PROD_DOMAIN},
     dynamic::{
         serde::{
             case::camel_case_to_snake_case, check_duration, check_timestamp, is_well_known_type,
@@ -60,74 +59,66 @@ impl<'de> Visitor<'de> for GoogleProtobufAnyVisitor<'_> {
             }
         };
 
-        if let Some(message_name) = type_url
-            .strip_prefix(GOOGLE_APIS_DOMAIN)
-            .or_else(|| type_url.strip_prefix(GOOGLE_PROD_DOMAIN))
-        {
-            let message_desc = self
-                .0
-                .get_message_by_name(message_name)
-                .ok_or_else(|| Error::custom(format!("message '{}' not found", message_name)))?;
+        let message_name = get_message_name(&type_url).map_err(Error::custom)?;
 
-            let payload_message = if is_well_known_type(message_name) {
-                let payload_message = match buffered_entries.remove("value") {
-                    Some(value) => {
-                        deserialize_message(&message_desc, value, self.1).map_err(Error::custom)?
-                    }
-                    None => loop {
-                        match map.next_key::<Cow<str>>()? {
-                            Some(key) if key == "value" => {
-                                break map.next_value_seed(MessageSeed(&message_desc, self.1))?
-                            }
-                            Some(key) => {
-                                if self.1.deny_unknown_fields {
-                                    return Err(Error::custom(format!(
-                                        "unrecognized field name '{}'",
-                                        key
-                                    )));
-                                } else {
-                                    let _ = map.next_value::<IgnoredAny>()?;
-                                }
-                            }
-                            None => return Err(Error::custom("expected '@type' field")),
-                        }
-                    },
-                };
+        let message_desc = self
+            .0
+            .get_message_by_name(message_name)
+            .ok_or_else(|| Error::custom(format!("message '{}' not found", message_name)))?;
 
-                if self.1.deny_unknown_fields {
-                    if let Some(key) = buffered_entries.keys().next() {
-                        return Err(Error::custom(format!("unrecognized field name '{}'", key)));
-                    }
-                    if let Some(key) = map.next_key::<Cow<str>>()? {
-                        return Err(Error::custom(format!("unrecognized field name '{}'", key)));
-                    }
-                } else {
-                    drop(buffered_entries);
-                    while map.next_entry::<IgnoredAny, IgnoredAny>()?.is_some() {}
+        let payload_message = if is_well_known_type(message_name) {
+            let payload_message = match buffered_entries.remove("value") {
+                Some(value) => {
+                    deserialize_message(&message_desc, value, self.1).map_err(Error::custom)?
                 }
-
-                payload_message
-            } else {
-                let mut payload_message = DynamicMessage::new(message_desc);
-
-                buffered_entries
-                    .into_deserializer()
-                    .deserialize_map(MessageVisitorInner(&mut payload_message, self.1))
-                    .map_err(Error::custom)?;
-
-                MessageVisitorInner(&mut payload_message, self.1).visit_map(map)?;
-
-                payload_message
+                None => loop {
+                    match map.next_key::<Cow<str>>()? {
+                        Some(key) if key == "value" => {
+                            break map.next_value_seed(MessageSeed(&message_desc, self.1))?
+                        }
+                        Some(key) => {
+                            if self.1.deny_unknown_fields {
+                                return Err(Error::custom(format!(
+                                    "unrecognized field name '{}'",
+                                    key
+                                )));
+                            } else {
+                                let _ = map.next_value::<IgnoredAny>()?;
+                            }
+                        }
+                        None => return Err(Error::custom("expected '@type' field")),
+                    }
+                },
             };
 
-            let value = payload_message.encode_to_vec();
-            Ok(prost_types::Any { type_url, value })
+            if self.1.deny_unknown_fields {
+                if let Some(key) = buffered_entries.keys().next() {
+                    return Err(Error::custom(format!("unrecognized field name '{}'", key)));
+                }
+                if let Some(key) = map.next_key::<Cow<str>>()? {
+                    return Err(Error::custom(format!("unrecognized field name '{}'", key)));
+                }
+            } else {
+                drop(buffered_entries);
+                while map.next_entry::<IgnoredAny, IgnoredAny>()?.is_some() {}
+            }
+
+            payload_message
         } else {
-            Err(Error::custom(format!(
-                "unsupported type url '{}'",
-                type_url
-            )))
-        }
+            let mut payload_message = DynamicMessage::new(message_desc);
+
+            buffered_entries
+                .into_deserializer()
+                .deserialize_map(MessageVisitorInner(&mut payload_message, self.1))
+                .map_err(Error::custom)?;
+
+            MessageVisitorInner(&mut payload_message, self.1).visit_map(map)?;
+
+            payload_message
+        };
+
+        let value = payload_message.encode_to_vec();
+        Ok(prost_types::Any { type_url, value })
     }
 }
 
@@ -469,42 +460,75 @@ fn validate_strict_rfc3339(v: &str) -> Result<(), String> {
     Ok(())
 }
 
-#[test]
-fn test_validate_strict_rfc3339() {
-    macro_rules! case {
-        ($s:expr => Ok) => {
-            assert_eq!(validate_strict_rfc3339($s), Ok(()))
-        };
-        ($s:expr => Err($e:expr)) => {
-            assert_eq!(validate_strict_rfc3339($s).unwrap_err().to_string(), $e)
-        };
+fn get_message_name(type_url: &str) -> Result<&str, String> {
+    let (_type_domain_name, message_name) = type_url
+        .rsplit_once('/')
+        .ok_or_else(|| format!("unsupported type url '{type_url}': missing at least one '/'",))?;
+
+    Ok(message_name)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_validate_strict_rfc3339() {
+        macro_rules! case {
+            ($s:expr => Ok) => {
+                assert_eq!(validate_strict_rfc3339($s), Ok(()))
+            };
+            ($s:expr => Err($e:expr)) => {
+                assert_eq!(validate_strict_rfc3339($s).unwrap_err().to_string(), $e)
+            };
+        }
+
+        case!("1972-06-30T23:59:60Z" => Ok);
+        case!("2019-03-26T14:00:00.9Z" => Ok);
+        case!("2019-03-26T14:00:00.4999Z" => Ok);
+        case!("2019-03-26T14:00:00.4999+10:00" => Ok);
+        case!("2019-03-26t14:00Z" => Err("invalid rfc3339 timestamp: expected 'T' but found 't'"));
+        case!("2019-03-26T14:00z" => Err("invalid rfc3339 timestamp: invalid time"));
+        case!("2019-03-26T14:00:00,999Z" => Err("invalid rfc3339 timestamp: expected 'Z', '+' or '-' but found ','"));
+        case!("2019-03-26T10:00-04" => Err("invalid rfc3339 timestamp: invalid time"));
+        case!("2019-03-26T14:00.9Z" => Err("invalid rfc3339 timestamp: invalid time"));
+        case!("20190326T1400Z" => Err("invalid rfc3339 timestamp: invalid date"));
+        case!("2019-02-30" => Err("invalid rfc3339 timestamp: expected 'T' but found end of string"));
+        case!("2019-03-25T24:01Z" => Err("invalid rfc3339 timestamp: invalid time"));
+        case!("2019-03-26T14:00+24:00" => Err("invalid rfc3339 timestamp: invalid time"));
+        case!("2019-03-26Z" => Err("invalid rfc3339 timestamp: expected 'T' but found 'Z'"));
+        case!("2019-03-26+01:00" => Err("invalid rfc3339 timestamp: expected 'T' but found '+'"));
+        case!("2019-03-26-04:00" => Err("invalid rfc3339 timestamp: expected 'T' but found '-'"));
+        case!("2019-03-26T10:00-0400" => Err("invalid rfc3339 timestamp: invalid time"));
+        case!("+0002019-03-26T14:00Z" => Err("invalid rfc3339 timestamp: invalid date"));
+        case!("+2019-03-26T14:00Z" => Err("invalid rfc3339 timestamp: invalid date"));
+        case!("002019-03-26T14:00Z" => Err("invalid rfc3339 timestamp: invalid date"));
+        case!("019-03-26T14:00Z" => Err("invalid rfc3339 timestamp: invalid date"));
+        case!("2019-03-26T10:00Q" => Err("invalid rfc3339 timestamp: invalid time"));
+        case!("2019-03-26T10:00T" => Err("invalid rfc3339 timestamp: invalid time"));
+        case!("2019-03-26Q" => Err("invalid rfc3339 timestamp: expected 'T' but found 'Q'"));
+        case!("2019-03-26T" => Err("invalid rfc3339 timestamp: invalid time"));
+        case!("2019-03-26 14:00Z" => Err("invalid rfc3339 timestamp: expected 'T' but found ' '"));
+        case!("2019-03-26T14:00:00." => Err("invalid rfc3339 timestamp: empty fractional seconds"));
     }
 
-    case!("1972-06-30T23:59:60Z" => Ok);
-    case!("2019-03-26T14:00:00.9Z" => Ok);
-    case!("2019-03-26T14:00:00.4999Z" => Ok);
-    case!("2019-03-26T14:00:00.4999+10:00" => Ok);
-    case!("2019-03-26t14:00Z" => Err("invalid rfc3339 timestamp: expected 'T' but found 't'"));
-    case!("2019-03-26T14:00z" => Err("invalid rfc3339 timestamp: invalid time"));
-    case!("2019-03-26T14:00:00,999Z" => Err("invalid rfc3339 timestamp: expected 'Z', '+' or '-' but found ','"));
-    case!("2019-03-26T10:00-04" => Err("invalid rfc3339 timestamp: invalid time"));
-    case!("2019-03-26T14:00.9Z" => Err("invalid rfc3339 timestamp: invalid time"));
-    case!("20190326T1400Z" => Err("invalid rfc3339 timestamp: invalid date"));
-    case!("2019-02-30" => Err("invalid rfc3339 timestamp: expected 'T' but found end of string"));
-    case!("2019-03-25T24:01Z" => Err("invalid rfc3339 timestamp: invalid time"));
-    case!("2019-03-26T14:00+24:00" => Err("invalid rfc3339 timestamp: invalid time"));
-    case!("2019-03-26Z" => Err("invalid rfc3339 timestamp: expected 'T' but found 'Z'"));
-    case!("2019-03-26+01:00" => Err("invalid rfc3339 timestamp: expected 'T' but found '+'"));
-    case!("2019-03-26-04:00" => Err("invalid rfc3339 timestamp: expected 'T' but found '-'"));
-    case!("2019-03-26T10:00-0400" => Err("invalid rfc3339 timestamp: invalid time"));
-    case!("+0002019-03-26T14:00Z" => Err("invalid rfc3339 timestamp: invalid date"));
-    case!("+2019-03-26T14:00Z" => Err("invalid rfc3339 timestamp: invalid date"));
-    case!("002019-03-26T14:00Z" => Err("invalid rfc3339 timestamp: invalid date"));
-    case!("019-03-26T14:00Z" => Err("invalid rfc3339 timestamp: invalid date"));
-    case!("2019-03-26T10:00Q" => Err("invalid rfc3339 timestamp: invalid time"));
-    case!("2019-03-26T10:00T" => Err("invalid rfc3339 timestamp: invalid time"));
-    case!("2019-03-26Q" => Err("invalid rfc3339 timestamp: expected 'T' but found 'Q'"));
-    case!("2019-03-26T" => Err("invalid rfc3339 timestamp: invalid time"));
-    case!("2019-03-26 14:00Z" => Err("invalid rfc3339 timestamp: expected 'T' but found ' '"));
-    case!("2019-03-26T14:00:00." => Err("invalid rfc3339 timestamp: empty fractional seconds"));
+    #[test]
+    fn test_get_message_name_type_url() {
+        macro_rules! case {
+            ($s:expr => Ok($e:expr)) => {
+                assert_eq!(get_message_name($s).unwrap(), $e)
+            };
+            ($s:expr => Err($e:expr)) => {
+                assert_eq!(get_message_name($s).unwrap_err(), $e)
+            };
+        }
+
+        case!("type.googleapis.com/my.messages.Message" => Ok("my.messages.Message"));
+        case!("type.googleprod.com/my.messages.Message" => Ok("my.messages.Message"));
+        case!("/my.messages.Message" => Ok("my.messages.Message"));
+        case!("any.url.com/my.messages.Message" => Ok("my.messages.Message"));
+        case!("http://even.multiple/slashes/my.messages.Message" => Ok("my.messages.Message"));
+        case!("/any.type.isAlsoValid" => Ok("any.type.isAlsoValid"));
+        case!("my.messages.Message" => Err("unsupported type url 'my.messages.Message': missing at least one '/'"));
+    }
 }
