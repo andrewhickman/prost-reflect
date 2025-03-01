@@ -60,74 +60,66 @@ impl<'de> Visitor<'de> for GoogleProtobufAnyVisitor<'_> {
             }
         };
 
-        if let Some(message_name) = type_url
-            .strip_prefix(GOOGLE_APIS_DOMAIN)
-            .or_else(|| type_url.strip_prefix(GOOGLE_PROD_DOMAIN))
-        {
-            let message_desc = self
-                .0
-                .get_message_by_name(message_name)
-                .ok_or_else(|| Error::custom(format!("message '{}' not found", message_name)))?;
+        let message_name = get_message_name(&type_url).map_err(Error::custom)?;
 
-            let payload_message = if is_well_known_type(message_name) {
-                let payload_message = match buffered_entries.remove("value") {
-                    Some(value) => {
-                        deserialize_message(&message_desc, value, self.1).map_err(Error::custom)?
-                    }
-                    None => loop {
-                        match map.next_key::<Cow<str>>()? {
-                            Some(key) if key == "value" => {
-                                break map.next_value_seed(MessageSeed(&message_desc, self.1))?
-                            }
-                            Some(key) => {
-                                if self.1.deny_unknown_fields {
-                                    return Err(Error::custom(format!(
-                                        "unrecognized field name '{}'",
-                                        key
-                                    )));
-                                } else {
-                                    let _ = map.next_value::<IgnoredAny>()?;
-                                }
-                            }
-                            None => return Err(Error::custom("expected '@type' field")),
-                        }
-                    },
-                };
+        let message_desc = self
+            .0
+            .get_message_by_name(message_name)
+            .ok_or_else(|| Error::custom(format!("message '{}' not found", message_name)))?;
 
-                if self.1.deny_unknown_fields {
-                    if let Some(key) = buffered_entries.keys().next() {
-                        return Err(Error::custom(format!("unrecognized field name '{}'", key)));
-                    }
-                    if let Some(key) = map.next_key::<Cow<str>>()? {
-                        return Err(Error::custom(format!("unrecognized field name '{}'", key)));
-                    }
-                } else {
-                    drop(buffered_entries);
-                    while map.next_entry::<IgnoredAny, IgnoredAny>()?.is_some() {}
+        let payload_message = if is_well_known_type(message_name) {
+            let payload_message = match buffered_entries.remove("value") {
+                Some(value) => {
+                    deserialize_message(&message_desc, value, self.1).map_err(Error::custom)?
                 }
-
-                payload_message
-            } else {
-                let mut payload_message = DynamicMessage::new(message_desc);
-
-                buffered_entries
-                    .into_deserializer()
-                    .deserialize_map(MessageVisitorInner(&mut payload_message, self.1))
-                    .map_err(Error::custom)?;
-
-                MessageVisitorInner(&mut payload_message, self.1).visit_map(map)?;
-
-                payload_message
+                None => loop {
+                    match map.next_key::<Cow<str>>()? {
+                        Some(key) if key == "value" => {
+                            break map.next_value_seed(MessageSeed(&message_desc, self.1))?
+                        }
+                        Some(key) => {
+                            if self.1.deny_unknown_fields {
+                                return Err(Error::custom(format!(
+                                    "unrecognized field name '{}'",
+                                    key
+                                )));
+                            } else {
+                                let _ = map.next_value::<IgnoredAny>()?;
+                            }
+                        }
+                        None => return Err(Error::custom("expected '@type' field")),
+                    }
+                },
             };
 
-            let value = payload_message.encode_to_vec();
-            Ok(prost_types::Any { type_url, value })
+            if self.1.deny_unknown_fields {
+                if let Some(key) = buffered_entries.keys().next() {
+                    return Err(Error::custom(format!("unrecognized field name '{}'", key)));
+                }
+                if let Some(key) = map.next_key::<Cow<str>>()? {
+                    return Err(Error::custom(format!("unrecognized field name '{}'", key)));
+                }
+            } else {
+                drop(buffered_entries);
+                while map.next_entry::<IgnoredAny, IgnoredAny>()?.is_some() {}
+            }
+
+            payload_message
         } else {
-            Err(Error::custom(format!(
-                "unsupported type url '{}'",
-                type_url
-            )))
-        }
+            let mut payload_message = DynamicMessage::new(message_desc);
+
+            buffered_entries
+                .into_deserializer()
+                .deserialize_map(MessageVisitorInner(&mut payload_message, self.1))
+                .map_err(Error::custom)?;
+
+            MessageVisitorInner(&mut payload_message, self.1).visit_map(map)?;
+
+            payload_message
+        };
+
+        let value = payload_message.encode_to_vec();
+        Ok(prost_types::Any { type_url, value })
     }
 }
 
@@ -467,6 +459,17 @@ fn validate_strict_rfc3339(v: &str) -> Result<(), String> {
     }
 
     Ok(())
+}
+
+fn get_message_name(type_url: &str) -> Result<&str, String> {
+    if let Some(message_name) = type_url
+        .strip_prefix(GOOGLE_APIS_DOMAIN)
+        .or_else(|| type_url.strip_prefix(GOOGLE_PROD_DOMAIN))
+    {
+        Ok(message_name)
+    } else {
+        Err(format!("unsupported type url '{}'", type_url))
+    }
 }
 
 #[test]
