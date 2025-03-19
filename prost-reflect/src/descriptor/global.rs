@@ -36,12 +36,9 @@ impl DescriptorPool {
     /// Adds a single file descriptor to the global pool.
     ///
     /// See [`DescriptorPool::add_file_descriptor_proto`] for more details.
-    pub fn add_global_file_descriptor_proto<B>(
+    pub fn add_global_file_descriptor_proto(
         file: FileDescriptorProto,
-    ) -> Result<(), DescriptorError>
-    where
-        B: Buf,
-    {
+    ) -> Result<(), DescriptorError> {
         let mut instance = INSTANCE.lock().unwrap();
         instance.add_file_descriptor_proto(file)?;
         Ok(())
