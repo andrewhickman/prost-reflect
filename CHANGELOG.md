@@ -10,7 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- All type name domains are now permitted when deserializing `google.protobuf.Any` types in the JSON format and text format. ([#143], [#147]).
+- All type name domains are now permitted when serializing `google.protobuf.Any` types in the JSON format. ([#148]).
+
+### Fixed
+
+- Fixed an unused type parameter on `DescriptorPool::add_file_descriptor_protos`. ([#150])
 
 ## [0.14.6] - 2025-02-06
 
@@ -78,7 +82,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - The minimum supported rust version is now **1.64.0**.
 - Updated to prost [**0.12.0**](https://github.com/tokio-rs/prost/releases/tag/v0.12.0)
-- When adding files to a `DescriptorPool`, the library now validates that all referenced types are contained within the dependency files (including files imported using `import public`). Fixes #57.
+- When adding files to a `DescriptorPool`, the library now validates that all referenced types are contained within the dependency files (including files imported using `import public`). Fixes [#57].
 
 ## [0.11.5] - 2023-08-29
 
@@ -464,13 +468,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#34]: https://github.com/andrewhickman/prost-reflect/pull/34
 [#40]: https://github.com/andrewhickman/prost-reflect/pull/40
 [#41]: https://github.com/andrewhickman/prost-reflect/pull/41
+[#57]: https://github.com/andrewhickman/prost-reflect/pull/57
 [#99]: https://github.com/andrewhickman/prost-reflect/issues/99
 [#131]: https://github.com/andrewhickman/prost-reflect/issues/131
 [#135]: https://github.com/andrewhickman/prost-reflect/issues/135
 [#138]: https://github.com/andrewhickman/prost-reflect/issues/138
 [#140]: https://github.com/andrewhickman/prost-reflect/pull/140
 [#143]: https://github.com/andrewhickman/prost-reflect/pull/143
-[#145]: https://github.com/andrewhickman/prost-reflect/pull/143
-[#147]: https://github.com/andrewhickman/prost-reflect/pull/143
+[#145]: https://github.com/andrewhickman/prost-reflect/pull/145
+[#147]: https://github.com/andrewhickman/prost-reflect/pull/147
+[#148]: https://github.com/andrewhickman/prost-reflect/pull/148
+[#150]: https://github.com/andrewhickman/prost-reflect/pull/150
 [protox#82]: https://github.com/andrewhickman/protox/issues/82
 [protox#86]: https://github.com/andrewhickman/protox/issues/86
