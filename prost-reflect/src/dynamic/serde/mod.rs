@@ -40,7 +40,7 @@ impl Serialize for DynamicMessage {
     /// # use prost::Message;
     /// # use prost_types::FileDescriptorSet;
     /// # use prost_reflect::{DynamicMessage, DescriptorPool, Value};
-    /// # use serde1::Serialize;
+    /// # use serde::Serialize;
     /// # let pool = DescriptorPool::decode(include_bytes!("../../file_descriptor_set.bin").as_ref()).unwrap();
     /// # let message_descriptor = pool.get_message_by_name("package.MyMessage").unwrap();
     /// let dynamic_message = DynamicMessage::decode(message_descriptor, b"\x08\x96\x01".as_ref()).unwrap();
@@ -67,7 +67,6 @@ impl<'de> DeserializeSeed<'de> for MessageDescriptor {
     /// ```
     /// # use prost::Message;
     /// # use prost_reflect::{DynamicMessage, DescriptorPool, Value};
-    /// # use serde1 as serde;
     /// # let pool = DescriptorPool::decode(include_bytes!("../../file_descriptor_set.bin").as_ref()).unwrap();
     /// # let message_descriptor = pool.get_message_by_name("package.MyMessage").unwrap();
     /// use serde::de::DeserializeSeed;
@@ -96,7 +95,7 @@ impl DynamicMessage {
     /// # use prost::Message;
     /// # use prost_types::FileDescriptorSet;
     /// # use prost_reflect::{DynamicMessage, DescriptorPool, Value, SerializeOptions};
-    /// # use serde1::Serialize;
+    /// # use serde::Serialize;
     /// # let pool = DescriptorPool::decode(include_bytes!("../../file_descriptor_set.bin").as_ref()).unwrap();
     /// # let message_descriptor = pool.get_message_by_name("package.MyMessage").unwrap();
     /// let dynamic_message = DynamicMessage::new(message_descriptor);
@@ -124,7 +123,6 @@ impl DynamicMessage {
     /// ```
     /// # use prost::Message;
     /// # use prost_reflect::{DynamicMessage, DescriptorPool, Value};
-    /// # use serde1 as serde;
     /// # let pool = DescriptorPool::decode(include_bytes!("../../file_descriptor_set.bin").as_ref()).unwrap();
     /// # let message_descriptor = pool.get_message_by_name("package.MyMessage").unwrap();
     /// let json = r#"{ "foo": 150 }"#;
@@ -150,7 +148,6 @@ impl DynamicMessage {
     /// ```
     /// # use prost::Message;
     /// # use prost_reflect::{DynamicMessage, DescriptorPool, Value, DeserializeOptions};
-    /// # use serde1 as serde;
     /// # let pool = DescriptorPool::decode(include_bytes!("../../file_descriptor_set.bin").as_ref()).unwrap();
     /// # let message_descriptor = pool.get_message_by_name("package.MyMessage").unwrap();
     /// let json = r#"{ "foo": 150, "unknown": true }"#;

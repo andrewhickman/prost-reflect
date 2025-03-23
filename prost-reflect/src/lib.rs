@@ -10,9 +10,6 @@
 #![deny(unsafe_code)]
 #![doc(html_root_url = "https://docs.rs/prost-reflect/0.14.6/")]
 
-#[cfg(feature = "serde1")]
-extern crate serde1 as serde;
-
 mod descriptor;
 mod dynamic;
 mod reflect;
