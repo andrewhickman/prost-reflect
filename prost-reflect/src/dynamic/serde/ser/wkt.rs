@@ -4,6 +4,7 @@ use serde::ser::{Error, Serialize, SerializeMap, SerializeSeq, Serializer};
 
 use crate::{
     dynamic::{
+        get_type_url_message_name,
         serde::{
             case::snake_case_to_camel_case, check_duration, check_timestamp, is_well_known_type,
             SerializeOptions,
@@ -58,40 +59,35 @@ where
 {
     let raw: prost_types::Any = msg.transcode_to().map_err(decode_to_ser_err)?;
 
-    if let Some(message_name) = raw.type_url.strip_prefix("type.googleapis.com/") {
-        let message_desc = msg
-            .descriptor()
-            .parent_pool()
-            .get_message_by_name(message_name)
-            .ok_or_else(|| Error::custom(format!("message '{}' not found", message_name)))?;
+    let message_name = get_type_url_message_name(&raw.type_url).map_err(Error::custom)?;
 
-        let mut payload_message = DynamicMessage::new(message_desc);
-        payload_message
-            .merge(raw.value.as_ref())
-            .map_err(decode_to_ser_err)?;
+    let message_desc = msg
+        .descriptor()
+        .parent_pool()
+        .get_message_by_name(message_name)
+        .ok_or_else(|| Error::custom(format!("message '{}' not found", message_name)))?;
 
-        if is_well_known_type(message_name) {
-            let mut map = serializer.serialize_map(Some(2))?;
-            map.serialize_entry("@type", &raw.type_url)?;
-            map.serialize_entry(
-                "value",
-                &SerializeWrapper {
-                    value: &payload_message,
-                    options,
-                },
-            )?;
-            map.end()
-        } else {
-            let mut map = serializer.serialize_map(None)?;
-            map.serialize_entry("@type", &raw.type_url)?;
-            serialize_dynamic_message_fields(&mut map, &payload_message, options)?;
-            map.end()
-        }
+    let mut payload_message = DynamicMessage::new(message_desc);
+    payload_message
+        .merge(raw.value.as_ref())
+        .map_err(decode_to_ser_err)?;
+
+    if is_well_known_type(message_name) {
+        let mut map = serializer.serialize_map(Some(2))?;
+        map.serialize_entry("@type", &raw.type_url)?;
+        map.serialize_entry(
+            "value",
+            &SerializeWrapper {
+                value: &payload_message,
+                options,
+            },
+        )?;
+        map.end()
     } else {
-        Err(Error::custom(format!(
-            "unsupported type url '{}'",
-            raw.type_url
-        )))
+        let mut map = serializer.serialize_map(None)?;
+        map.serialize_entry("@type", &raw.type_url)?;
+        serialize_dynamic_message_fields(&mut map, &payload_message, options)?;
+        map.end()
     }
 }
 
