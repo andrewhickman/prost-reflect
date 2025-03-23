@@ -26,20 +26,20 @@ path = "tests/main.rs"
 required-features = ["serde", "miette", "text-format"]
 
 [features]
-derive = ["prost-reflect-derive"]
-serde = ["serde1", "base64", "serde-value"]
-text-format = ["logos"]
+derive = ["dep:prost-reflect-derive"]
+serde = ["dep:serde", "dep:base64", "dep:serde-value"]
+text-format = ["dep:logos"]
+miette = ["dep:miette"]
 
 [dependencies]
 base64 = { version = "0.22.0", optional = true }
-logos = { version = "0.14.0", optional = true }
+logos = { version = "0.15.0", optional = true }
 miette = { version = "7.0.0", optional = true }
-once_cell = { version = "1.9.0" }
 prost = "0.13.0"
 prost-reflect-derive = { path = '../prost-reflect-derive', version = "0.14.0", optional = true }
 prost-types = "0.13.0"
 serde-value = { version = "0.7.0", optional = true }
-serde1 = { package = "serde", version = "1.0.132", optional = true }
+serde = { version = "1.0.132", optional = true }
 
 [dev-dependencies]
 insta = { version = "1.23.0", features = ["yaml"] }

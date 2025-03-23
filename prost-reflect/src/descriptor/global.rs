@@ -1,13 +1,18 @@
-use std::sync::Mutex;
+use std::sync::{Mutex, MutexGuard, OnceLock};
 
-use once_cell::sync::Lazy;
 use prost::bytes::Buf;
 use prost_types::FileDescriptorProto;
 
 use crate::{DescriptorError, DescriptorPool};
 
-static INSTANCE: Lazy<Mutex<DescriptorPool>> =
-    Lazy::new(|| Mutex::new(crate::reflect::make_wkt_descriptor_pool().unwrap()));
+static INSTANCE: OnceLock<Mutex<DescriptorPool>> = OnceLock::new();
+
+fn instance() -> MutexGuard<'static, DescriptorPool> {
+    INSTANCE
+        .get_or_init(|| Mutex::new(crate::reflect::make_wkt_descriptor_pool().unwrap()))
+        .lock()
+        .unwrap()
+}
 
 impl DescriptorPool {
     /// Gets a copy of the global descriptor pool. By default, this just contains the google well-known types.
@@ -18,7 +23,7 @@ impl DescriptorPool {
     /// [`decode_global_file_descriptor_set`](DescriptorPool::decode_global_file_descriptor_set) or
     /// [`add_global_file_descriptor_proto`](DescriptorPool::add_global_file_descriptor_proto) to modify the global pool.
     pub fn global() -> DescriptorPool {
-        INSTANCE.lock().unwrap().clone()
+        instance().clone()
     }
 
     /// Decodes and adds a set of file descriptors to the global pool.
@@ -28,8 +33,7 @@ impl DescriptorPool {
     where
         B: Buf,
     {
-        let mut instance = INSTANCE.lock().unwrap();
-        instance.decode_file_descriptor_set(bytes)?;
+        instance().decode_file_descriptor_set(bytes)?;
         Ok(())
     }
 
@@ -39,8 +43,7 @@ impl DescriptorPool {
     pub fn add_global_file_descriptor_proto(
         file: FileDescriptorProto,
     ) -> Result<(), DescriptorError> {
-        let mut instance = INSTANCE.lock().unwrap();
-        instance.add_file_descriptor_proto(file)?;
+        instance().add_file_descriptor_proto(file)?;
         Ok(())
     }
 }
