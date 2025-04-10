@@ -182,7 +182,7 @@ impl Display for ParseErrorKind {
                 f,
                 "the field type must be 'google.protobuf.Any' to use Any expansion syntax"
             ),
-            ParseErrorKind::InvalidMapKey { .. } => write!(f, "invalid value type for map key"),
+            ParseErrorKind::InvalidMapKey => write!(f, "invalid value type for map key"),
         }
     }
 }
