@@ -97,19 +97,6 @@ fn install_conformance_test_runner(_: &Path, _: &Path) -> Result<()> {
 
 #[cfg(not(windows))]
 fn install_conformance_test_runner(src_dir: &Path, prefix_dir: &Path) -> Result<()> {
-    // Apply patches.
-    let mut patch_src = env::current_dir().context("failed to get current working directory")?;
-    patch_src.push("fix-conformance_test_runner-cmake-build.patch");
-
-    let rc = Command::new("patch")
-        .arg("-p1")
-        .arg("-i")
-        .arg(patch_src)
-        .current_dir(src_dir)
-        .status()
-        .context("failed to apply patch")?;
-    anyhow::ensure!(rc.success(), "protobuf patch failed");
-
     // Build and install protoc, the protobuf libraries, and the conformance test runner.
     let rc = Command::new("cmake")
         .arg("-GNinja")
