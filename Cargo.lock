@@ -891,7 +891,7 @@ dependencies = [
 
 [[package]]
 name = "prost-reflect-derive"
-version = "0.14.0"
+version = "0.15.0"
 dependencies = [
  "once_cell",
  "proc-macro2",
