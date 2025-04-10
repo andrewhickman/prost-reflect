@@ -8,16 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.14.7] - 2025-03-01
-
 ### Changed
 
 - The minimum supported rust version is now **1.74.0**.
-- All type name domains are now permitted when serializing `google.protobuf.Any` types in the JSON format. ([#148]).
 
 ### Fixed
 
 - Fixed an unused type parameter on `DescriptorPool::add_file_descriptor_protos`. ([#150])
+
+## [0.14.7] - 2025-03-01
+
+### Changed
+
+- All type name domains are now permitted when serializing `google.protobuf.Any` types in the JSON format. ([#148]).
 
 ## [0.14.6] - 2025-02-06
 
