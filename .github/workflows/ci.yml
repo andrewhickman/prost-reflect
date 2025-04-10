@@ -45,7 +45,7 @@ jobs:
       - name: Get latest CMake and ninja
         uses: lukka/get-cmake@latest
         with:
-          cmakeVersion: 3.31.7
+          cmakeVersion: 3.31.6
       - name: Install Protoc
         uses: arduino/setup-protoc@v1
         with:
