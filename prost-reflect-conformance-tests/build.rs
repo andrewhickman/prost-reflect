@@ -11,7 +11,7 @@ use anyhow::{Context, Result};
 use flate2::bufread::GzDecoder;
 use tar::Archive;
 
-const VERSION: &str = "3.14.0";
+const VERSION: &str = "30.2";
 
 static TEST_PROTOS: &[&str] = &["test_messages_proto2.proto", "test_messages_proto3.proto"];
 
