@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.15.1] - 2025-04-13
+
 ### Fixed
 
 - The JSON deserializer now accepts messages with oneofs where multiple fields are set, but only one is non-null, to better conform to the specification. This does not apply to `google.protobuf.Value` or `google.protobuf.NullValue`.
@@ -421,7 +423,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial release, including support for inspecting message types at runtime.
 
-[Unreleased]: https://github.com/andrewhickman/prost-reflect/compare/0.15.0...HEAD
+[Unreleased]: https://github.com/andrewhickman/prost-reflect/compare/0.15.1...HEAD
+[0.15.1]: https://github.com/andrewhickman/prost-reflect/compare/0.15.0...0.15.1
 [0.15.0]: https://github.com/andrewhickman/prost-reflect/compare/0.14.7...0.15.0
 [0.14.7]: https://github.com/andrewhickman/prost-reflect/compare/0.14.6...0.14.7
 [0.14.6]: https://github.com/andrewhickman/prost-reflect/compare/0.14.5...0.14.6
