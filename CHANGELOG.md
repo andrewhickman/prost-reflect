@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- The descriptors for well-known types returned by `DescriptorPool::global()` have been updated to match the definitions in protobuf version 25.4.
+
 ## [0.15.1] - 2025-04-13
 
 ### Fixed
