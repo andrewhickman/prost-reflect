@@ -52,6 +52,7 @@ serde_yaml = "0.9.25"
 similar-asserts = { version = "1.4.2", features = ["serde"] }
 
 [package.metadata.release]
+tag = true
 tag-name = "{{version}}"
 sign-tag = true
 pre-release-commit-message = "(cargo-release) {{crate_name}} version {{version}}"
