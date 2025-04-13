@@ -11,7 +11,7 @@ fn main() -> Result<()> {
     let out_dir =
         &PathBuf::from(env::var("OUT_DIR").expect("OUT_DIR environment variable not set"));
 
-    let src_dir = std::path::absolute(PathBuf::from("protobuf"))?;
+    let src_dir = PathBuf::from("protobuf");
     if !src_dir.join("cmake").exists() {
         anyhow::bail!(
             "protobuf sources are not checked out; Try `git submodule update --init --recursive`"
