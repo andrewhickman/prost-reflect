@@ -318,6 +318,7 @@ fn decode_complex_type() {
         }),
         my_enum: vec![0, 1, 2, 3, -4],
         optional_enum: 1,
+        enum_map: HashMap::from_iter([(1, 1), (2, 2)]),
     }
     .transcode_to_dynamic();
 
@@ -398,6 +399,13 @@ fn decode_complex_type() {
             .unwrap()
             .as_enum_number(),
         Some(1),
+    );
+    assert_eq!(
+        dynamic.get_field_by_name("enum_map").unwrap().as_map(),
+        Some(&HashMap::from_iter([
+            (MapKey::I32(1), Value::EnumNumber(1)),
+            (MapKey::I32(2), Value::EnumNumber(2)),
+        ])),
     );
 }
 
@@ -631,6 +639,7 @@ fn roundtrip_complex_type() {
         }),
         my_enum: vec![0, 1, 2, 3, -4],
         optional_enum: 1,
+        enum_map: HashMap::from_iter([(1, 1), (2, 2)]),
     })
     .unwrap();
 }

@@ -15,36 +15,48 @@ use super::{
 pub struct KindSeed<'a>(pub &'a Kind, pub &'a DeserializeOptions);
 
 impl<'de> DeserializeSeed<'de> for KindSeed<'_> {
-    type Value = Value;
+    type Value = Option<Value>;
 
     fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
     where
         D: Deserializer<'de>,
     {
         match self.0 {
-            Kind::Double => deserializer.deserialize_any(DoubleVisitor).map(Value::F64),
-            Kind::Float => deserializer.deserialize_any(FloatVisitor).map(Value::F32),
-            Kind::Int32 | Kind::Sint32 | Kind::Sfixed32 => {
-                deserializer.deserialize_any(Int32Visitor).map(Value::I32)
+            Kind::Double => Ok(Some(Value::F64(
+                deserializer.deserialize_any(DoubleVisitor)?,
+            ))),
+            Kind::Float => Ok(Some(Value::F32(
+                deserializer.deserialize_any(FloatVisitor)?,
+            ))),
+            Kind::Int32 | Kind::Sint32 | Kind::Sfixed32 => Ok(Some(Value::I32(
+                deserializer.deserialize_any(Int32Visitor)?,
+            ))),
+            Kind::Int64 | Kind::Sint64 | Kind::Sfixed64 => Ok(Some(Value::I64(
+                deserializer.deserialize_any(Int64Visitor)?,
+            ))),
+            Kind::Uint32 | Kind::Fixed32 => Ok(Some(Value::U32(
+                deserializer.deserialize_any(Uint32Visitor)?,
+            ))),
+            Kind::Uint64 | Kind::Fixed64 => Ok(Some(Value::U64(
+                deserializer.deserialize_any(Uint64Visitor)?,
+            ))),
+            Kind::Bool => Ok(Some(Value::Bool(
+                deserializer.deserialize_any(BoolVisitor)?,
+            ))),
+            Kind::String => Ok(Some(Value::String(
+                deserializer.deserialize_string(StringVisitor)?,
+            ))),
+            Kind::Bytes => Ok(Some(Value::Bytes(
+                deserializer.deserialize_str(BytesVisitor)?,
+            ))),
+            Kind::Message(desc) => Ok(Some(Value::Message(deserialize_message(
+                desc,
+                deserializer,
+                self.1,
+            )?))),
+            Kind::Enum(desc) => {
+                Ok(deserialize_enum(desc, deserializer, self.1)?.map(Value::EnumNumber))
             }
-            Kind::Int64 | Kind::Sint64 | Kind::Sfixed64 => {
-                deserializer.deserialize_any(Int64Visitor).map(Value::I64)
-            }
-            Kind::Uint32 | Kind::Fixed32 => {
-                deserializer.deserialize_any(Uint32Visitor).map(Value::U32)
-            }
-            Kind::Uint64 | Kind::Fixed64 => {
-                deserializer.deserialize_any(Uint64Visitor).map(Value::U64)
-            }
-            Kind::Bool => deserializer.deserialize_any(BoolVisitor).map(Value::Bool),
-            Kind::String => deserializer
-                .deserialize_string(StringVisitor)
-                .map(Value::String),
-            Kind::Bytes => deserializer.deserialize_str(BytesVisitor).map(Value::Bytes),
-            Kind::Message(desc) => {
-                deserialize_message(desc, deserializer, self.1).map(Value::Message)
-            }
-            Kind::Enum(desc) => deserialize_enum(desc, deserializer).map(Value::EnumNumber),
         }
     }
 }
@@ -62,7 +74,7 @@ pub struct BoolVisitor;
 pub struct BytesVisitor;
 pub struct MessageVisitor<'a>(pub &'a MessageDescriptor, pub &'a DeserializeOptions);
 pub struct MessageVisitorInner<'a>(pub &'a mut DynamicMessage, pub &'a DeserializeOptions);
-pub struct EnumVisitor<'a>(pub &'a EnumDescriptor);
+pub struct EnumVisitor<'a>(pub &'a EnumDescriptor, pub &'a DeserializeOptions);
 
 impl<'de> Visitor<'de> for ListVisitor<'_> {
     type Value = Vec<Value>;
@@ -79,7 +91,9 @@ impl<'de> Visitor<'de> for ListVisitor<'_> {
         let mut result = Vec::with_capacity(seq.size_hint().unwrap_or(0));
 
         while let Some(value) = seq.next_element_seed(KindSeed(self.0, self.1))? {
-            result.push(value)
+            if let Some(value) = value {
+                result.push(value)
+            }
         }
 
         Ok(result)
@@ -125,8 +139,9 @@ impl<'de> Visitor<'de> for MapVisitor<'_> {
             };
 
             let value = map.next_value_seed(FieldDescriptorSeed(&value_desc, self.1))?;
-
-            result.insert(key, value);
+            if let Some(value) = value {
+                result.insert(key, value);
+            }
         }
 
         Ok(result)
@@ -589,7 +604,7 @@ impl<'de> Visitor<'de> for MessageVisitorInner<'_> {
 }
 
 impl Visitor<'_> for EnumVisitor<'_> {
-    type Value = i32;
+    type Value = Option<i32>;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "a string or integer")
@@ -601,8 +616,14 @@ impl Visitor<'_> for EnumVisitor<'_> {
         E: Error,
     {
         match self.0.get_value_by_name(v) {
-            Some(e) => Ok(e.number()),
-            None => Err(Error::custom(format!("unrecognized enum value '{}'", v))),
+            Some(e) => Ok(Some(e.number())),
+            None => {
+                if self.1.deny_unknown_fields {
+                    Err(Error::custom(format!("unrecognized enum value '{}'", v)))
+                } else {
+                    Ok(None)
+                }
+            }
         }
     }
 
@@ -611,7 +632,7 @@ impl Visitor<'_> for EnumVisitor<'_> {
     where
         E: Error,
     {
-        Ok(v)
+        Ok(Some(v))
     }
 
     #[inline]

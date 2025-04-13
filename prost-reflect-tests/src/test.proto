@@ -51,6 +51,7 @@ message ComplexType {
   Scalars nested = 3;
   repeated MyEnum my_enum = 4;
   MyEnum optional_enum = 5;
+  map<int32, MyEnum> enum_map = 6;
 
   enum MyEnum {
     DEFAULT = 0;

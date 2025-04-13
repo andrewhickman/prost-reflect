@@ -75,13 +75,19 @@ where
     }
 }
 
-fn deserialize_enum<'de, D>(desc: &EnumDescriptor, deserializer: D) -> Result<i32, D::Error>
+fn deserialize_enum<'de, D>(
+    desc: &EnumDescriptor,
+    deserializer: D,
+    options: &DeserializeOptions,
+) -> Result<Option<i32>, D::Error>
 where
     D: Deserializer<'de>,
 {
     match desc.full_name() {
-        "google.protobuf.NullValue" => deserializer.deserialize_any(wkt::GoogleProtobufNullVisitor),
-        _ => deserializer.deserialize_any(kind::EnumVisitor(desc)),
+        "google.protobuf.NullValue" => {
+            deserializer.deserialize_any(wkt::GoogleProtobufNullVisitor(options))
+        }
+        _ => deserializer.deserialize_any(kind::EnumVisitor(desc, options)),
     }
 }
 
@@ -104,20 +110,20 @@ impl<'de, T> DeserializeSeed<'de> for FieldDescriptorSeed<'_, T>
 where
     T: FieldDescriptorLike,
 {
-    type Value = Value;
+    type Value = Option<Value>;
 
     fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
     where
         D: Deserializer<'de>,
     {
         if self.0.is_list() {
-            deserializer
-                .deserialize_any(kind::ListVisitor(&self.0.kind(), self.1))
-                .map(Value::List)
+            Ok(Some(Value::List(deserializer.deserialize_any(
+                kind::ListVisitor(&self.0.kind(), self.1),
+            )?)))
         } else if self.0.is_map() {
-            deserializer
-                .deserialize_any(kind::MapVisitor(&self.0.kind(), self.1))
-                .map(Value::Map)
+            Ok(Some(Value::Map(deserializer.deserialize_any(
+                kind::MapVisitor(&self.0.kind(), self.1),
+            )?)))
         } else {
             kind::KindSeed(&self.0.kind(), self.1).deserialize(deserializer)
         }
@@ -185,9 +191,7 @@ where
     where
         D: Deserializer<'de>,
     {
-        FieldDescriptorSeed(self.0, self.1)
-            .deserialize(deserializer)
-            .map(Some)
+        FieldDescriptorSeed(self.0, self.1).deserialize(deserializer)
     }
 }
 

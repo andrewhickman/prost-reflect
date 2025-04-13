@@ -177,6 +177,7 @@ fn serialize_complex_type() {
         }),
         my_enum: vec![0, 1, 2, 3, -4],
         optional_enum: 1,
+        enum_map: HashMap::from_iter([(1, 1), (2, 2)]),
     });
 
     assert_eq!(
@@ -215,6 +216,10 @@ fn serialize_complex_type() {
             },
             "myEnum": ["DEFAULT", "FOO", 2, "BAR", "NEG"],
             "optionalEnum": "FOO",
+            "enumMap": {
+                "1": "FOO",
+                "2": 2,
+            },
         })
     );
 }
@@ -383,6 +388,7 @@ fn serialize_skip_default_fields() {
             nested: None,
             my_enum: vec![],
             optional_enum: 0,
+            enum_map: HashMap::default(),
         },
         &SerializeOptions::new().skip_default_fields(false),
     );
@@ -411,7 +417,8 @@ fn serialize_skip_default_fields() {
             },
             "intMap": {},
             "myEnum": [],
-            "optionalEnum": "DEFAULT"
+            "optionalEnum": "DEFAULT",
+            "enumMap": {}
         })
     );
 }
@@ -645,6 +652,84 @@ fn deserialize_aliased_enum() {
 }
 
 #[test]
+#[should_panic = "unrecognized enum value 'UNKNOWN'"]
+fn deserialize_enum_unknown_value() {
+    from_json::<ComplexType>(
+        json!({
+            "optionalEnum": "UNKNOWN",
+        }),
+        ".test.ComplexType",
+    );
+}
+
+#[test]
+fn deserialize_enum_unknown_value_allow_unknown_fields() {
+    let value: ComplexType = from_json_with_options(
+        json!({
+            "optionalEnum": "UNKNOWN",
+        }),
+        ".test.ComplexType",
+        &DeserializeOptions::new().deny_unknown_fields(false),
+    );
+
+    assert_eq!(value.optional_enum, 0);
+}
+
+#[test]
+#[should_panic = "expected null"]
+fn deserialize_null_value_unknown_value() {
+    from_json::<WellKnownTypes>(
+        json!({
+            "null": "UNKNOWN",
+        }),
+        ".test.WellKnownTypes",
+    );
+}
+
+#[test]
+fn deserialize_null_value_unknown_value_allow_unknown_fields() {
+    let value: WellKnownTypes = from_json_with_options(
+        json!({
+            "null": "UNKNOWN",
+        }),
+        ".test.WellKnownTypes",
+        &DeserializeOptions::new().deny_unknown_fields(false),
+    );
+
+    assert_eq!(value.null, 0);
+}
+
+#[test]
+fn deserialize_enum_in_array_unknown_value_allow_unknown_fields() {
+    let value: ComplexType = from_json_with_options(
+        json!({
+            "myEnum": ["FOO", "UNKNOWN", "BAR"],
+        }),
+        ".test.ComplexType",
+        &DeserializeOptions::new().deny_unknown_fields(false),
+    );
+
+    assert_eq!(value.my_enum.as_slice(), &[1, 3]);
+}
+
+#[test]
+fn deserialize_enum_in_map_unknown_value_allow_unknown_fields() {
+    let value: ComplexType = from_json_with_options(
+        json!({
+            "enumMap": {
+                "1": "FOO",
+                "2": "UNKNOWN",
+                "3": "BAR",
+            },
+        }),
+        ".test.ComplexType",
+        &DeserializeOptions::new().deny_unknown_fields(false),
+    );
+
+    assert_eq!(value.enum_map, HashMap::from_iter([(1, 1), (3, 3),]));
+}
+
+#[test]
 fn deserialize_array() {
     let value: ScalarArrays = from_json(
         json!({
@@ -699,6 +784,10 @@ fn deserialize_complex_type() {
             },
             "myEnum": ["DEFAULT", "FOO", 2, "BAR", "NEG"],
             "optionalEnum": "FOO",
+            "enumMap": {
+                "1": "FOO",
+                "2": 2,
+            },
         }),
         ".test.ComplexType",
     );
@@ -756,6 +845,7 @@ fn deserialize_complex_type() {
             }),
             my_enum: vec![0, 1, 2, 3, -4],
             optional_enum: 1,
+            enum_map: HashMap::from_iter([(1, 1), (2, 2),]),
         }
     );
 }
