@@ -1130,8 +1130,38 @@ fn null_in_oneof() {
 }
 
 #[test]
+fn oneof_duplicate_field_null_first() {
+    let json = json!({
+        "oneofField1": "hello",
+        "oneofField2": null,
+    });
+
+    let value: MessageWithOneof = from_json(json, "test.MessageWithOneof");
+    assert_eq!(
+        value.test_oneof,
+        Some(message_with_oneof::TestOneof::OneofField1(
+            "hello".to_owned()
+        ))
+    );
+}
+
+#[test]
+fn oneof_duplicate_field_null_second() {
+    let json = json!({
+        "oneofField1": null,
+        "oneofField2": 5,
+    });
+
+    let value: MessageWithOneof = from_json(json, "test.MessageWithOneof");
+    assert_eq!(
+        value.test_oneof,
+        Some(message_with_oneof::TestOneof::OneofField2(5))
+    );
+}
+
+#[test]
 #[should_panic(expected = "multiple fields provided for oneof 'test_oneof'")]
-fn duplicate_oneof_field() {
+fn duplicate_oneof_field_json_value_null() {
     let json = json!({
         "oneofField1": "hello",
         "oneofNull": null,

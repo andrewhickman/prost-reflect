@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- The JSON deserializer now accepts messages with oneofs where multiple fields are set, but only one is non-null, to better conform to the specification. This does not apply to `google.protobuf.Value` or `google.protobuf.NullValue`.
+
 ## [0.15.0] - 2025-04-10
 
 ### Changed

@@ -163,19 +163,20 @@ where
     where
         E: Error,
     {
-        if let Kind::Message(message_desc) = self.0.kind() {
-            match message_desc.full_name() {
-                "google.protobuf.Value" => make_message(
+        match self.0.kind() {
+            Kind::Message(message_desc) if message_desc.full_name() == "google.protobuf.Value" => {
+                make_message(
                     &message_desc,
                     prost_types::Value {
                         kind: Some(prost_types::value::Kind::NullValue(0)),
                     },
                 )
-                .map(|v| Some(Value::Message(v))),
-                _ => Ok(None),
+                .map(|v| Some(Value::Message(v)))
             }
-        } else {
-            Ok(Some(self.0.default_value()))
+            Kind::Enum(enum_desc) if enum_desc.full_name() == "google.protobuf.NullValue" => {
+                Ok(Some(Value::EnumNumber(0)))
+            }
+            _ => Ok(None),
         }
     }
 
