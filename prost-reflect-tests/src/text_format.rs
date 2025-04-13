@@ -149,11 +149,12 @@ fn fmt_complex_type() {
         }),
         my_enum: vec![0, 1, 2, 3, -4],
         optional_enum: 1,
+        enum_map: HashMap::from_iter([(1, 1)]),
     }
     .transcode_to_dynamic();
 
-    assert_eq!(value.to_text_format(), "string_map:[{key:\"1\",value{double:1.1,float:2.2,int32:3}}],int_map:[{key:3,value{sint32:7,sint64:8,fixed32:9}}],nested{sfixed32:11,sfixed64:12,bool:true,string:\"5\",bytes:\"6\"},my_enum:[DEFAULT,FOO,2,BAR,NEG],optional_enum:FOO");
-    assert_eq!(value.to_text_format_with_options(&FormatOptions::new().pretty(true)), "string_map: [{\n  key: \"1\"\n  value {\n    double: 1.1\n    float: 2.2\n    int32: 3\n  }\n}]\nint_map: [{\n  key: 3\n  value {\n    sint32: 7\n    sint64: 8\n    fixed32: 9\n  }\n}]\nnested {\n  sfixed32: 11\n  sfixed64: 12\n  bool: true\n  string: \"5\"\n  bytes: \"6\"\n}\nmy_enum: [DEFAULT, FOO, 2, BAR, NEG]\noptional_enum: FOO");
+    assert_eq!(value.to_text_format(), "string_map:[{key:\"1\",value{double:1.1,float:2.2,int32:3}}],int_map:[{key:3,value{sint32:7,sint64:8,fixed32:9}}],nested{sfixed32:11,sfixed64:12,bool:true,string:\"5\",bytes:\"6\"},my_enum:[DEFAULT,FOO,2,BAR,NEG],optional_enum:FOO,enum_map:[{key:1,value:FOO}]");
+    assert_eq!(value.to_text_format_with_options(&FormatOptions::new().pretty(true)), "string_map: [{\n  key: \"1\"\n  value {\n    double: 1.1\n    float: 2.2\n    int32: 3\n  }\n}]\nint_map: [{\n  key: 3\n  value {\n    sint32: 7\n    sint64: 8\n    fixed32: 9\n  }\n}]\nnested {\n  sfixed32: 11\n  sfixed64: 12\n  bool: true\n  string: \"5\"\n  bytes: \"6\"\n}\nmy_enum: [DEFAULT, FOO, 2, BAR, NEG]\noptional_enum: FOO\nenum_map: [{\n  key: 1\n  value: FOO\n}]");
 }
 
 #[test]
@@ -559,6 +560,13 @@ fn parse_complex_type() {
       my_enum: NEG
       my_enum: []
       optional_enum: FOO
+      enum_map: [{
+        key: 1
+        value: FOO
+      }, {
+        key: 2
+        value: 2
+      }]
     ",
     );
 
@@ -615,6 +623,7 @@ fn parse_complex_type() {
             }),
             my_enum: vec![0, 1, 2, 3, -4],
             optional_enum: 1,
+            enum_map: HashMap::from_iter([(1, 1), (2, 2),]),
         }
     );
 }

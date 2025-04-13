@@ -75,13 +75,19 @@ where
     }
 }
 
-fn deserialize_enum<'de, D>(desc: &EnumDescriptor, deserializer: D) -> Result<i32, D::Error>
+fn deserialize_enum<'de, D>(
+    desc: &EnumDescriptor,
+    deserializer: D,
+    options: &DeserializeOptions,
+) -> Result<Option<i32>, D::Error>
 where
     D: Deserializer<'de>,
 {
     match desc.full_name() {
-        "google.protobuf.NullValue" => deserializer.deserialize_any(wkt::GoogleProtobufNullVisitor),
-        _ => deserializer.deserialize_any(kind::EnumVisitor(desc)),
+        "google.protobuf.NullValue" => {
+            deserializer.deserialize_any(wkt::GoogleProtobufNullVisitor(options))
+        }
+        _ => deserializer.deserialize_any(kind::EnumVisitor(desc, options)),
     }
 }
 
@@ -104,20 +110,20 @@ impl<'de, T> DeserializeSeed<'de> for FieldDescriptorSeed<'_, T>
 where
     T: FieldDescriptorLike,
 {
-    type Value = Value;
+    type Value = Option<Value>;
 
     fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
     where
         D: Deserializer<'de>,
     {
         if self.0.is_list() {
-            deserializer
-                .deserialize_any(kind::ListVisitor(&self.0.kind(), self.1))
-                .map(Value::List)
+            Ok(Some(Value::List(deserializer.deserialize_any(
+                kind::ListVisitor(&self.0.kind(), self.1),
+            )?)))
         } else if self.0.is_map() {
-            deserializer
-                .deserialize_any(kind::MapVisitor(&self.0.kind(), self.1))
-                .map(Value::Map)
+            Ok(Some(Value::Map(deserializer.deserialize_any(
+                kind::MapVisitor(&self.0.kind(), self.1),
+            )?)))
         } else {
             kind::KindSeed(&self.0.kind(), self.1).deserialize(deserializer)
         }
@@ -163,19 +169,20 @@ where
     where
         E: Error,
     {
-        if let Kind::Message(message_desc) = self.0.kind() {
-            match message_desc.full_name() {
-                "google.protobuf.Value" => make_message(
+        match self.0.kind() {
+            Kind::Message(message_desc) if message_desc.full_name() == "google.protobuf.Value" => {
+                make_message(
                     &message_desc,
                     prost_types::Value {
                         kind: Some(prost_types::value::Kind::NullValue(0)),
                     },
                 )
-                .map(|v| Some(Value::Message(v))),
-                _ => Ok(None),
+                .map(|v| Some(Value::Message(v)))
             }
-        } else {
-            Ok(Some(self.0.default_value()))
+            Kind::Enum(enum_desc) if enum_desc.full_name() == "google.protobuf.NullValue" => {
+                Ok(Some(Value::EnumNumber(0)))
+            }
+            _ => Ok(None),
         }
     }
 
@@ -184,9 +191,7 @@ where
     where
         D: Deserializer<'de>,
     {
-        FieldDescriptorSeed(self.0, self.1)
-            .deserialize(deserializer)
-            .map(Some)
+        FieldDescriptorSeed(self.0, self.1).deserialize(deserializer)
     }
 }
 

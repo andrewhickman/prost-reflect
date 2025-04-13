@@ -1,5 +1,3 @@
-#![allow(clippy::all)]
-
 pub mod conformance {
     use std::path::Path;
 

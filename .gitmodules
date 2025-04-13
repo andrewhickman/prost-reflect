@@ -1,0 +1,3 @@
+[submodule "prost-reflect-conformance-tests/protobuf"]
+	path = prost-reflect-conformance-tests/protobuf
+	url = https://github.com/protocolbuffers/protobuf

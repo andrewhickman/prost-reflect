@@ -26,7 +26,7 @@ use crate::{
 use super::{deserialize_message, kind::MessageVisitorInner, MessageSeed};
 
 pub struct GoogleProtobufAnyVisitor<'a>(pub &'a DescriptorPool, pub &'a DeserializeOptions);
-pub struct GoogleProtobufNullVisitor;
+pub struct GoogleProtobufNullVisitor<'a>(pub &'a DeserializeOptions);
 pub struct GoogleProtobufTimestampVisitor;
 pub struct GoogleProtobufDurationVisitor;
 pub struct GoogleProtobufFieldMaskVisitor;
@@ -105,8 +105,8 @@ impl<'de> Visitor<'de> for GoogleProtobufAnyVisitor<'_> {
     }
 }
 
-impl Visitor<'_> for GoogleProtobufNullVisitor {
-    type Value = i32;
+impl Visitor<'_> for GoogleProtobufNullVisitor<'_> {
+    type Value = Option<i32>;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "null")
@@ -117,9 +117,11 @@ impl Visitor<'_> for GoogleProtobufNullVisitor {
         E: Error,
     {
         if v == "NULL_VALUE" {
-            Ok(0)
-        } else {
+            Ok(Some(0))
+        } else if self.0.deny_unknown_fields {
             Err(Error::custom("expected null"))
+        } else {
+            Ok(None)
         }
     }
 
@@ -128,7 +130,7 @@ impl Visitor<'_> for GoogleProtobufNullVisitor {
     where
         E: Error,
     {
-        Ok(0)
+        Ok(Some(0))
     }
 }
 
