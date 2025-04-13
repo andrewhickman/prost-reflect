@@ -35,6 +35,7 @@ ureq = "2.5.0"
 anyhow = "1.0.58"
 prost-build = "0.13.0"
 tempfile = "3.3.0"
+cmake = "0.1.54"
 
 [package.metadata.release]
 release = false
