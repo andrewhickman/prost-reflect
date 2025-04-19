@@ -1196,6 +1196,7 @@ impl fmt::Display for Value {
 }
 
 #[test]
+#[cfg(target_arch = "x86_64")]
 fn type_sizes() {
     assert_eq!(std::mem::size_of::<DynamicMessage>(), 40);
     assert_eq!(std::mem::size_of::<Value>(), 56);
