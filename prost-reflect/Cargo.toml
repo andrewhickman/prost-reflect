@@ -12,12 +12,7 @@ readme = "../README.md"
 edition = "2021"
 rust-version = "1.74.0"
 exclude = [
-    "**/tests.rs",
     "proptest-regressions",
-    "src/file_descriptor_set.bin",
-    "src/doctest.proto",
-    "tests",
-    "doc/*.bin",
 ]
 
 [[test]]

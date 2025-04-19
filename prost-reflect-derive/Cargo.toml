@@ -12,7 +12,6 @@ readme = "../README.md"
 edition = "2021"
 rust-version = "1.74.0"
 autotests = false
-exclude = ["tests"]
 
 [lib]
 proc-macro = true
