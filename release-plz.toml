@@ -1,0 +1,8 @@
+[workspace]
+changelog_update = false
+
+[[package]]
+name = "prost-reflect"
+changelog_update = true
+changelog_path = "./CHANGELOG.md"
+changelog_include = ["prost-reflect-build", "prost-reflect-derive"] 

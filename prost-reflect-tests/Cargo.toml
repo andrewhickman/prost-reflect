@@ -36,6 +36,3 @@ rayon = "1.5.3"
 [build-dependencies]
 prost-reflect-build = { path = "../prost-reflect-build" }
 prost-build = "0.13.0"
-
-[package.metadata.release]
-release = false

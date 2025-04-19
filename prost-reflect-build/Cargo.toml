@@ -20,13 +20,3 @@ prost-reflect = { path = "../prost-reflect", version = "0.15.1", features = [
     "derive"
 ] }
 prost-build = "0.13.0"
-
-[[package.metadata.release.pre-release-replacements]]
-file = "src/lib.rs"
-search = "html_root_url = \"https://docs.rs/prost-reflect-build/.*?/\""
-replace = "html_root_url = \"https://docs.rs/prost-reflect-build/{{version}}/\""
-exactly = 1
-
-[package.metadata.release]
-tag = false
-pre-release-commit-message = "(cargo-release) {{crate_name}} version {{version}}"

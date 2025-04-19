@@ -7,7 +7,3 @@ members = [
     "prost-reflect-tests",
     "prost-reflect-conformance-tests"
 ]
-
-[workspace.metadata.release]
-allow-branch = ["main"]
-consolidate-commits = false

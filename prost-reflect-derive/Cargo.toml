@@ -32,13 +32,3 @@ once_cell = "1.13.0"
 prost = "0.13.0"
 prost-reflect = { path = "../prost-reflect", features = ["derive"] }
 trybuild = "1.0.84"
-
-[[package.metadata.release.pre-release-replacements]]
-file = "src/lib.rs"
-search = "html_root_url = \"https://docs.rs/prost-reflect-derive/.*?/\""
-replace = "html_root_url = \"https://docs.rs/prost-reflect-derive/{{version}}/\""
-exactly = 1
-
-[package.metadata.release]
-tag = false
-pre-release-commit-message = "(cargo-release) {{crate_name}} version {{version}}"

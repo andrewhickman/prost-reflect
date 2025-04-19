@@ -23,7 +23,6 @@
 //! include!(concat!(env!("OUT_DIR"), "protobuf.rs"));
 //! ```
 #![warn(missing_debug_implementations, missing_docs)]
-#![doc(html_root_url = "https://docs.rs/prost-reflect-build/0.15.0/")]
 
 use std::{
     env, fs, io,
