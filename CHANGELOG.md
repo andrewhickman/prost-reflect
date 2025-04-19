@@ -1,4 +1,3 @@
-
 # Changelog
 
 All notable changes to this project will be documented in this file.
@@ -8,9 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.15.2](https://github.com/andrewhickman/prost-reflect/compare/prost-reflect-v0.15.1...prost-reflect-v0.15.2) - 2025-04-19
+
 ### Changed
 
 - The descriptors for well-known types returned by `DescriptorPool::global()` have been updated to match the definitions in protobuf version 25.4.
+- The crate package now includes test files to allow consumers to run the tests.
 
 ## [0.15.1] - 2025-04-13
 
