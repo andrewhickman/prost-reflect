@@ -1,4 +1,3 @@
-
 # Changelog
 
 All notable changes to this project will be documented in this file.
@@ -7,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.15.2](https://github.com/andrewhickman/prost-reflect/compare/prost-reflect-v0.15.1...prost-reflect-v0.15.2) - 2025-04-19
+
+### Other
+
+- Add release-plz configuration
+- Update well-known types to protobuf 25.4 ([#159](https://github.com/andrewhickman/prost-reflect/pull/159))
+- Packaging issues ([#161](https://github.com/andrewhickman/prost-reflect/pull/161))
+- (cargo-release) prost-reflect version 0.15.1
+- Fix MSRV badge in readme
+
 
 ### Changed
 
