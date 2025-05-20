@@ -9,9 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.15.3](https://github.com/andrewhickman/prost-reflect/compare/prost-reflect-v0.15.2...prost-reflect-v0.15.3) - 2025-05-20
 
-### Other
+### Fixed
 
-- Revert accidental removal of docs.rs metadata
+- Fixed [docs.rs](https://docs.rs/prost-reflect) documentation including items gated behind feature flags
 
 ## [0.15.2](https://github.com/andrewhickman/prost-reflect/compare/prost-reflect-v0.15.1...prost-reflect-v0.15.2) - 2025-04-19
 
