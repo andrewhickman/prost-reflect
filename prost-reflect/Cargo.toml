@@ -45,3 +45,7 @@ prost-reflect-build = { path = "../prost-reflect-build" }
 serde_json = "1.0.106"
 serde_yaml = "0.9.25"
 similar-asserts = { version = "1.4.2", features = ["serde"] }
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
