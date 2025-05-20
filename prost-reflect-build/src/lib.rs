@@ -160,8 +160,7 @@ impl Builder {
                 file_descriptor_set_bytes,
             )
         } else {
-            return Err(io::Error::new(
-                io::ErrorKind::Other,
+            return Err(io::Error::other(
                 "either 'descriptor_pool' or 'file_descriptor_set_bytes' must be set",
             ));
         };
