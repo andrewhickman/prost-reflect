@@ -19,4 +19,4 @@ default = []
 prost-reflect = { path = "../prost-reflect", version = "0.15.3", features = [
     "derive"
 ] }
-prost-build = "0.13.0"
+prost-build = "0.14.0"

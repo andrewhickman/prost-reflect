@@ -29,6 +29,6 @@ syn = "2.0.32"
 
 [dev-dependencies]
 once_cell = "1.13.0"
-prost = "0.13.0"
+prost = "0.14.0"
 prost-reflect = { path = "../prost-reflect", features = ["derive"] }
 trybuild = "1.0.84"
