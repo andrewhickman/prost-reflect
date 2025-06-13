@@ -7,12 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.15.4](https://github.com/andrewhickman/prost-reflect/compare/prost-reflect-v0.15.3...prost-reflect-v0.15.4) - 2025-06-13
+## [0.16.0](https://github.com/andrewhickman/prost-reflect/compare/prost-reflect-v0.15.3...prost-reflect-v0.16.0) - 2025-06-13
 
-### Other
+### Changed
 
 - Update prost to 0.14.0 ([#167](https://github.com/andrewhickman/prost-reflect/pull/167))
-- Fix docs for prost-reflect-build ([#169](https://github.com/andrewhickman/prost-reflect/pull/169))
+- Fixed documentation for prost-reflect-build ([#169](https://github.com/andrewhickman/prost-reflect/pull/169))
 
 ## [0.15.3](https://github.com/andrewhickman/prost-reflect/compare/prost-reflect-v0.15.2...prost-reflect-v0.15.3) - 2025-05-20
 
