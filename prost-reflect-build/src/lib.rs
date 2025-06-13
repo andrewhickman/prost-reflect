@@ -1,18 +1,20 @@
 //! `prost-reflect-build` contains [`Builder`] to configure [`prost_build::Config`]
 //! to derive [`prost_reflect::ReflectMessage`] for all messages in protocol buffers.
 //!
-//! The simplest way to generate protocol buffer API:
+//! The simplest way to generate [`prost_reflect::ReflectMessage`] is:
 //!
 //! ```no_run
 //! // build.rs
 //! use prost_reflect_build::Builder;
 //!
 //! Builder::new()
+//!     .descriptor_pool("crate::DESCRIPTOR_POOL")
 //!     .compile_protos(&["path/to/protobuf.proto"], &["path/to/include"])
 //!     .expect("Failed to compile protos");
 //! ```
 //!
-//! With default configuration, `lib.rs` must include the following lines for reflection.
+//! Either [`Builder::descriptor_pool`] or [`Builder::file_descriptor_set_bytes`] must be set to an expression giving the implementation access to descriptors.
+//! For example when using `descriptor_pool` a static instance of [`DescriptorPool`] must be available:
 //!
 //! ```ignore
 //! static DESCRIPTOR_POOL: Lazy<DescriptorPool> = Lazy::new(|| DescriptorPool::decode(
