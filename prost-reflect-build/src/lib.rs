@@ -152,6 +152,16 @@ impl Builder {
     }
 
     /// Compile protocol buffers into Rust.
+    pub fn configure_fds(
+        &mut self,
+        config: &mut prost_build::Config,
+        file_descriptors: &impl AsRef<Path>,
+    ) -> io::Result<()> {
+        std::fs::copy(file_descriptors, &self.file_descriptor_set_path)?;
+        self.generate_from_our_fds(config)
+    }
+
+    /// Compile protocol buffers into Rust.
     pub fn compile_fds(&mut self, file_descriptors: &impl AsRef<Path>) -> io::Result<()> {
         std::fs::copy(file_descriptors, &self.file_descriptor_set_path)?;
 
