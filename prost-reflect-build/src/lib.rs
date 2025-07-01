@@ -148,6 +148,27 @@ impl Builder {
             .file_descriptor_set_path(&self.file_descriptor_set_path)
             .compile_protos(protos, includes)?;
 
+        self.generate_from_our_fds(config)
+    }
+
+    /// Compile protocol buffers into Rust.
+    pub fn configure_fds(
+        &mut self,
+        config: &mut prost_build::Config,
+        file_descriptors: &impl AsRef<Path>,
+    ) -> io::Result<()> {
+        std::fs::copy(file_descriptors, &self.file_descriptor_set_path)?;
+        self.generate_from_our_fds(config)
+    }
+
+    /// Compile protocol buffers into Rust.
+    pub fn compile_fds(&mut self, file_descriptors: &impl AsRef<Path>) -> io::Result<()> {
+        std::fs::copy(file_descriptors, &self.file_descriptor_set_path)?;
+
+        self.generate_from_our_fds(&mut prost_build::Config::new())
+    }
+
+    fn generate_from_our_fds(&self, config: &mut prost_build::Config) -> io::Result<()> {
         let buf = fs::read(&self.file_descriptor_set_path)?;
         let descriptor = DescriptorPool::decode(buf.as_ref()).expect("Invalid file descriptor");
 
