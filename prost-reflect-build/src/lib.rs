@@ -151,27 +151,6 @@ impl Builder {
         self.generate_from_our_fds(config)
     }
 
-    /// Compile protocol buffers into Rust with given [`prost_build::Config`].
-    pub fn compile_protos_with_config(
-        &mut self,
-        mut config: prost_build::Config,
-        protos: &[impl AsRef<Path>],
-        includes: &[impl AsRef<Path>],
-    ) -> io::Result<()> {
-        self.configure(&mut config, protos, includes)?;
-
-        config.skip_protoc_run().compile_protos(protos, includes)
-    }
-
-    /// Compile protocol buffers into Rust.
-    pub fn compile_protos(
-        &mut self,
-        protos: &[impl AsRef<Path>],
-        includes: &[impl AsRef<Path>],
-    ) -> io::Result<()> {
-        self.compile_protos_with_config(prost_build::Config::new(), protos, includes)
-    }
-
     /// Compile protocol buffers into Rust.
     pub fn compile_fds(&mut self, file_descriptors: &impl AsRef<Path>) -> io::Result<()> {
         std::fs::copy(file_descriptors, &self.file_descriptor_set_path)?;
@@ -211,6 +190,27 @@ impl Builder {
         }
 
         Ok(())
+    }
+
+    /// Compile protocol buffers into Rust with given [`prost_build::Config`].
+    pub fn compile_protos_with_config(
+        &mut self,
+        mut config: prost_build::Config,
+        protos: &[impl AsRef<Path>],
+        includes: &[impl AsRef<Path>],
+    ) -> io::Result<()> {
+        self.configure(&mut config, protos, includes)?;
+
+        config.skip_protoc_run().compile_protos(protos, includes)
+    }
+
+    /// Compile protocol buffers into Rust.
+    pub fn compile_protos(
+        &mut self,
+        protos: &[impl AsRef<Path>],
+        includes: &[impl AsRef<Path>],
+    ) -> io::Result<()> {
+        self.compile_protos_with_config(prost_build::Config::new(), protos, includes)
     }
 }
 
