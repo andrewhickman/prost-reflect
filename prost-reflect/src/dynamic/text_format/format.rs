@@ -59,23 +59,23 @@ where
 
     pub fn fmt_value(&mut self, value: &Value, kind: Option<&Kind>) -> fmt::Result {
         match value {
-            Value::Bool(value) => write!(self.f, "{}", value),
-            Value::I32(value) => write!(self.f, "{}", value),
-            Value::I64(value) => write!(self.f, "{}", value),
-            Value::U32(value) => write!(self.f, "{}", value),
-            Value::U64(value) => write!(self.f, "{}", value),
+            Value::Bool(value) => write!(self.f, "{value}"),
+            Value::I32(value) => write!(self.f, "{value}"),
+            Value::I64(value) => write!(self.f, "{value}"),
+            Value::U32(value) => write!(self.f, "{value}"),
+            Value::U64(value) => write!(self.f, "{value}"),
             Value::F32(value) => {
                 if value.fract() == 0.0 {
-                    write!(self.f, "{:.1}", value)
+                    write!(self.f, "{value:.1}")
                 } else {
-                    write!(self.f, "{}", value)
+                    write!(self.f, "{value}")
                 }
             }
             Value::F64(value) => {
                 if value.fract() == 0.0 {
-                    write!(self.f, "{:.1}", value)
+                    write!(self.f, "{value:.1}")
                 } else {
-                    write!(self.f, "{}", value)
+                    write!(self.f, "{value}")
                 }
             }
             Value::String(s) => self.fmt_string(s.as_bytes()),
@@ -86,7 +86,7 @@ where
                         return self.f.write_str(value.name());
                     }
                 }
-                write!(self.f, "{}", value)
+                write!(self.f, "{value}")
             }
             Value::Message(message) => {
                 let mut fields = message.fields.iter(
@@ -147,11 +147,11 @@ where
 
     fn fmt_map_key(&mut self, value: &MapKey) -> fmt::Result {
         match value {
-            MapKey::Bool(value) => write!(self.f, "{}", value),
-            MapKey::I32(value) => write!(self.f, "{}", value),
-            MapKey::I64(value) => write!(self.f, "{}", value),
-            MapKey::U32(value) => write!(self.f, "{}", value),
-            MapKey::U64(value) => write!(self.f, "{}", value),
+            MapKey::Bool(value) => write!(self.f, "{value}"),
+            MapKey::I32(value) => write!(self.f, "{value}"),
+            MapKey::I64(value) => write!(self.f, "{value}"),
+            MapKey::U32(value) => write!(self.f, "{value}"),
+            MapKey::U64(value) => write!(self.f, "{value}"),
             MapKey::String(s) => self.fmt_string(s.as_bytes()),
         }
     }
@@ -190,7 +190,7 @@ where
             UnknownFieldValue::Varint(int) => {
                 self.f.write_char(':')?;
                 self.fmt_padding()?;
-                write!(self.f, "{}", int)
+                write!(self.f, "{int}")
             }
             UnknownFieldValue::ThirtyTwoBit(bytes) => {
                 self.f.write_char(':')?;

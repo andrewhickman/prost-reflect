@@ -96,9 +96,7 @@ impl DynamicMessageFieldSet {
     pub(super) fn set(&mut self, desc: &impl FieldDescriptorLike, value: Value) {
         debug_assert!(
             desc.is_valid(&value),
-            "invalid value {:?} for field {:?}",
-            value,
-            desc,
+            "invalid value {value:?} for field {desc:?}",
         );
 
         self.clear_oneof_fields(desc);
@@ -120,7 +118,7 @@ impl DynamicMessageFieldSet {
         match self.fields.entry(number) {
             btree_map::Entry::Occupied(mut entry) => match entry.get_mut() {
                 ValueOrUnknown::Value(_) => {
-                    panic!("expected no field to be found with number {}", number)
+                    panic!("expected no field to be found with number {number}")
                 }
                 value @ ValueOrUnknown::Taken => {
                     *value = ValueOrUnknown::Unknown(UnknownFieldSet::from_iter([unknown]))

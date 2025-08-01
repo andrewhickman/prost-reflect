@@ -1892,7 +1892,7 @@ fn join_name<'a>(namespace: &str, name: &'a str) -> Cow<'a, str> {
     if namespace.is_empty() {
         Cow::Borrowed(name)
     } else {
-        Cow::Owned(format!("{}.{}", namespace, name))
+        Cow::Owned(format!("{namespace}.{name}"))
     }
 }
 

@@ -404,7 +404,7 @@ impl Visitor for ResolveVisitor<'_> {
             id: Identity::new(file, path, full_name, extension.name()),
             parent: parent_message,
             number: extension.number() as u32,
-            json_name: format!("[{}]", full_name).into(),
+            json_name: format!("[{full_name}]").into(),
             extendee: extendee.unwrap_or(MessageIndex::MAX),
             kind: kind.unwrap_or(KindIndex::Double),
             is_packed,
@@ -653,7 +653,7 @@ impl ResolveVisitor<'_> {
                 Err(_) => {
                     self.errors.push(DescriptorErrorKind::InvalidFieldDefault {
                         value: default_value.to_owned(),
-                        kind: format!("{:?}", kind),
+                        kind: format!("{kind:?}"),
                         found: Label::new(
                             &self.pool.files,
                             "found here",
@@ -753,7 +753,7 @@ impl ResolveVisitor<'_> {
             &mut self.pool.files[file as usize].raw,
             path,
             tag,
-            format!(".{}", type_name),
+            format!(".{type_name}"),
             ty,
         );
         Some(def)
@@ -899,7 +899,7 @@ fn set_type_name(
             match tag {
                 tag::method::INPUT_TYPE => method.input_type = Some(type_name),
                 tag::method::OUTPUT_TYPE => method.output_type = Some(type_name),
-                p => panic!("unknown path element {}", p),
+                p => panic!("unknown path element {p}"),
             }
         }
         tag::file::MESSAGE_TYPE | tag::file::EXTENSION => {
@@ -912,10 +912,10 @@ fn set_type_name(
                     }
                 }
                 tag::field::EXTENDEE => field.extendee = Some(type_name),
-                p => panic!("unknown path element {}", p),
+                p => panic!("unknown path element {p}"),
             }
         }
-        p => panic!("unknown path element {}", p),
+        p => panic!("unknown path element {p}"),
     }
 }
 
@@ -932,7 +932,7 @@ fn find_file_field_proto_mut<'a>(
             debug_assert_eq!(path.len(), 2);
             &mut file.extension[path[1] as usize]
         }
-        p => panic!("unknown path element {}", p),
+        p => panic!("unknown path element {p}"),
     }
 }
 
@@ -953,7 +953,7 @@ fn find_message_field_proto<'a>(
             let nested_message = &mut message.nested_type[path[1] as usize];
             find_message_field_proto(nested_message, &path[2..])
         }
-        p => panic!("unknown path element {}", p),
+        p => panic!("unknown path element {p}"),
     }
 }
 

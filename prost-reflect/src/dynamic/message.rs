@@ -264,8 +264,7 @@ impl Value {
                 }
             }
             (value, ty) => panic!(
-                "mismatch between DynamicMessage value {:?} and type {:?}",
-                value, ty
+                "mismatch between DynamicMessage value {value:?} and type {ty:?}"
             ),
         }
     }
@@ -377,8 +376,7 @@ impl Value {
                 Ok(())
             }
             (value, ty) => panic!(
-                "mismatch between DynamicMessage value {:?} and type {:?}",
-                value, ty
+                "mismatch between DynamicMessage value {value:?} and type {ty:?}"
             ),
         }
     }
@@ -536,8 +534,7 @@ impl Value {
                     .sum::<usize>()
             }
             (value, ty) => panic!(
-                "mismatch between DynamicMessage value {:?} and type {:?}",
-                value, ty
+                "mismatch between DynamicMessage value {value:?} and type {ty:?}"
             ),
         }
     }
@@ -585,8 +582,7 @@ impl MapKey {
                 prost::encoding::string::encode(number, value, buf)
             }
             (value, ty) => panic!(
-                "mismatch between DynamicMessage value {:?} and type {:?}",
-                value, ty
+                "mismatch between DynamicMessage value {value:?} and type {ty:?}"
             ),
         }
     }
@@ -639,8 +635,7 @@ impl MapKey {
                 prost::encoding::string::merge(wire_type, value, buf, ctx)
             }
             (value, ty) => panic!(
-                "mismatch between DynamicMessage value {:?} and type {:?}",
-                value, ty
+                "mismatch between DynamicMessage value {value:?} and type {ty:?}"
             ),
         }
     }
@@ -683,8 +678,7 @@ impl MapKey {
                 prost::encoding::string::encoded_len(number, value)
             }
             (value, ty) => panic!(
-                "mismatch between DynamicMessage value {:?} and type {:?}",
-                value, ty
+                "mismatch between DynamicMessage value {value:?} and type {ty:?}"
             ),
         }
     }

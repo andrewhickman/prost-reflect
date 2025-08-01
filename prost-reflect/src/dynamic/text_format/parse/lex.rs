@@ -65,13 +65,13 @@ pub(crate) struct TokenExtras {
 impl fmt::Display for Token<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Token::Ident(value) => write!(f, "{}", value),
+            Token::Ident(value) => write!(f, "{value}"),
             Token::IntLiteral(value) => write!(f, "{}", value.value),
             Token::FloatLiteral(value) => {
                 if value.fract() == 0.0 {
-                    write!(f, "{:.1}", value)
+                    write!(f, "{value:.1}")
                 } else {
-                    write!(f, "{}", value)
+                    write!(f, "{value}")
                 }
             }
             Token::StringLiteral(bytes) => {

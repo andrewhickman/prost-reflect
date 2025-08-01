@@ -243,35 +243,35 @@ fn test_debug_impls() {
     let _ = format!("{:?}", test_file_descriptor());
 
     for service in test_file_descriptor().services() {
-        let _ = format!("{:?}", service);
+        let _ = format!("{service:?}");
         for method in service.methods() {
-            let _ = format!("{:?}", method);
+            let _ = format!("{method:?}");
         }
     }
 
     for file in test_file_descriptor().files() {
-        let _ = format!("{:?}", file);
+        let _ = format!("{file:?}");
     }
 
     for message in test_file_descriptor().all_messages() {
-        let _ = format!("{:?}", message);
+        let _ = format!("{message:?}");
         for field in message.fields() {
-            let _ = format!("{:?}", field);
+            let _ = format!("{field:?}");
         }
         for oneof in message.oneofs() {
-            let _ = format!("{:?}", oneof);
+            let _ = format!("{oneof:?}");
         }
     }
 
     for enum_ in test_file_descriptor().all_enums() {
-        let _ = format!("{:?}", enum_);
+        let _ = format!("{enum_:?}");
         for value in enum_.values() {
-            let _ = format!("{:?}", value);
+            let _ = format!("{value:?}");
         }
     }
 
     for extension in test_file_descriptor().all_extensions() {
-        let _ = format!("{:?}", extension);
+        let _ = format!("{extension:?}");
     }
 }
 
