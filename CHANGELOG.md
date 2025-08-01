@@ -11,11 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Add OneofDescriptor::is_synthetic ([#175](https://github.com/andrewhickman/prost-reflect/pull/175))
-
-### Other
-
-- Add default_value method to FieldDescriptor, ExtensionDescriptor and Value for better visibility ([#176](https://github.com/andrewhickman/prost-reflect/pull/176))
+- Add `OneofDescriptor::is_synthetic` ([#175](https://github.com/andrewhickman/prost-reflect/pull/175))
+- Add `default_value` method to `FieldDescriptor`, `ExtensionDescriptor` and `Value` for better visibility ([#176](https://github.com/andrewhickman/prost-reflect/pull/176))
 
 ## [0.16.0](https://github.com/andrewhickman/prost-reflect/compare/prost-reflect-v0.15.3...prost-reflect-v0.16.0) - 2025-06-13
 
