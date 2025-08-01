@@ -1,12 +1,13 @@
 use std::{
     borrow::Cow,
+    collections::HashMap,
     fmt, iter,
     ops::{Range, RangeInclusive},
     sync::Arc,
 };
 
 use prost::{
-    bytes::{Buf, BufMut},
+    bytes::{Buf, BufMut, Bytes},
     encoding::{self, WireType},
     DecodeError, EncodeError, Message,
 };
@@ -106,6 +107,26 @@ impl Kind {
             | Kind::Sint64
             | Kind::Bool => WireType::Varint,
             Kind::String | Kind::Bytes | Kind::Message(_) => WireType::LengthDelimited,
+        }
+    }
+
+    /// Returns the default value for the given protobuf type `kind`.
+    ///
+    /// Unlike [`FieldDescriptor::default_value`], this method does not
+    /// look at field cardinality, so it will never return a list or map.
+    pub fn default_value(&self) -> Value {
+        match self {
+            Kind::Message(desc) => Value::Message(DynamicMessage::new(desc.clone())),
+            Kind::Enum(enum_ty) => Value::EnumNumber(enum_ty.default_value().number()),
+            Kind::Double => Value::F64(0.0),
+            Kind::Float => Value::F32(0.0),
+            Kind::Int32 | Kind::Sint32 | Kind::Sfixed32 => Value::I32(0),
+            Kind::Int64 | Kind::Sint64 | Kind::Sfixed64 => Value::I64(0),
+            Kind::Uint32 | Kind::Fixed32 => Value::U32(0),
+            Kind::Uint64 | Kind::Fixed64 => Value::U64(0),
+            Kind::Bool => Value::Bool(false),
+            Kind::String => Value::String(String::default()),
+            Kind::Bytes => Value::Bytes(Bytes::default()),
         }
     }
 }
@@ -1083,8 +1104,23 @@ impl FieldDescriptor {
         })
     }
 
-    pub(crate) fn default_value(&self) -> Option<&Value> {
-        self.inner().default.as_ref()
+    /// Returns the default value for this field.
+    ///
+    /// This is equivalent to `kind().default_value()` except for the following cases:
+    ///
+    /// * If the field is a map, an empty map is returned.
+    /// * If the field is `repeated`, an empty list is returned.
+    /// * If the field has a custom default value specified, that is returned (proto2 only).
+    pub fn default_value(&self) -> Value {
+        if self.is_list() {
+            Value::List(Vec::default())
+        } else if self.is_map() {
+            Value::Map(HashMap::default())
+        } else if let Some(default_value) = &self.inner().default {
+            default_value.clone()
+        } else {
+            self.kind().default_value()
+        }
     }
 
     pub(crate) fn is_packable(&self) -> bool {
@@ -1229,9 +1265,7 @@ impl ExtensionDescriptor {
 
     /// Whether this field is a map type.
     ///
-    /// Equivalent to checking that the cardinality is `Repeated` and that
-    /// the field type is a message where [`is_map_entry`][MessageDescriptor::is_map_entry]
-    /// returns `true`.
+    /// Protobuf does not allow map fields to be extensions, so this will always return `false`.
     pub fn is_map(&self) -> bool {
         self.cardinality() == Cardinality::Repeated
             && match self.kind() {
@@ -1271,8 +1305,20 @@ impl ExtensionDescriptor {
         }
     }
 
-    pub(crate) fn default_value(&self) -> Option<&Value> {
-        self.inner().default.as_ref()
+    /// Returns the default value for this extension.
+    ///
+    /// This is equivalent to `kind().default_value()`, unless the field is `repeated`,
+    /// in which case an empty list is returned.
+    pub fn default_value(&self) -> Value {
+        if self.is_list() {
+            Value::List(Vec::default())
+        } else if self.is_map() {
+            Value::Map(HashMap::default())
+        } else if let Some(default_value) = &self.inner().default {
+            default_value.clone()
+        } else {
+            self.kind().default_value()
+        }
     }
 
     pub(crate) fn is_packable(&self) -> bool {

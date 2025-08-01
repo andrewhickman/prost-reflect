@@ -598,56 +598,23 @@ impl ReflectMessage for DynamicMessage {
 impl Value {
     /// Returns the default value for the given protobuf field.
     ///
-    /// This is equivalent to [`default_value`][Value::default_value] except for the following cases:
-    ///
-    /// * If the field is a map, an empty map is returned.
-    /// * If the field is `repeated`, an empty list is returned.
-    /// * If the field has a custom default value specified, that is returned (proto2 only).
+    /// See [FieldDescriptor::default_value] for more details.
     pub fn default_value_for_field(field_desc: &FieldDescriptor) -> Self {
-        if field_desc.is_list() {
-            Value::List(Vec::default())
-        } else if field_desc.is_map() {
-            Value::Map(HashMap::default())
-        } else if let Some(default_value) = field_desc.default_value() {
-            default_value.clone()
-        } else {
-            Self::default_value(&field_desc.kind())
-        }
+        field_desc.default_value()
     }
 
     /// Returns the default value for the given protobuf extension field.
     ///
-    /// See [`default_value_for_field`][Value::default_value_for_field] for more details.
+    /// See [ExtensionDescriptor::default_value] for more details.
     pub fn default_value_for_extension(extension_desc: &ExtensionDescriptor) -> Self {
-        if extension_desc.is_list() {
-            Value::List(Vec::default())
-        } else if extension_desc.is_map() {
-            Value::Map(HashMap::default())
-        } else if let Some(default_value) = extension_desc.default_value() {
-            default_value.clone()
-        } else {
-            Self::default_value(&extension_desc.kind())
-        }
+        extension_desc.default_value()
     }
 
     /// Returns the default value for the given protobuf type `kind`.
     ///
-    /// Unlike [`default_value_for_field`](Value::default_value_for_field), this method does not
-    /// look at field cardinality, so it will never return a list or map.
+    /// See [Kind::default_value] for more details.
     pub fn default_value(kind: &Kind) -> Self {
-        match kind {
-            Kind::Message(desc) => Value::Message(DynamicMessage::new(desc.clone())),
-            Kind::Enum(enum_ty) => Value::EnumNumber(enum_ty.default_value().number()),
-            Kind::Double => Value::F64(0.0),
-            Kind::Float => Value::F32(0.0),
-            Kind::Int32 | Kind::Sint32 | Kind::Sfixed32 => Value::I32(0),
-            Kind::Int64 | Kind::Sint64 | Kind::Sfixed64 => Value::I64(0),
-            Kind::Uint32 | Kind::Fixed32 => Value::U32(0),
-            Kind::Uint64 | Kind::Fixed64 => Value::U64(0),
-            Kind::Bool => Value::Bool(false),
-            Kind::String => Value::String(String::default()),
-            Kind::Bytes => Value::Bytes(Bytes::default()),
-        }
+        kind.default_value()
     }
 
     /// Returns `true` if this is the default value for the given protobuf field.
@@ -662,7 +629,7 @@ impl Value {
 
     /// Returns `true` if this is the default value for the given protobuf type `kind`.
     pub fn is_default(&self, kind: &Kind) -> bool {
-        *self == Value::default_value(kind)
+        *self == kind.default_value()
     }
 
     /// Returns `true` if this value can be set for a given field.
