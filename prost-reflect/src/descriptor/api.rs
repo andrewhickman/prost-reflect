@@ -1610,6 +1610,16 @@ impl OneofDescriptor {
         })
     }
 
+    /// Returns `true` if this is a synthetic oneof generated to support proto3 optional semantics.
+    ///
+    /// If `true`, then [`fields`](OneofDescriptor::fields) will yield exactly one field, for which [`FieldDescriptorProto::proto3_optional`] returns true.
+    pub fn is_synthetic(&self) -> bool {
+        self.fields().len() == 1
+            && self
+                .fields()
+                .all(|f| f.field_descriptor_proto().proto3_optional())
+    }
+
     fn inner(&self) -> &OneofDescriptorInner {
         &self.message.inner().oneofs[self.index as usize]
     }
