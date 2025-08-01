@@ -243,35 +243,35 @@ fn test_debug_impls() {
     let _ = format!("{:?}", test_file_descriptor());
 
     for service in test_file_descriptor().services() {
-        let _ = format!("{:?}", service);
+        let _ = format!("{service:?}");
         for method in service.methods() {
-            let _ = format!("{:?}", method);
+            let _ = format!("{method:?}");
         }
     }
 
     for file in test_file_descriptor().files() {
-        let _ = format!("{:?}", file);
+        let _ = format!("{file:?}");
     }
 
     for message in test_file_descriptor().all_messages() {
-        let _ = format!("{:?}", message);
+        let _ = format!("{message:?}");
         for field in message.fields() {
-            let _ = format!("{:?}", field);
+            let _ = format!("{field:?}");
         }
         for oneof in message.oneofs() {
-            let _ = format!("{:?}", oneof);
+            let _ = format!("{oneof:?}");
         }
     }
 
     for enum_ in test_file_descriptor().all_enums() {
-        let _ = format!("{:?}", enum_);
+        let _ = format!("{enum_:?}");
         for value in enum_.values() {
-            let _ = format!("{:?}", value);
+            let _ = format!("{value:?}");
         }
     }
 
     for extension in test_file_descriptor().all_extensions() {
-        let _ = format!("{:?}", extension);
+        let _ = format!("{extension:?}");
     }
 }
 
@@ -784,4 +784,34 @@ fn message_take_fields() {
     assert_eq!(dynamic_message.extensions().count(), 0);
     assert_eq!(dynamic_message.fields_mut().count(), 0);
     assert_eq!(dynamic_message.extensions_mut().count(), 0);
+}
+
+#[test]
+fn oneof_not_synthetic() {
+    let message_desc = test_file_descriptor()
+        .get_message_by_name("test.MessageWithOneof")
+        .unwrap();
+
+    assert_eq!(message_desc.oneofs().len(), 1);
+
+    let oneof_desc = message_desc.oneofs().next().unwrap();
+    assert_eq!(oneof_desc.name(), "test_oneof");
+    assert!(!oneof_desc.is_synthetic());
+}
+
+#[test]
+fn proto3_optional_field() {
+    let message_desc = test_file_descriptor()
+        .get_message_by_name("test.MessageWithOptionalEnum")
+        .unwrap();
+    let field_desc = message_desc.get_field_by_name("optional_enum").unwrap();
+    let oneof_desc = field_desc.containing_oneof().unwrap();
+
+    assert!(field_desc.supports_presence());
+    assert_eq!(oneof_desc.name(), "_optional_enum");
+    assert!(oneof_desc.is_synthetic());
+    assert!(oneof_desc.fields().eq([field_desc.clone()]));
+
+    assert_eq!(message_desc.oneofs().len(), 1);
+    assert!(message_desc.oneofs().eq([oneof_desc.clone()]));
 }

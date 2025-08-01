@@ -59,7 +59,7 @@ impl<'de> Visitor<'de> for GoogleProtobufAnyVisitor<'_> {
         let message_desc = self
             .0
             .get_message_by_name(message_name)
-            .ok_or_else(|| Error::custom(format!("message '{}' not found", message_name)))?;
+            .ok_or_else(|| Error::custom(format!("message '{message_name}' not found")))?;
 
         let payload_message = if is_well_known_type(message_name) {
             let payload_message = match buffered_entries.remove("value") {
@@ -76,10 +76,10 @@ impl<'de> Visitor<'de> for GoogleProtobufAnyVisitor<'_> {
 
             if self.1.deny_unknown_fields {
                 if let Some(key) = buffered_entries.keys().next() {
-                    return Err(Error::custom(format!("unrecognized field name '{}'", key)));
+                    return Err(Error::custom(format!("unrecognized field name '{key}'")));
                 }
                 if let Some(key) = map.next_key::<Cow<str>>()? {
-                    return Err(Error::custom(format!("unrecognized field name '{}'", key)));
+                    return Err(Error::custom(format!("unrecognized field name '{key}'")));
                 }
             } else {
                 drop(buffered_entries);

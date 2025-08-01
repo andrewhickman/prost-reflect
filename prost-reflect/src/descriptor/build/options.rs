@@ -744,7 +744,7 @@ fn set_file_option(file: &mut FileDescriptorProto, path: &[i32], encoded: &[u8])
                     let value = &mut service.method[path[3] as usize];
                     value.options = Some(Options::decode(encoded).unwrap());
                 }
-                p => panic!("unknown path element {}", p),
+                p => panic!("unknown path element {p}"),
             }
         }
         tag::file::EXTENSION => {
@@ -753,7 +753,7 @@ fn set_file_option(file: &mut FileDescriptorProto, path: &[i32], encoded: &[u8])
             let field = &mut file.extension[path[1] as usize];
             field.options = Some(Options::decode(encoded).unwrap());
         }
-        p => panic!("unknown path element {}", p),
+        p => panic!("unknown path element {p}"),
     }
 }
 
@@ -795,7 +795,7 @@ fn set_message_option(message: &mut DescriptorProto, path: &[i32], encoded: &[u8
             let field = &mut message.extension[path[1] as usize];
             field.options = Some(Options::decode(encoded).unwrap());
         }
-        p => panic!("unknown path element {}", p),
+        p => panic!("unknown path element {p}"),
     }
 }
 
@@ -808,6 +808,6 @@ fn set_enum_option(enum_: &mut EnumDescriptorProto, path: &[i32], encoded: &[u8]
             let value = &mut enum_.value[path[1] as usize];
             value.options = Some(Options::decode(encoded).unwrap());
         }
-        p => panic!("unknown path element {}", p),
+        p => panic!("unknown path element {p}"),
     }
 }

@@ -202,6 +202,6 @@ fn make_message<E: Error, T: Message>(
     let mut dynamic = DynamicMessage::new(desc.clone());
     dynamic
         .transcode_from(&message)
-        .map_err(|err| Error::custom(format!("error decoding: {}", err)))?;
+        .map_err(|err| Error::custom(format!("error decoding: {err}")))?;
     Ok(dynamic)
 }

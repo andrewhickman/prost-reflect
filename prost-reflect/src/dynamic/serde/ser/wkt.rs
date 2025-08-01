@@ -65,7 +65,7 @@ where
         .descriptor()
         .parent_pool()
         .get_message_by_name(message_name)
-        .ok_or_else(|| Error::custom(format!("message '{}' not found", message_name)))?;
+        .ok_or_else(|| Error::custom(format!("message '{message_name}' not found")))?;
 
     let mut payload_message = DynamicMessage::new(message_desc);
     payload_message
@@ -399,5 +399,5 @@ fn decode_to_ser_err<E>(err: DecodeError) -> E
 where
     E: Error,
 {
-    Error::custom(format!("error decoding: {}", err))
+    Error::custom(format!("error decoding: {err}"))
 }

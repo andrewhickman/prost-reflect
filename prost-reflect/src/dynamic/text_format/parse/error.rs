@@ -127,16 +127,15 @@ impl Display for ParseErrorKind {
             ),
             ParseErrorKind::UnexpectedToken {
                 expected, found, ..
-            } => write!(f, "expected {}, but found '{}'", expected, found),
+            } => write!(f, "expected {expected}, but found '{found}'"),
             ParseErrorKind::UnexpectedEof { expected, .. } => {
-                write!(f, "expected {}, but reached end of input", expected)
+                write!(f, "expected {expected}, but reached end of input")
             }
             ParseErrorKind::IntegerValueOutOfRange {
                 expected, actual, ..
             } => write!(
                 f,
-                "expected value to be {}, but the value {} is out of range",
-                expected, actual
+                "expected value to be {expected}, but the value {actual} is out of range"
             ),
             ParseErrorKind::FieldNotFound {
                 field_name,
@@ -144,14 +143,13 @@ impl Display for ParseErrorKind {
                 ..
             } => write!(
                 f,
-                "field '{}' not found for message '{}'",
-                field_name, message_name
+                "field '{field_name}' not found for message '{message_name}'"
             ),
             ParseErrorKind::FieldAlreadySet { field_name, .. } => {
-                write!(f, "'{}' is already set", field_name,)
+                write!(f, "'{field_name}' is already set")
             }
             ParseErrorKind::OneofAlreadySet { oneof_name, .. } => {
-                write!(f, "a value is already set for oneof '{}'", oneof_name)
+                write!(f, "a value is already set for oneof '{oneof_name}'")
             }
             ParseErrorKind::ExtensionNotFound {
                 extension_name,
@@ -160,12 +158,11 @@ impl Display for ParseErrorKind {
             } => {
                 write!(
                     f,
-                    "extension '{}' not found for message '{}'",
-                    extension_name, message_name
+                    "extension '{extension_name}' not found for message '{message_name}'"
                 )
             }
             ParseErrorKind::MessageNotFound { message_name, .. } => {
-                write!(f, "message type '{}' not found", message_name)
+                write!(f, "message type '{message_name}' not found")
             }
             ParseErrorKind::EnumValueNotFound {
                 value_name,
@@ -174,8 +171,7 @@ impl Display for ParseErrorKind {
             } => {
                 write!(
                     f,
-                    "value '{}' was not found for enum '{}'",
-                    value_name, enum_name
+                    "value '{value_name}' was not found for enum '{enum_name}'"
                 )
             }
             ParseErrorKind::InvalidTypeForAny { .. } => write!(

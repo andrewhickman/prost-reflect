@@ -152,14 +152,10 @@ impl Builder {
         let descriptor = DescriptorPool::decode(buf.as_ref()).expect("Invalid file descriptor");
 
         let pool_attribute = if let Some(descriptor_pool) = &self.descriptor_pool_expr {
-            format!(
-                r#"#[prost_reflect(descriptor_pool = "{}")]"#,
-                descriptor_pool,
-            )
+            format!(r#"#[prost_reflect(descriptor_pool = "{descriptor_pool}")]"#,)
         } else if let Some(file_descriptor_set_bytes) = &self.file_descriptor_set_bytes_expr {
             format!(
-                r#"#[prost_reflect(file_descriptor_set_bytes = "{}")]"#,
-                file_descriptor_set_bytes,
+                r#"#[prost_reflect(file_descriptor_set_bytes = "{file_descriptor_set_bytes}")]"#,
             )
         } else {
             return Err(io::Error::other(
@@ -173,7 +169,7 @@ impl Builder {
                 .type_attribute(full_name, "#[derive(::prost_reflect::ReflectMessage)]")
                 .type_attribute(
                     full_name,
-                    format!(r#"#[prost_reflect(message_name = "{}")]"#, full_name,),
+                    format!(r#"#[prost_reflect(message_name = "{full_name}")]"#),
                 )
                 .type_attribute(full_name, &pool_attribute);
         }

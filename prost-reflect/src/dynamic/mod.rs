@@ -1126,7 +1126,7 @@ impl fmt::Display for SetFieldError {
                 } else {
                     write!(f, "{:?}", field.kind())?;
                 }
-                write!(f, "', but found '{}'", value)
+                write!(f, "', but found '{value}'")
             }
         }
     }
@@ -1146,7 +1146,7 @@ pub(crate) fn fmt_string(f: &mut impl fmt::Write, bytes: &[u8]) -> fmt::Result {
             b'"' => f.write_str("\\\"")?,
             b'\x20'..=b'\x7e' => f.write_char(ch as char)?,
             _ => {
-                write!(f, "\\{:03o}", ch)?;
+                write!(f, "\\{ch:03o}")?;
             }
         }
     }

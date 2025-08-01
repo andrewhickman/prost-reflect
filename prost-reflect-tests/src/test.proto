@@ -89,6 +89,14 @@ message MessageWithOneof {
   }
 }
 
+message MessageWithOptionalEnum {
+  enum OptionalEnum {
+    DEFAULT = 0;
+  }
+
+  optional OptionalEnum optional_enum = 1;
+}
+
 message Point {
   int32 latitude = 1;
   int32 longitude = 2;

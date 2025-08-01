@@ -68,7 +68,7 @@ pub fn mask() -> impl Strategy<Value = FieldMask> {
                 let mut parts = parts.into_iter();
                 let mut path = parts.next().unwrap();
                 for part in parts {
-                    write!(path, ".{}", part).unwrap();
+                    write!(path, ".{part}").unwrap();
                 }
                 path
             })

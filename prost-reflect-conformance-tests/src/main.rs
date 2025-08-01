@@ -37,7 +37,7 @@ fn main() -> io::Result<()> {
 
         let result = match ConformanceRequest::decode(&*bytes) {
             Ok(request) => handle_request(request),
-            Err(error) => conformance_response::Result::ParseError(format!("{:?}", error)),
+            Err(error) => conformance_response::Result::ParseError(format!("{error:?}")),
         };
 
         let response = ConformanceResponse {

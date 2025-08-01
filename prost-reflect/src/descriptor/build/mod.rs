@@ -263,8 +263,7 @@ impl<'a, 'b> ResolveNameResult<'a, 'b> {
                         join_path(found_path1, found_path2),
                     ),
                     help: Some(format!(
-                        "'{}' is defined in '{}', which is not imported by '{}'",
-                        name, dep_name, root_name
+                        "'{name}' is defined in '{dep_name}', which is not imported by '{root_name}'"
                     )),
                     name: name.into_owned(),
                 })
@@ -341,7 +340,7 @@ fn resolve_relative_name<'a, 'b>(
     for candidate_parent in resolve_relative_candidate_parents(scope) {
         let candidate = match candidate_parent {
             "" => Cow::Borrowed(relative_first_part),
-            _ => Cow::Owned(format!("{}.{}", candidate_parent, relative_first_part)),
+            _ => Cow::Owned(format!("{candidate_parent}.{relative_first_part}")),
         };
 
         if relative_first_part.len() == relative_name.len() {
@@ -358,7 +357,7 @@ fn resolve_relative_name<'a, 'b>(
                 Some(def) if def.kind.is_parent() => {
                     let candidate_full = match candidate_parent {
                         "" => Cow::Borrowed(relative_name),
-                        _ => Cow::Owned(format!("{}.{}", candidate_parent, relative_name)),
+                        _ => Cow::Owned(format!("{candidate_parent}.{relative_name}")),
                     };
 
                     let res =

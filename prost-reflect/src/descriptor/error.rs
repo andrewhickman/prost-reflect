@@ -246,14 +246,14 @@ impl fmt::Display for DescriptorError {
 impl fmt::Debug for DescriptorError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(file) = self.file() {
-            write!(f, "{}:", file)?;
+            write!(f, "{file}:")?;
             if let (Some(line), Some(column)) = (self.line(), self.column()) {
                 write!(f, "{}:{}:", line + 1, column + 1)?;
             }
             write!(f, " ")?;
         }
 
-        write!(f, "{}", self)
+        write!(f, "{self}")
     }
 }
 
@@ -451,17 +451,13 @@ impl fmt::Display for DescriptorErrorKind {
                 write!(f, "missing required field at {:?}", label.path)
             }
             DescriptorErrorKind::UnknownSyntax { syntax, .. } => {
-                write!(f, "unknown syntax '{}'", syntax)
+                write!(f, "unknown syntax '{syntax}'")
             }
             DescriptorErrorKind::DuplicateFileName { name, .. } => {
-                write!(
-                    f,
-                    "a different file named '{}' has already been added",
-                    name
-                )
+                write!(f, "a different file named '{name}' has already been added")
             }
             DescriptorErrorKind::FileNotFound { name, .. } => {
-                write!(f, "imported file '{}' has not been added", name)
+                write!(f, "imported file '{name}' has not been added")
             }
             DescriptorErrorKind::InvalidImportIndex => {
                 write!(f, "invalid import index")
@@ -475,7 +471,7 @@ impl fmt::Display for DescriptorErrorKind {
                 second,
             } => {
                 if first.file == second.file {
-                    write!(f, "name '{}' is defined twice", name)
+                    write!(f, "name '{name}' is defined twice")
                 } else {
                     write!(
                         f,
@@ -485,10 +481,10 @@ impl fmt::Display for DescriptorErrorKind {
                 }
             }
             DescriptorErrorKind::DuplicateFieldNumber { number, .. } => {
-                write!(f, "field number '{}' is already used", number)
+                write!(f, "field number '{number}' is already used")
             }
             DescriptorErrorKind::DuplicateFieldJsonName { name, .. } => {
-                write!(f, "a field with JSON name '{}' is already defined", name)
+                write!(f, "a field with JSON name '{name}' is already defined")
             }
             DescriptorErrorKind::DuplicateFieldCamelCaseName {
                 first_name,
@@ -501,7 +497,7 @@ impl fmt::Display for DescriptorErrorKind {
                 )
             }
             DescriptorErrorKind::InvalidFieldNumber { number, .. } => {
-                write!(f, "invalid field number '{}'", number)
+                write!(f, "invalid field number '{number}'")
             }
             DescriptorErrorKind::FieldNumberInReservedRange { number, range, .. } => {
                 write!(
@@ -526,12 +522,11 @@ impl fmt::Display for DescriptorErrorKind {
             } => {
                 write!(
                     f,
-                    "message '{}' does not define '{}' as an extension number",
-                    message, number
+                    "message '{message}' does not define '{number}' as an extension number"
                 )
             }
             DescriptorErrorKind::NameNotFound { name, .. } => {
-                write!(f, "name '{}' is not defined", name)
+                write!(f, "name '{name}' is not defined")
             }
             DescriptorErrorKind::NameShadowed {
                 name,
@@ -544,10 +539,10 @@ impl fmt::Display for DescriptorErrorKind {
                 )
             }
             DescriptorErrorKind::InvalidType { name, expected, .. } => {
-                write!(f, "'{}' is not {}", name, expected)
+                write!(f, "'{name}' is not {expected}")
             }
             DescriptorErrorKind::InvalidFieldDefault { value, kind, .. } => {
-                write!(f, "invalid default value '{}' for type '{}'", value, kind)
+                write!(f, "invalid default value '{value}' for type '{kind}'")
             }
             DescriptorErrorKind::EmptyEnum { .. } => {
                 write!(f, "enums must have at least one value")
@@ -556,7 +551,7 @@ impl fmt::Display for DescriptorErrorKind {
                 write!(f, "the first value for proto3 enums must be 0")
             }
             DescriptorErrorKind::DuplicateEnumNumber { number, .. } => {
-                write!(f, "enum number '{}' has already been used", number)
+                write!(f, "enum number '{number}' has already been used")
             }
             DescriptorErrorKind::EnumNumberInReservedRange { number, range, .. } => {
                 write!(
@@ -568,7 +563,7 @@ impl fmt::Display for DescriptorErrorKind {
                 )
             }
             DescriptorErrorKind::OptionNotFound { name, .. } => {
-                write!(f, "option field '{}' is not defined", name)
+                write!(f, "option field '{name}' is not defined")
             }
             DescriptorErrorKind::InvalidOptionType {
                 name,
@@ -580,14 +575,12 @@ impl fmt::Display for DescriptorErrorKind {
                 if *is_last {
                     write!(
                         f,
-                        "expected a value of type '{}' for option '{}', but found '{}'",
-                        ty, name, value
+                        "expected a value of type '{ty}' for option '{name}', but found '{value}'"
                     )
                 } else {
                     write!(
                         f,
-                        "cannot set field for option '{}' value of type '{}'",
-                        name, ty
+                        "cannot set field for option '{name}' value of type '{ty}'"
                     )
                 }
             }
@@ -599,16 +592,15 @@ impl fmt::Display for DescriptorErrorKind {
             } => {
                 write!(
                     f,
-                    "expected an extension to type '{}', but '{}' extends '{}'",
-                    expected_extendee, name, actual_extendee
+                    "expected an extension to type '{expected_extendee}', but '{name}' extends '{actual_extendee}'"
                 )
             }
             #[cfg(feature = "text-format")]
             DescriptorErrorKind::InvalidMessageOption { name, ty, .. } => {
-                write!(f, "invalid value of type '{}' for option '{}'", ty, name)
+                write!(f, "invalid value of type '{ty}' for option '{name}'")
             }
             DescriptorErrorKind::DuplicateOption { name, .. } => {
-                write!(f, "option field '{}' has already been set", name)
+                write!(f, "option field '{name}' has already been set")
             }
             DescriptorErrorKind::DecodeFileDescriptorSet { .. } => {
                 write!(f, "failed to decode file descriptor set")

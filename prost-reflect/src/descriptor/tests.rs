@@ -500,7 +500,7 @@ fn error_source_location() {
     assert_eq!(err.column(), Some(8));
     assert_eq!(err.to_string(), "name 'my.package.Foo' is defined twice");
     assert_eq!(
-        format!("{:?}", err),
+        format!("{err:?}"),
         "myfile.proto:2:9: name 'my.package.Foo' is defined twice"
     );
 }

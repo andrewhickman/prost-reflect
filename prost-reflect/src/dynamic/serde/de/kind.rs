@@ -526,10 +526,10 @@ impl Visitor<'_> for BytesVisitor {
                 buf.clear();
                 match URL_SAFE.decode_vec(v, &mut buf) {
                     Ok(()) => Ok(buf.into()),
-                    Err(err) => Err(Error::custom(format!("invalid base64: {}", err))),
+                    Err(err) => Err(Error::custom(format!("invalid base64: {err}"))),
                 }
             }
-            Err(err) => Err(Error::custom(format!("invalid base64: {}", err))),
+            Err(err) => Err(Error::custom(format!("invalid base64: {err}"))),
         }
     }
 }
@@ -593,7 +593,7 @@ impl<'de> Visitor<'de> for MessageVisitorInner<'_> {
                     self.0.set_extension(&extension_desc, value);
                 }
             } else if self.1.deny_unknown_fields {
-                return Err(Error::custom(format!("unrecognized field name '{}'", key)));
+                return Err(Error::custom(format!("unrecognized field name '{key}'")));
             } else {
                 let _ = map.next_value::<IgnoredAny>()?;
             }
@@ -619,7 +619,7 @@ impl Visitor<'_> for EnumVisitor<'_> {
             Some(e) => Ok(Some(e.number())),
             None => {
                 if self.1.deny_unknown_fields {
-                    Err(Error::custom(format!("unrecognized enum value '{}'", v)))
+                    Err(Error::custom(format!("unrecognized enum value '{v}'")))
                 } else {
                     Ok(None)
                 }

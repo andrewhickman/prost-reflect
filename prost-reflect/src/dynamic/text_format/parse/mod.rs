@@ -61,7 +61,7 @@ impl<'a> Parser<'a> {
                     let end = self.bump();
                     return Ok(join_span(start, end));
                 }
-                _ => self.unexpected_token(format!("'{}' or a field name", terminator))?,
+                _ => self.unexpected_token(format!("'{terminator}' or a field name"))?,
             }
         }
     }
@@ -114,7 +114,7 @@ impl<'a> Parser<'a> {
                 let mut value = DynamicMessage::new(value_message);
                 self.parse_message_value(&mut value)?;
 
-                let type_url = format!("{}/{}", domain, message_name);
+                let type_url = format!("{domain}/{message_name}");
                 let value = value.encode_to_vec();
 
                 if !(message.desc.full_name() == "google.protobuf.Any"
@@ -647,7 +647,7 @@ fn fmt_expected<'a>(ts: impl Iterator<Item = Token<'a>>) -> String {
     if ts.len() > 1 {
         for t in &ts[1..][..ts.len() - 2] {
             s.push_str(", ");
-            write!(s, "'{}'", t).unwrap();
+            write!(s, "'{t}'").unwrap();
         }
         s.push_str(" or ");
         write!(s, "'{}'", ts[ts.len() - 1]).unwrap();
