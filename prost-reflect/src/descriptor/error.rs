@@ -454,10 +454,7 @@ impl fmt::Display for DescriptorErrorKind {
                 write!(f, "unknown syntax '{syntax}'")
             }
             DescriptorErrorKind::DuplicateFileName { name, .. } => {
-                write!(
-                    f,
-                    "a different file named '{name}' has already been added"
-                )
+                write!(f, "a different file named '{name}' has already been added")
             }
             DescriptorErrorKind::FileNotFound { name, .. } => {
                 write!(f, "imported file '{name}' has not been added")
