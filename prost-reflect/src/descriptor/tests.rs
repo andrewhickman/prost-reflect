@@ -504,3 +504,90 @@ fn error_source_location() {
         "myfile.proto:2:9: name 'my.package.Foo' is defined twice"
     );
 }
+
+#[test]
+fn field_is_required_proto2() {
+    let file_descriptor_set = FileDescriptorSet {
+        file: vec![FileDescriptorProto {
+            name: Some("myfile.proto".to_owned()),
+            package: Some("my.package".to_owned()),
+            syntax: Some("proto2".to_owned()),
+            message_type: vec![DescriptorProto {
+                name: Some("MyMessage".to_owned()),
+                field: vec![
+                    FieldDescriptorProto {
+                        name: Some("required_field".to_owned()),
+                        number: Some(1),
+                        label: Some(Label::Required as i32),
+                        r#type: Some(Type::String as i32),
+                        ..Default::default()
+                    },
+                    FieldDescriptorProto {
+                        name: Some("optional_field".to_owned()),
+                        number: Some(2),
+                        label: Some(Label::Optional as i32),
+                        r#type: Some(Type::String as i32),
+                        ..Default::default()
+                    },
+                ],
+                ..Default::default()
+            }],
+            ..Default::default()
+        }],
+    };
+
+    let descriptor_pool = DescriptorPool::from_file_descriptor_set(file_descriptor_set).unwrap();
+    let message = descriptor_pool
+        .get_message_by_name("my.package.MyMessage")
+        .unwrap();
+
+    let required_field = message.get_field_by_name("required_field").unwrap();
+    let optional_field = message.get_field_by_name("optional_field").unwrap();
+
+    assert!(required_field.is_required());
+    assert!(!optional_field.is_required());
+}
+
+#[test]
+fn field_is_required_proto3() {
+    let file_descriptor_set = FileDescriptorSet {
+        file: vec![FileDescriptorProto {
+            name: Some("myfile.proto".to_owned()),
+            package: Some("my.package".to_owned()),
+            syntax: Some("proto3".to_owned()),
+            message_type: vec![DescriptorProto {
+                name: Some("MyMessage".to_owned()),
+                field: vec![
+                    FieldDescriptorProto {
+                        name: Some("optional_field".to_owned()),
+                        number: Some(1),
+                        label: Some(Label::Optional as i32),
+                        r#type: Some(Type::String as i32),
+                        ..Default::default()
+                    },
+                    FieldDescriptorProto {
+                        name: Some("repeated_field".to_owned()),
+                        number: Some(2),
+                        label: Some(Label::Repeated as i32),
+                        r#type: Some(Type::String as i32),
+                        ..Default::default()
+                    },
+                ],
+                ..Default::default()
+            }],
+            ..Default::default()
+        }],
+    };
+
+    let descriptor_pool = DescriptorPool::from_file_descriptor_set(file_descriptor_set).unwrap();
+    let message = descriptor_pool
+        .get_message_by_name("my.package.MyMessage")
+        .unwrap();
+
+    let optional_field = message.get_field_by_name("optional_field").unwrap();
+    let repeated_field = message.get_field_by_name("repeated_field").unwrap();
+
+    // In proto3, there are no required fields
+    assert!(!optional_field.is_required());
+    assert!(!repeated_field.is_required());
+}
