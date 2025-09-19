@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.16.2](https://github.com/andrewhickman/prost-reflect/compare/prost-reflect-v0.16.1...prost-reflect-v0.16.2) - 2025-09-19
+
 ### Added
 
 Add `FieldDescriptor::is_required` ([#181](https://github.com/andrewhickman/prost-reflect/pull/181))
