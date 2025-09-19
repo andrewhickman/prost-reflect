@@ -13,6 +13,11 @@ edition = "2021"
 rust-version = "1.74.0"
 exclude = [
     "proptest-regressions",
+    # don't include binary file descriptors into the published packages
+    "**/*.bin",
+    "**/*.proto",
+    # no need to include the test data including snapshots
+    "tests",
 ]
 
 [[test]]
