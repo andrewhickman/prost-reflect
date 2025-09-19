@@ -1075,6 +1075,13 @@ impl FieldDescriptor {
         self.inner().is_packed
     }
 
+    /// Whether this field is required.
+    ///
+    /// For proto3 this always returns `false`.
+    pub fn is_required(&self) -> bool {
+        self.cardinality() == Cardinality::Required
+    }
+
     /// The cardinality of this field.
     pub fn cardinality(&self) -> Cardinality {
         self.inner().cardinality
