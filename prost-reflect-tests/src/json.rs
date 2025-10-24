@@ -1300,6 +1300,45 @@ fn null_old_format() {
 }
 
 #[test]
+fn null_scalar_field_proto2() {
+    let json = json!({ "float": null }).to_string();
+
+    let value =
+        try_from_json_string_with_options(&json, "test.Scalars", &DeserializeOptions::new())
+            .unwrap();
+    let field = value.descriptor().get_field_by_name("float").unwrap();
+    assert!(!value.has_field(&field));
+}
+
+#[test]
+fn null_scalar_field_proto3() {
+    let json = json!({ "float": null }).to_string();
+
+    let value =
+        try_from_json_string_with_options(&json, "test2.Scalars2", &DeserializeOptions::new())
+            .unwrap();
+    let field = value.descriptor().get_field_by_name("float").unwrap();
+    assert!(!value.has_field(&field));
+}
+
+#[test]
+#[should_panic(expected = "unrecognized field name 'unknown_field'")]
+fn null_scalar_field_invalid_field_name() {
+    let json = json!({ "unknown_field": null }).to_string();
+
+    try_from_json_string_with_options(&json, "test.Scalars", &DeserializeOptions::new()).unwrap();
+}
+
+#[test]
+#[should_panic(expected = "invalid type: null, expected a 32-bit floating point value")]
+fn null_repeated_field() {
+    let json = json!({ "float": [null] }).to_string();
+
+    try_from_json_string_with_options(&json, "test.ScalarArrays", &DeserializeOptions::new())
+        .unwrap();
+}
+
+#[test]
 #[should_panic(expected = "float value out of range")]
 fn float_out_of_range() {
     let json = json!({ "float": -3.502823e+38 });
