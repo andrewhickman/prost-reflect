@@ -776,7 +776,7 @@ dependencies = [
 
 [[package]]
 name = "prost-reflect-build"
-version = "0.16.1"
+version = "0.16.0"
 dependencies = [
  "prost-build",
  "prost-reflect",
@@ -801,7 +801,7 @@ dependencies = [
 
 [[package]]
 name = "prost-reflect-derive"
-version = "0.16.1"
+version = "0.16.0"
 dependencies = [
  "once_cell",
  "proc-macro2",
