@@ -149,12 +149,9 @@ impl UnknownField {
                 UnknownFieldValue::Varint(value)
             }
             WireType::SixtyFourBit => {
-                let mut value = [0; 8];
-                if buf.remaining() < value.len() {
-                    return Err(DecodeError::new("buffer underflow"));
-                }
-                buf.copy_to_slice(&mut value);
-                UnknownFieldValue::SixtyFourBit(value)
+                let mut value = 0u64;
+                encoding::fixed64::merge(wire_type, &mut value, buf, ctx)?;
+                UnknownFieldValue::SixtyFourBit(value.to_le_bytes())
             }
             WireType::LengthDelimited => {
                 let mut value = Bytes::default();
@@ -166,14 +163,14 @@ impl UnknownField {
                 encoding::group::merge(number, wire_type, &mut value, buf, ctx)?;
                 UnknownFieldValue::Group(value)
             }
-            WireType::EndGroup => return Err(DecodeError::new("unexpected end group tag")),
+            WireType::EndGroup => {
+                encoding::check_wire_type(WireType::StartGroup, wire_type)?;
+                unreachable!()
+            }
             WireType::ThirtyTwoBit => {
-                let mut value = [0; 4];
-                if buf.remaining() < value.len() {
-                    return Err(DecodeError::new("buffer underflow"));
-                }
-                buf.copy_to_slice(&mut value);
-                UnknownFieldValue::ThirtyTwoBit(value)
+                let mut value = 0u32;
+                encoding::fixed32::merge(wire_type, &mut value, buf, ctx)?;
+                UnknownFieldValue::ThirtyTwoBit(value.to_le_bytes())
             }
         };
 
