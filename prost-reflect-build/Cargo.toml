@@ -3,7 +3,7 @@ name = "prost-reflect-build"
 description = "A utility function for use with prost-build and prost-reflect to generate ReflectMessage implementations"
 keywords = ["protobuf", "serialization", "json"]
 categories = ["encoding"]
-version = "0.16.0"
+version = "0.16.1"
 authors = ["Andrew Hickman <andrew.hickman1@sky.com>"]
 repository = "https://github.com/andrewhickman/prost-reflect"
 documentation = "https://docs.rs/prost-reflect-build"
@@ -16,7 +16,7 @@ rust-version = "1.82.0"
 default = []
 
 [dependencies]
-prost-reflect = { path = "../prost-reflect", version = "0.16.0", features = [
+prost-reflect = { path = "../prost-reflect", version = "0.16.3", features = [
     "derive"
 ] }
 prost-build = "0.14.0"
