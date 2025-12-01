@@ -9,10 +9,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.16.3](https://github.com/andrewhickman/prost-reflect/compare/prost-reflect-v0.16.2...prost-reflect-v0.16.3) - 2025-12-01
 
-### Added
-
-- Add OneofDescriptor::is_synthetic ([#175](https://github.com/andrewhickman/prost-reflect/pull/175))
-
 ### Other
 
 - Update prost to v0.14.2 and fix error handling ([#188](https://github.com/andrewhickman/prost-reflect/pull/188))
