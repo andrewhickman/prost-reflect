@@ -754,7 +754,7 @@ dependencies = [
 
 [[package]]
 name = "prost-reflect"
-version = "0.16.3"
+version = "0.16.4"
 dependencies = [
  "base64",
  "insta",
@@ -776,7 +776,7 @@ dependencies = [
 
 [[package]]
 name = "prost-reflect-build"
-version = "0.16.0"
+version = "0.16.1"
 dependencies = [
  "prost-build",
  "prost-reflect",
@@ -801,7 +801,7 @@ dependencies = [
 
 [[package]]
 name = "prost-reflect-derive"
-version = "0.16.0"
+version = "0.16.1"
 dependencies = [
  "once_cell",
  "proc-macro2",
