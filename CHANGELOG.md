@@ -9,22 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.16.4](https://github.com/andrewhickman/prost-reflect/compare/prost-reflect-v0.16.3...prost-reflect-v0.16.4) - 2026-05-24
 
-### Added
-
-- Add OneofDescriptor::is_synthetic ([#175](https://github.com/andrewhickman/prost-reflect/pull/175))
-
 ### Fixed
 
-- restore proto3 default for is_packed when FieldOptions is present but packed is absent ([#196](https://github.com/andrewhickman/prost-reflect/pull/196))
+- Fix proto3 default for is_packed when FieldOptions is present but packed is absent ([#196](https://github.com/andrewhickman/prost-reflect/pull/196))
 
 ### Other
 
-- replace serde_yaml 0.9 to yaml_serde 0.10 ([#193](https://github.com/andrewhickman/prost-reflect/pull/193))
-- extend is_packed regression to cover proto2 and extension fields ([#198](https://github.com/andrewhickman/prost-reflect/pull/198))
-- Fix unbounded regex in text format parser
-- Merge remote-tracking branch 'origin/main' into bump_logos
-- Fix ci ([#197](https://github.com/andrewhickman/prost-reflect/pull/197))
-- Update prost to v0.14.2 and fix error handling ([#188](https://github.com/andrewhickman/prost-reflect/pull/188))
+- Update logos to 0.16.0 [#192](https://github.com/andrewhickman/prost-reflect/pull/192)
 
 ## [0.16.3](https://github.com/andrewhickman/prost-reflect/compare/prost-reflect-v0.16.2...prost-reflect-v0.16.3) - 2025-12-01
 
