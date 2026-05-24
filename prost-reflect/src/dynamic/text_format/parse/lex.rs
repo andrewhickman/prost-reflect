@@ -7,7 +7,7 @@ use super::error::ParseErrorKind;
 #[derive(Debug, Clone, Logos, PartialEq)]
 #[logos(extras = TokenExtras)]
 #[logos(skip r"[\t\v\f\r\n ]+")]
-#[logos(skip r"#[^\n]*\n?")]
+#[logos(skip(r"#[^\n]*\n?", allow_greedy = true))]
 #[logos(subpattern exponent = r"[eE][+\-]?[0-9]+")]
 pub(crate) enum Token<'a> {
     #[regex("[A-Za-z_][A-Za-z0-9_]*")]
