@@ -123,7 +123,9 @@ impl Visitor for ResolveVisitor<'_> {
             && (field
                 .options
                 .as_ref()
-                .map_or(syntax == Syntax::Proto3, |o| o.value.packed()));
+                .map_or(syntax == Syntax::Proto3, |o| {
+                    o.value.packed.unwrap_or(syntax == Syntax::Proto3)
+                }));
 
         let supports_presence = field.proto3_optional()
             || field.oneof_index.is_some()
@@ -394,7 +396,9 @@ impl Visitor for ResolveVisitor<'_> {
             && (extension
                 .options
                 .as_ref()
-                .map_or(syntax == Syntax::Proto3, |o| o.value.packed()));
+                .map_or(syntax == Syntax::Proto3, |o| {
+                    o.value.packed.unwrap_or(syntax == Syntax::Proto3)
+                }));
 
         let default = kind.and_then(|kind| {
             self.parse_field_default_value(kind, extension.default_value.as_deref(), file, path)

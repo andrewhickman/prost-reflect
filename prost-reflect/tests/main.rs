@@ -210,3 +210,54 @@ check_err!(dependency_not_imported);
 check_ok!(dependency_resolution_transitive);
 check_ok!(dependency_resolution_transitive2);
 check_err!(dependency_resolution_transitive3);
+
+// Regression test for https://github.com/andrewhickman/prost-reflect/issues/195
+//
+// is_packed() must return true for a proto3 repeated packable field when
+// FieldOptions is present but carries no explicit `packed` entry (e.g. because
+// a custom option annotation is present).  Previously the map_or closure called
+// packed() which returns unwrap_or(false), silently discarding the proto3
+// default of true.
+#[test]
+fn is_packed_proto3_default_with_present_but_empty_field_options() {
+    use prost::Message as _;
+    use prost_types::{
+        field_descriptor_proto::{Label, Type},
+        DescriptorProto, FieldDescriptorProto, FieldOptions, FileDescriptorProto,
+        FileDescriptorSet,
+    };
+
+    let fds = FileDescriptorSet {
+        file: vec![FileDescriptorProto {
+            name: Some("test.proto".into()),
+            syntax: Some("proto3".into()),
+            message_type: vec![DescriptorProto {
+                name: Some("Foo".into()),
+                field: vec![FieldDescriptorProto {
+                    name: Some("values".into()),
+                    number: Some(1),
+                    label: Some(Label::Repeated as i32),
+                    r#type: Some(Type::Int32 as i32),
+                    // options is Some but has no `packed` field set — as emitted
+                    // by protoc when a custom option is present but packed is unset.
+                    options: Some(FieldOptions::default()),
+                    ..Default::default()
+                }],
+                ..Default::default()
+            }],
+            ..Default::default()
+        }],
+    };
+
+    let pool = DescriptorPool::decode(fds.encode_to_vec().as_slice()).unwrap();
+    let field = pool
+        .get_message_by_name("Foo")
+        .unwrap()
+        .get_field_by_name("values")
+        .unwrap();
+
+    assert!(
+        field.is_packed(),
+        "proto3 repeated int32 with present-but-empty FieldOptions must be packed"
+    );
+}
