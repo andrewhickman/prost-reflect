@@ -16,7 +16,7 @@ rust-version = "1.82.0"
 default = []
 
 [dependencies]
-prost-reflect = { path = "../prost-reflect", version = "0.16.0", features = [
+prost-reflect = { path = "../prost-reflect", version = "0.16.4", features = [
     "derive"
 ] }
 prost-build = "0.14.0"

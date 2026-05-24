@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.16.4](https://github.com/andrewhickman/prost-reflect/compare/prost-reflect-v0.16.3...prost-reflect-v0.16.4) - 2026-05-24
+
+### Fixed
+
+- Fix proto3 default for is_packed when FieldOptions is present but packed is absent ([#196](https://github.com/andrewhickman/prost-reflect/pull/196))
+
+### Other
+
+- Update logos to 0.16.0 [#192](https://github.com/andrewhickman/prost-reflect/pull/192)
+
 ## [0.16.3](https://github.com/andrewhickman/prost-reflect/compare/prost-reflect-v0.16.2...prost-reflect-v0.16.3) - 2025-12-01
 
 ### Other
