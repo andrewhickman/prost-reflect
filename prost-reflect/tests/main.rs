@@ -16,7 +16,7 @@ fn test_data_dir() -> PathBuf {
 fn read_file_descriptor_set(path: impl AsRef<Path>) -> DynamicMessage {
     let yaml_bytes = fs::read(test_data_dir().join(path)).unwrap();
 
-    let deserializer = serde_yaml::Deserializer::from_slice(&yaml_bytes);
+    let deserializer = yaml_serde::Deserializer::from_slice(&yaml_bytes);
     DynamicMessage::deserialize(FileDescriptorSet::default().descriptor(), deserializer).unwrap()
 }
 
