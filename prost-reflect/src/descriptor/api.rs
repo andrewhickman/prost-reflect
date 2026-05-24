@@ -201,7 +201,7 @@ impl DescriptorPool {
         })?;
 
         let mut pool = DescriptorPool::new();
-        pool.build_files(file_descriptor_set.file.into_iter())?;
+        pool.build_files(file_descriptor_set.file)?;
         Ok(pool)
     }
 

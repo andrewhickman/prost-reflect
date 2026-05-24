@@ -5472,7 +5472,7 @@ fn make_descriptor() -> FileDescriptorSet {
 pub fn make_wkt_descriptor_pool() -> Result<DescriptorPool, DescriptorError> {
     let file_descriptor_set = make_descriptor();
     let mut pool = DescriptorPool::new();
-    pool.build_files(file_descriptor_set.file.into_iter())?;
+    pool.build_files(file_descriptor_set.file)?;
     Ok(pool)
 }
 
