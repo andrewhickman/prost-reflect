@@ -213,51 +213,92 @@ check_err!(dependency_resolution_transitive3);
 
 // Regression test for https://github.com/andrewhickman/prost-reflect/issues/195
 //
-// is_packed() must return true for a proto3 repeated packable field when
-// FieldOptions is present but carries no explicit `packed` entry (e.g. because
-// a custom option annotation is present).  Previously the map_or closure called
-// packed() which returns unwrap_or(false), silently discarding the proto3
-// default of true.
+// When FieldOptions is present but carries no explicit `packed` entry,
+// is_packed() must follow the syntax default: true for proto3, false for proto2.
+// This applies to both regular fields (resolve_field) and extension fields
+// (resolve_extension).
 #[test]
-fn is_packed_proto3_default_with_present_but_empty_field_options() {
+fn is_packed_with_present_but_empty_field_options() {
     use prost::Message as _;
     use prost_types::{
+        descriptor_proto::ExtensionRange,
         field_descriptor_proto::{Label, Type},
         DescriptorProto, FieldDescriptorProto, FieldOptions, FileDescriptorProto,
         FileDescriptorSet,
     };
 
-    let fds = FileDescriptorSet {
-        file: vec![FileDescriptorProto {
-            name: Some("test.proto".into()),
-            syntax: Some("proto3".into()),
-            message_type: vec![DescriptorProto {
-                name: Some("Foo".into()),
-                field: vec![FieldDescriptorProto {
-                    name: Some("values".into()),
-                    number: Some(1),
+    // Build a pool with one repeated int32 regular field and one repeated int32
+    // extension field, both carrying FieldOptions::default() (present but empty,
+    // as emitted by protoc when a custom option annotation is present but packed
+    // is unset).
+    let make_pool = |syntax: &str| {
+        let fds = FileDescriptorSet {
+            file: vec![FileDescriptorProto {
+                name: Some("test.proto".into()),
+                syntax: Some(syntax.into()),
+                message_type: vec![DescriptorProto {
+                    name: Some("Foo".into()),
+                    field: vec![FieldDescriptorProto {
+                        name: Some("values".into()),
+                        number: Some(1),
+                        label: Some(Label::Repeated as i32),
+                        r#type: Some(Type::Int32 as i32),
+                        options: Some(FieldOptions::default()),
+                        ..Default::default()
+                    }],
+                    extension_range: vec![ExtensionRange {
+                        start: Some(100),
+                        end: Some(200),
+                        ..Default::default()
+                    }],
+                    ..Default::default()
+                }],
+                extension: vec![FieldDescriptorProto {
+                    name: Some("ext_values".into()),
+                    number: Some(100),
                     label: Some(Label::Repeated as i32),
                     r#type: Some(Type::Int32 as i32),
-                    // options is Some but has no `packed` field set — as emitted
-                    // by protoc when a custom option is present but packed is unset.
+                    extendee: Some(".Foo".into()),
                     options: Some(FieldOptions::default()),
                     ..Default::default()
                 }],
                 ..Default::default()
             }],
-            ..Default::default()
-        }],
+        };
+        DescriptorPool::decode(fds.encode_to_vec().as_slice()).unwrap()
     };
 
-    let pool = DescriptorPool::decode(fds.encode_to_vec().as_slice()).unwrap();
+    // proto3: packed defaults to true when options is present but packed is absent
+    let pool = make_pool("proto3");
     let field = pool
         .get_message_by_name("Foo")
         .unwrap()
         .get_field_by_name("values")
         .unwrap();
-
     assert!(
         field.is_packed(),
-        "proto3 repeated int32 with present-but-empty FieldOptions must be packed"
+        "proto3 regular field: present-but-empty FieldOptions must be packed"
+    );
+    let ext = pool.get_extension_by_name("ext_values").unwrap();
+    assert!(
+        ext.is_packed(),
+        "proto3 extension field: present-but-empty FieldOptions must be packed"
+    );
+
+    // proto2: packed defaults to false when options is present but packed is absent
+    let pool = make_pool("proto2");
+    let field = pool
+        .get_message_by_name("Foo")
+        .unwrap()
+        .get_field_by_name("values")
+        .unwrap();
+    assert!(
+        !field.is_packed(),
+        "proto2 regular field: present-but-empty FieldOptions must not be packed"
+    );
+    let ext = pool.get_extension_by_name("ext_values").unwrap();
+    assert!(
+        !ext.is_packed(),
+        "proto2 extension field: present-but-empty FieldOptions must not be packed"
     );
 }
