@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.16.5](https://github.com/andrewhickman/prost-reflect/compare/prost-reflect-v0.16.4...prost-reflect-v0.16.5) - 2026-07-09
+
+### Fixed
+
+- Fixed a performance regression in encoding of DynamicMessage ([#200](https://github.com/andrewhickman/prost-reflect/pull/200))
+
 ## [0.16.4](https://github.com/andrewhickman/prost-reflect/compare/prost-reflect-v0.16.3...prost-reflect-v0.16.4) - 2026-05-24
 
 ### Fixed
