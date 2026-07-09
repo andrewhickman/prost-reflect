@@ -144,6 +144,50 @@ impl DynamicMessageFieldSet {
         }
     }
 
+    /// Iterates only over the fields that are actually **set** on this message,
+    /// in ascending field-number order (the `BTreeMap` key order, which is a
+    /// valid protobuf wire order).
+    ///
+    /// Unlike [`iter`](Self::iter), which walks the entire message descriptor
+    /// and probes `has`/`get` per field to honor `include_default` /
+    /// `index_order` (needed by the serde/text serializers), this walks only
+    /// the sparse `fields` map. The encode path (`encode_raw` / `encoded_len`)
+    /// needs neither default fields nor source-definition order, so this is
+    /// O(set fields) instead of O(all descriptor fields) × 2 map lookups + a
+    /// `default_value()` allocation per absent field — a large win for messages
+    /// with many optional fields but few set.
+    pub(crate) fn iter_set<'a>(
+        &'a self,
+        message: &'a MessageDescriptor,
+    ) -> impl Iterator<Item = ValueAndDescriptor<'a>> + 'a {
+        self.fields
+            .iter()
+            .filter_map(move |(&number, value)| match value {
+                ValueOrUnknown::Value(value) => {
+                    if let Some(field) = message.get_field(number) {
+                        if field.has(value) {
+                            Some(ValueAndDescriptor::Field(Cow::Borrowed(value), field))
+                        } else {
+                            None
+                        }
+                    } else if let Some(extension) = message.get_extension(number) {
+                        if extension.has(value) {
+                            Some(ValueAndDescriptor::Extension(
+                                Cow::Borrowed(value),
+                                extension,
+                            ))
+                        } else {
+                            None
+                        }
+                    } else {
+                        panic!("no field found with number {number}")
+                    }
+                }
+                ValueOrUnknown::Unknown(unknown) => Some(ValueAndDescriptor::Unknown(unknown)),
+                ValueOrUnknown::Taken => None,
+            })
+    }
+
     /// Iterates over the fields in the message.
     ///
     /// If `include_default` is `true`, fields with their default value will be included.
