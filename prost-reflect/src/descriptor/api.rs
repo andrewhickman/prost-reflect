@@ -1,6 +1,5 @@
 use std::{
     borrow::Cow,
-    collections::HashMap,
     fmt, iter,
     ops::{Range, RangeInclusive},
     sync::Arc,
@@ -1122,7 +1121,7 @@ impl FieldDescriptor {
         if self.is_list() {
             Value::List(Vec::default())
         } else if self.is_map() {
-            Value::Map(HashMap::default())
+            Value::Map(Default::default())
         } else if let Some(default_value) = &self.inner().default {
             default_value.clone()
         } else {
@@ -1320,7 +1319,7 @@ impl ExtensionDescriptor {
         if self.is_list() {
             Value::List(Vec::default())
         } else if self.is_map() {
-            Value::Map(HashMap::default())
+            Value::Map(Default::default())
         } else if let Some(default_value) = &self.inner().default {
             default_value.clone()
         } else {

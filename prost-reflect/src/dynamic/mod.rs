@@ -14,7 +14,7 @@ mod serde;
 mod text_format;
 mod unknown;
 
-use std::{borrow::Cow, collections::HashMap, error::Error, fmt};
+use std::{borrow::Cow, error::Error, fmt};
 
 #[cfg(feature = "serde")]
 pub use self::serde::{DeserializeOptions, SerializeOptions};
@@ -41,6 +41,14 @@ pub struct DynamicMessage {
     desc: MessageDescriptor,
     fields: DynamicMessageFieldSet,
 }
+
+/// Representation of a protobuf Map.
+#[cfg(not(feature = "preserve_order"))]
+pub type Map<K, V> = std::collections::HashMap<K, V>;
+
+/// Representation of a protobuf Map.
+#[cfg(feature = "preserve_order")]
+pub type Map<K, V> = indexmap::IndexMap<K, V>;
 
 /// A dynamically-typed protobuf value.
 ///
@@ -73,7 +81,7 @@ pub enum Value {
     /// A list of values, encoded as a protobuf repeated field.
     List(Vec<Value>),
     /// A map of values, encoded as a protobuf map field.
-    Map(HashMap<MapKey, Value>),
+    Map(Map<MapKey, Value>),
 }
 
 /// A dynamically-typed key for a protobuf map.
@@ -885,7 +893,7 @@ impl Value {
     }
 
     /// Returns a a reference to the value if it is a `Value::Map`, or `None` if it is any other type.
-    pub fn as_map(&self) -> Option<&HashMap<MapKey, Value>> {
+    pub fn as_map(&self) -> Option<&Map<MapKey, Value>> {
         match self {
             Value::Map(value) => Some(value),
             _ => None,
@@ -893,7 +901,7 @@ impl Value {
     }
 
     /// Returns a mutable reference to the value if it is a `Value::Map`, or `None` if it is any other type.
-    pub fn as_map_mut(&mut self) -> Option<&mut HashMap<MapKey, Value>> {
+    pub fn as_map_mut(&mut self) -> Option<&mut Map<MapKey, Value>> {
         match self {
             Value::Map(value) => Some(value),
             _ => None,
@@ -1149,12 +1157,12 @@ impl fmt::Display for Value {
     ///
     /// ```
     /// # use std::{collections::HashMap, iter::FromIterator};
-    /// # use prost_reflect::{MapKey, Value};
+    /// # use prost_reflect::{Map, MapKey, Value};
     /// assert_eq!(format!("{}", Value::String("hello".to_owned())), "\"hello\"");
     /// assert_eq!(format!("{}", Value::List(vec![Value::I32(1), Value::I32(2)])), "[1,2]");
-    /// assert_eq!(format!("{}", Value::Map(HashMap::from_iter([(MapKey::I32(1), Value::U32(2))]))), "[{key:1,value:2}]");
+    /// assert_eq!(format!("{}", Value::Map(Map::from_iter([(MapKey::I32(1), Value::U32(2))]))), "[{key:1,value:2}]");
     /// // The alternate format specifier may be used to indent the output
-    /// assert_eq!(format!("{:#}", Value::Map(HashMap::from_iter([(MapKey::I32(1), Value::U32(2))]))), "[{\n  key: 1\n  value: 2\n}]");
+    /// assert_eq!(format!("{:#}", Value::Map(Map::from_iter([(MapKey::I32(1), Value::U32(2))]))), "[{\n  key: 1\n  value: 2\n}]");
     /// ```
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         text_format::Writer::new(text_format::FormatOptions::new().pretty(f.alternate()), f)
@@ -1166,7 +1174,10 @@ impl fmt::Display for Value {
 #[cfg(target_arch = "x86_64")]
 fn type_sizes() {
     assert_eq!(std::mem::size_of::<DynamicMessage>(), 40);
+    #[cfg(not(feature = "preserve_order"))]
     assert_eq!(std::mem::size_of::<Value>(), 56);
+    #[cfg(feature = "preserve_order")]
+    assert_eq!(std::mem::size_of::<Value>(), 72);
 }
 
 pub(crate) enum Either<L, R> {
