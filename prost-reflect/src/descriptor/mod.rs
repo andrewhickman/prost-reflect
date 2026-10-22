@@ -133,6 +133,11 @@ pub struct DescriptorPool {
 }
 
 #[derive(Clone, Default)]
+// Keeps the fields that every descriptor reads off the cache line that holds the `Arc`
+// reference counts, which threads write each time they clone or drop a descriptor. 128 and not
+// 64, because Intel CPUs prefetch cache lines in 128-byte pairs and some aarch64 cores have
+// 128-byte lines.
+#[repr(align(128))]
 struct DescriptorPoolInner {
     names: HashMap<Box<str>, Definition>,
     file_names: HashMap<Box<str>, FileIndex>,
