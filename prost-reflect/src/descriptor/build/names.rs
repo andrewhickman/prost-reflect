@@ -52,20 +52,9 @@ impl Visitor for NameVisitor<'_> {
         debug_assert_eq!(to_index(self.pool.files.len()), index);
 
         let syntax = match file.syntax.as_deref() {
-            None | Some("proto2") => Syntax::Proto2,
-            Some("proto3") => Syntax::Proto3,
-            Some(syntax) => {
-                self.errors.push(DescriptorErrorKind::UnknownSyntax {
-                    syntax: syntax.to_owned(),
-                    found: Label::new(
-                        &self.pool.files,
-                        "found here",
-                        index,
-                        join_path(path, &[tag::file::SYNTAX]),
-                    ),
-                });
-                return;
-            }
+            None | Some("proto2") => Some(Syntax::Proto2),
+            Some("proto3") => Some(Syntax::Proto3),
+            Some(_) => None,
         };
 
         if self
@@ -78,13 +67,27 @@ impl Visitor for NameVisitor<'_> {
                 name: file.name().to_owned(),
             });
         }
+        // The file is added even if its syntax is unknown, so that labels for this file and the
+        // visitors for its children can index into `files`. The pool is rolled back on error.
         self.pool.files.push(FileDescriptorInner {
-            syntax,
+            syntax: syntax.unwrap_or(Syntax::Proto2),
             raw: file.clone(),
             prost: Default::default(), // the prost descriptor is initialized from the internal descriptor once resolution is complete, to avoid needing to duplicate all modifications
             dependencies: Vec::with_capacity(file.dependency.len()),
             transitive_dependencies: HashSet::default(),
         });
+
+        if syntax.is_none() {
+            self.errors.push(DescriptorErrorKind::UnknownSyntax {
+                syntax: file.syntax().to_owned(),
+                found: Label::new(
+                    &self.pool.files,
+                    "found here",
+                    index,
+                    join_path(path, &[tag::file::SYNTAX]),
+                ),
+            });
+        }
 
         if !file.package().is_empty() {
             for (i, _) in file.package().match_indices('.') {

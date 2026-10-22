@@ -207,6 +207,7 @@ check_ok!(option_resolution22, add_wkt: true);
 check_ok!(option_resolution23, add_wkt: true);
 check_ok!(option_resolution24, add_wkt: true);
 check_err!(dependency_not_imported);
+check_err!(unknown_syntax);
 check_ok!(dependency_resolution_transitive);
 check_ok!(dependency_resolution_transitive2);
 check_err!(dependency_resolution_transitive3);

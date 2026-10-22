@@ -1,0 +1,10 @@
+---
+source: prost-reflect/tests/main.rs
+expression: actual
+---
+causes: []
+help: "valid values are 'proto2' and 'proto3'"
+labels: []
+message: "unknown syntax 'editions'"
+related: []
+severity: error
