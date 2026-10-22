@@ -565,13 +565,12 @@ impl<'de> Visitor<'de> for MessageVisitorInner<'_> {
         A: MapAccess<'de>,
     {
         let desc = self.0.descriptor();
+        // One descriptor slot for all keys, so the pool is cloned once per message, not per key.
+        let mut field_slot = None;
         while let Some(key) = map.next_key::<Cow<str>>()? {
-            if let Some(field) = desc
-                .get_field_by_json_name(key.as_ref())
-                .or_else(|| desc.get_field_by_name(key.as_ref()))
-            {
+            if let Some(field) = desc.get_field_by_json_key(key.as_ref(), &mut field_slot) {
                 if let Some(value) =
-                    map.next_value_seed(OptionalFieldDescriptorSeed(&field, self.1))?
+                    map.next_value_seed(OptionalFieldDescriptorSeed(field, self.1))?
                 {
                     if let Some(oneof_desc) = field.containing_oneof() {
                         for oneof_field in oneof_desc.fields() {
@@ -584,7 +583,7 @@ impl<'de> Visitor<'de> for MessageVisitorInner<'_> {
                         }
                     }
 
-                    self.0.set_field(&field, value);
+                    self.0.set_field(field, value);
                 }
             } else if let Some(extension_desc) = desc.get_extension_by_json_name(key.as_ref()) {
                 if let Some(value) =

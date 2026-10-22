@@ -881,6 +881,36 @@ impl MessageDescriptor {
             })
     }
 
+    /// Looks up a field by JSON name, then by name, like
+    /// `get_field_by_json_name(key).or_else(|| get_field_by_name(key))`. The returned descriptor
+    /// lives in `slot` and is reused for later keys, so the pool is cloned once per slot instead of
+    /// once per key. Concurrent clones of one pool contend on its reference count.
+    #[cfg(feature = "serde")]
+    pub(crate) fn get_field_by_json_key<'a>(
+        &self,
+        key: &str,
+        slot: &'a mut Option<FieldDescriptor>,
+    ) -> Option<&'a FieldDescriptor> {
+        let inner = self.inner();
+        let index = *inner
+            .field_json_names
+            .get(key)
+            .or_else(|| inner.field_names.get(key))?;
+        match slot {
+            Some(field) => {
+                debug_assert!(field.message == *self);
+                field.index = index;
+            }
+            None => {
+                *slot = Some(FieldDescriptor {
+                    message: self.clone(),
+                    index,
+                })
+            }
+        }
+        slot.as_ref()
+    }
+
     /// Returns `true` if this is an auto-generated message type to
     /// represent the entry type for a map field.
     //
