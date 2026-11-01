@@ -37,6 +37,7 @@ impl fmt::Debug for Syntax {
         match *self {
             Syntax::Proto2 => write!(f, "proto2"),
             Syntax::Proto3 => write!(f, "proto3"),
+            Syntax::Editions => write!(f, "editions"),
         }
     }
 }

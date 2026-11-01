@@ -44,6 +44,9 @@ pub enum Syntax {
     Proto2,
     /// The `proto3` syntax.
     Proto3,
+    /// A file declared with an [edition](https://protobuf.dev/editions/overview/), whose behavior
+    /// is set by features rather than by its syntax.
+    Editions,
 }
 
 /// The type of a protobuf message field.

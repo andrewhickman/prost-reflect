@@ -1,0 +1,15 @@
+explicit_scalar: 0
+implicit_scalar: 7
+required_scalar: 3
+packed: [1, 2, 300]
+expanded: [1, 2, 300]
+delimited { x: 5 }
+delimited_list { x: 6 }
+delimited_list { x: 7 }
+map_field { key: "k" value: 9 }
+oneof_delimited { x: 8 }
+prefixed { x: 4 }
+closed: CLOSED_ONE
+[editions.ext_packed]: [1, 2]
+[editions.ext_expanded]: [3, 4]
+[editions.ext_delimited] { x: 10 }

@@ -1,0 +1,8 @@
+edition = "2024";
+
+package editions.e2024;
+
+message Fields {
+  int32 explicit_scalar = 1;
+  int32 implicit_scalar = 2 [features.field_presence = IMPLICIT];
+}

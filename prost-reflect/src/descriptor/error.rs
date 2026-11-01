@@ -21,6 +21,9 @@ pub(super) enum DescriptorErrorKind {
         syntax: String,
         found: Label,
     },
+    UnsupportedEdition {
+        found: Label,
+    },
     DuplicateFileName {
         name: String,
     },
@@ -310,6 +313,7 @@ impl DescriptorErrorKind {
         match self {
             DescriptorErrorKind::MissingRequiredField { label } => Some(label),
             DescriptorErrorKind::UnknownSyntax { found, .. } => Some(found),
+            DescriptorErrorKind::UnsupportedEdition { found } => Some(found),
             DescriptorErrorKind::DuplicateFileName { .. } => None,
             DescriptorErrorKind::FileNotFound { found, .. } => Some(found),
             DescriptorErrorKind::InvalidImportIndex => None,
@@ -347,6 +351,9 @@ impl DescriptorErrorKind {
                 label.resolve_span(file, source);
             }
             DescriptorErrorKind::UnknownSyntax { found, .. } => {
+                found.resolve_span(file, source);
+            }
+            DescriptorErrorKind::UnsupportedEdition { found } => {
                 found.resolve_span(file, source);
             }
             DescriptorErrorKind::DuplicateFileName { .. } => {}
@@ -452,6 +459,9 @@ impl fmt::Display for DescriptorErrorKind {
             }
             DescriptorErrorKind::UnknownSyntax { syntax, .. } => {
                 write!(f, "unknown syntax '{syntax}'")
+            }
+            DescriptorErrorKind::UnsupportedEdition { .. } => {
+                write!(f, "unsupported or missing edition")
             }
             DescriptorErrorKind::DuplicateFileName { name, .. } => {
                 write!(f, "a different file named '{name}' has already been added")
@@ -617,8 +627,11 @@ impl miette::Diagnostic for DescriptorErrorKind {
 
         match self {
             DescriptorErrorKind::MissingRequiredField { .. } => None,
-            DescriptorErrorKind::UnknownSyntax { .. } => {
-                Some(Box::new("valid values are 'proto2' and 'proto3'"))
+            DescriptorErrorKind::UnknownSyntax { .. } => Some(Box::new(
+                "valid values are 'proto2', 'proto3' and 'editions'",
+            )),
+            DescriptorErrorKind::UnsupportedEdition { .. } => {
+                Some(Box::new("supported editions are 2023 and 2024"))
             }
             DescriptorErrorKind::DuplicateFileName { .. } => None,
             DescriptorErrorKind::FileNotFound { .. } => None,
@@ -676,6 +689,9 @@ impl miette::Diagnostic for DescriptorErrorKind {
             DescriptorErrorKind::MissingRequiredField { label } => spans.extend(label.to_span()),
             DescriptorErrorKind::UnknownSyntax { found: defined, .. } => {
                 spans.extend(defined.to_span());
+            }
+            DescriptorErrorKind::UnsupportedEdition { found } => {
+                spans.extend(found.to_span());
             }
             DescriptorErrorKind::DuplicateFileName { .. } => {}
             DescriptorErrorKind::FileNotFound { found, .. } => {

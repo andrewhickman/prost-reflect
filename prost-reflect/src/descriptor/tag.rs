@@ -7,6 +7,7 @@ pub(crate) mod file_descriptor_set {
 }
 
 pub(crate) mod file {
+    pub(crate) const EDITION: i32 = 14;
     pub(crate) const PACKAGE: i32 = 2;
     pub(crate) const DEPENDENCY: i32 = 3;
     pub(crate) const PUBLIC_DEPENDENCY: i32 = 10;

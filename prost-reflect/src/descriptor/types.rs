@@ -44,6 +44,8 @@ pub(crate) struct FileDescriptorProto {
     pub source_code_info: Option<SourceCodeInfo>,
     #[prost(string, optional, tag = "12")]
     pub syntax: Option<String>,
+    #[prost(int32, optional, tag = "14")]
+    pub edition: Option<i32>,
 }
 
 #[derive(Clone, PartialEq, Message)]
@@ -207,6 +209,8 @@ impl FileDescriptorProto {
             options: file.options.map(Options::from_prost),
             source_code_info: file.source_code_info,
             syntax: file.syntax,
+            // `prost_types` does not carry the edition, or any features.
+            edition: None,
         }
     }
 
