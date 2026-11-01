@@ -94,6 +94,7 @@ fn make_descriptor() -> FileDescriptorSet {
                 })),
                 source_code_info: None,
                 syntax: Some("proto3".into()),
+                edition: None,
             },
             FileDescriptorProto {
                 name: Some("google/protobuf/source_context.proto".into()),
@@ -155,6 +156,7 @@ fn make_descriptor() -> FileDescriptorSet {
                 })),
                 source_code_info: None,
                 syntax: Some("proto3".into()),
+                edition: None,
             },
             FileDescriptorProto {
                 name: Some("google/protobuf/type.proto".into()),
@@ -778,6 +780,7 @@ fn make_descriptor() -> FileDescriptorSet {
                 })),
                 source_code_info: None,
                 syntax: Some("proto3".into()),
+                edition: None,
             },
             FileDescriptorProto {
                 name: Some("google/protobuf/api.proto".into()),
@@ -1065,6 +1068,7 @@ fn make_descriptor() -> FileDescriptorSet {
                 })),
                 source_code_info: None,
                 syntax: Some("proto3".into()),
+                edition: None,
             },
             FileDescriptorProto {
                 name: Some("google/protobuf/descriptor.proto".into()),
@@ -4404,6 +4408,7 @@ fn make_descriptor() -> FileDescriptorSet {
                 })),
                 source_code_info: None,
                 syntax: None,
+                edition: None,
             },
             FileDescriptorProto {
                 name: Some("google/protobuf/duration.proto".into()),
@@ -4478,6 +4483,7 @@ fn make_descriptor() -> FileDescriptorSet {
                 })),
                 source_code_info: None,
                 syntax: Some("proto3".into()),
+                edition: None,
             },
             FileDescriptorProto {
                 name: Some("google/protobuf/empty.proto".into()),
@@ -4525,6 +4531,7 @@ fn make_descriptor() -> FileDescriptorSet {
                 })),
                 source_code_info: None,
                 syntax: Some("proto3".into()),
+                edition: None,
             },
             FileDescriptorProto {
                 name: Some("google/protobuf/field_mask.proto".into()),
@@ -4584,6 +4591,7 @@ fn make_descriptor() -> FileDescriptorSet {
                 })),
                 source_code_info: None,
                 syntax: Some("proto3".into()),
+                edition: None,
             },
             FileDescriptorProto {
                 name: Some("google/protobuf/struct.proto".into()),
@@ -4817,6 +4825,7 @@ fn make_descriptor() -> FileDescriptorSet {
                 })),
                 source_code_info: None,
                 syntax: Some("proto3".into()),
+                edition: None,
             },
             FileDescriptorProto {
                 name: Some("google/protobuf/timestamp.proto".into()),
@@ -4891,6 +4900,7 @@ fn make_descriptor() -> FileDescriptorSet {
                 })),
                 source_code_info: None,
                 syntax: Some("proto3".into()),
+                edition: None,
             },
             FileDescriptorProto {
                 name: Some("google/protobuf/wrappers.proto".into()),
@@ -5144,6 +5154,7 @@ fn make_descriptor() -> FileDescriptorSet {
                 })),
                 source_code_info: None,
                 syntax: Some("proto3".into()),
+                edition: None,
             },
             FileDescriptorProto {
                 name: Some("google/protobuf/compiler/plugin.proto".into()),
@@ -5464,6 +5475,7 @@ fn make_descriptor() -> FileDescriptorSet {
                 })),
                 source_code_info: None,
                 syntax: None,
+                edition: None,
             },
         ],
     }

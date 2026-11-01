@@ -1,0 +1,2 @@
+delimited { x: 2 }
+map_field { key: "k" value { x: 1 } }

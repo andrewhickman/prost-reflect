@@ -1,0 +1,12 @@
+edition = "2023";
+
+package editions.json;
+
+// These names differ only by case once underscores are removed, which only the legacy JSON format
+// tolerates.
+message Legacy {
+  option features.json_format = LEGACY_BEST_EFFORT;
+
+  int32 foo_bar = 1;
+  int32 Foo_bar = 2;
+}

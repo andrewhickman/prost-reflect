@@ -1,0 +1,40 @@
+edition = "2023";
+
+package editions.inherited;
+
+option features.field_presence = IMPLICIT;
+option features.repeated_field_encoding = EXPANDED;
+option features.message_encoding = DELIMITED;
+option features.enum_type = CLOSED;
+
+message Inner {
+  int32 x = 1;
+}
+
+message FileLevel {
+  int32 implicit_scalar = 1;
+  repeated int32 expanded = 2;
+  Inner delimited = 3;
+  // Map entries stay length-prefixed when delimited encoding is inherited.
+  map<string, Inner> map_field = 4;
+
+  message Nested {
+    int32 implicit_scalar = 1;
+  }
+}
+
+message Overriding {
+  int32 explicit_scalar = 1 [features.field_presence = EXPLICIT];
+  repeated int32 packed = 2 [features.repeated_field_encoding = PACKED];
+  Inner prefixed = 3 [features.message_encoding = LENGTH_PREFIXED];
+}
+
+enum InheritsClosed {
+  INHERITS_CLOSED_ONE = 1;
+}
+
+enum OverridesOpen {
+  option features.enum_type = OPEN;
+
+  OVERRIDES_OPEN_ZERO = 0;
+}

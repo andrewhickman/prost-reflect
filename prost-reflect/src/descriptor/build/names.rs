@@ -3,6 +3,7 @@ use std::collections::{hash_map, BTreeMap, HashMap, HashSet};
 use crate::{
     descriptor::{
         build::{
+            features::{is_supported_edition, Features},
             join_path,
             options::option_to_bool,
             visit::{visit, Visitor},
@@ -54,6 +55,7 @@ impl Visitor for NameVisitor<'_> {
         let syntax = match file.syntax.as_deref() {
             None | Some("proto2") => Syntax::Proto2,
             Some("proto3") => Syntax::Proto3,
+            Some("editions") => Syntax::Editions,
             Some(syntax) => {
                 self.errors.push(DescriptorErrorKind::UnknownSyntax {
                     syntax: syntax.to_owned(),
@@ -85,6 +87,17 @@ impl Visitor for NameVisitor<'_> {
             dependencies: Vec::with_capacity(file.dependency.len()),
             transitive_dependencies: HashSet::default(),
         });
+
+        if syntax == Syntax::Editions && !is_supported_edition(file.edition) {
+            self.errors.push(DescriptorErrorKind::UnsupportedEdition {
+                found: Label::new(
+                    &self.pool.files,
+                    "found here",
+                    index,
+                    join_path(path, &[tag::file::EDITION]),
+                ),
+            });
+        }
 
         if !file.package().is_empty() {
             for (i, _) in file.package().match_indices('.') {
@@ -135,7 +148,13 @@ impl Visitor for NameVisitor<'_> {
             parent,
         });
 
-        if self.pool.files[file as usize].syntax != Syntax::Proto2 {
+        let inner = &self.pool.files[file as usize];
+        let check_json_names = match inner.syntax {
+            Syntax::Proto2 => false,
+            Syntax::Proto3 => true,
+            Syntax::Editions => Features::of_message(&inner.raw, path).allows_json(),
+        };
+        if check_json_names {
             self.check_message_field_camel_case_names(file, path, message);
         }
     }
@@ -243,9 +262,7 @@ impl Visitor for NameVisitor<'_> {
             self.errors.push(DescriptorErrorKind::EmptyEnum {
                 found: Label::new(&self.pool.files, "enum defined here", file, path.into()),
             });
-        } else if self.pool.files[file as usize].syntax != Syntax::Proto2
-            && enum_.value[0].number() != 0
-        {
+        } else if self.is_open_enum(file, path, enum_) && enum_.value[0].number() != 0 {
             self.errors
                 .push(DescriptorErrorKind::InvalidProto3EnumDefault {
                     found: Label::new(
@@ -327,6 +344,15 @@ impl Visitor for NameVisitor<'_> {
 }
 
 impl NameVisitor<'_> {
+    fn is_open_enum(&self, file: FileIndex, path: &[i32], enum_: &EnumDescriptorProto) -> bool {
+        let inner = &self.pool.files[file as usize];
+        match inner.syntax {
+            Syntax::Proto2 => false,
+            Syntax::Proto3 => true,
+            Syntax::Editions => Features::of_enum(&inner.raw, path, enum_).is_open_enum(),
+        }
+    }
+
     fn add_name(
         &mut self,
         file: FileIndex,

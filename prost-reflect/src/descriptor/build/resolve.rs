@@ -5,6 +5,7 @@ use prost::bytes::Bytes;
 use crate::{
     descriptor::{
         build::{
+            features::Features,
             join_path, resolve_name, to_json_name,
             visit::{visit, Visitor},
             DescriptorPoolOffsets, ResolveNameFilter,
@@ -104,33 +105,36 @@ impl Visitor for ResolveVisitor<'_> {
         );
 
         let syntax = self.pool.files[file as usize].syntax;
+        let features = self.field_features(file, path, field);
 
         self.check_field_number(message, field, file, path);
 
-        let cardinality = match field.label() {
-            field_descriptor_proto::Label::Optional => Cardinality::Optional,
-            field_descriptor_proto::Label::Required => Cardinality::Required,
-            field_descriptor_proto::Label::Repeated => Cardinality::Repeated,
-        };
+        let cardinality = resolve_cardinality(field, features);
 
         let kind =
             self.resolve_field_type(field.r#type(), field.type_name(), full_name, file, path);
+        let kind = kind.map(|kind| {
+            if self.is_map_entry(message) {
+                kind
+            } else {
+                self.apply_message_encoding(kind, features)
+            }
+        });
 
         let json_name: Box<str> = self.resolve_field_json_name(field, file, path).into();
 
         let is_packed = cardinality == Cardinality::Repeated
             && kind.is_some_and(|k| k.is_packable())
-            && (field
-                .options
-                .as_ref()
-                .map_or(syntax == Syntax::Proto3, |o| {
-                    o.value.packed.unwrap_or(syntax == Syntax::Proto3)
-                }));
+            && is_packed(field, syntax, features);
 
+        let scalar_presence = match features {
+            Some(features) => !features.is_implicit_presence(),
+            None => syntax == Syntax::Proto2,
+        };
         let supports_presence = field.proto3_optional()
             || field.oneof_index.is_some()
             || (cardinality != Cardinality::Repeated
-                && (kind.is_some_and(|k| k.is_message()) || syntax == Syntax::Proto2));
+                && (kind.is_some_and(|k| k.is_message()) || scalar_presence));
 
         let default = kind.and_then(|kind| {
             self.parse_field_default_value(kind, field.default_value.as_deref(), file, path)
@@ -374,12 +378,9 @@ impl Visitor for ResolveVisitor<'_> {
         }
 
         let syntax = self.pool.files[file as usize].syntax;
+        let features = self.field_features(file, path, extension);
 
-        let cardinality = match extension.label() {
-            field_descriptor_proto::Label::Optional => Cardinality::Optional,
-            field_descriptor_proto::Label::Required => Cardinality::Required,
-            field_descriptor_proto::Label::Repeated => Cardinality::Repeated,
-        };
+        let cardinality = resolve_cardinality(extension, features);
 
         let kind = self.resolve_field_type(
             extension.r#type(),
@@ -388,17 +389,13 @@ impl Visitor for ResolveVisitor<'_> {
             file,
             path,
         );
+        let kind = kind.map(|kind| self.apply_message_encoding(kind, features));
 
         self.resolve_field_json_name(extension, file, path);
 
         let is_packed = cardinality == Cardinality::Repeated
             && kind.is_some_and(|k| k.is_packable())
-            && (extension
-                .options
-                .as_ref()
-                .map_or(syntax == Syntax::Proto3, |o| {
-                    o.value.packed.unwrap_or(syntax == Syntax::Proto3)
-                }));
+            && is_packed(extension, syntax, features);
 
         let default = kind.and_then(|kind| {
             self.parse_field_default_value(kind, extension.default_value.as_deref(), file, path)
@@ -419,6 +416,38 @@ impl Visitor for ResolveVisitor<'_> {
 }
 
 impl ResolveVisitor<'_> {
+    /// The features of a field, if its file uses them.
+    fn field_features(
+        &self,
+        file: FileIndex,
+        path: &[i32],
+        field: &FieldDescriptorProto,
+    ) -> Option<Features> {
+        let inner = &self.pool.files[file as usize];
+        (inner.syntax == Syntax::Editions).then(|| Features::of_field(&inner.raw, path, field))
+    }
+
+    /// A message field with delimited encoding is written as a group. Maps are exempt: both an
+    /// entry and its value stay length-prefixed, whatever feature is in effect for the field.
+    fn apply_message_encoding(&self, kind: KindIndex, features: Option<Features>) -> KindIndex {
+        match kind {
+            KindIndex::Message(message)
+                if features.is_some_and(|f| f.is_delimited()) && !self.is_map_entry(message) =>
+            {
+                KindIndex::Group(message)
+            }
+            kind => kind,
+        }
+    }
+
+    fn is_map_entry(&self, message: MessageIndex) -> bool {
+        let id = &self.pool.messages[message as usize].id;
+        find_message_proto(&self.pool.files[id.file as usize].raw, &id.path)
+            .options
+            .as_ref()
+            .is_some_and(|o| o.value.map_entry())
+    }
+
     fn resolve_public_dependencies(&self, dependencies: &mut HashSet<FileIndex>, index: FileIndex) {
         let file = &self.pool.files[index as usize];
 
@@ -1007,4 +1036,29 @@ fn test_unescape_c_escape_string() {
         unescape_c_escape_string(r"\w")
     );
     assert_eq!(Err("invalid hex escape"), unescape_c_escape_string(r"\x__"));
+}
+
+fn resolve_cardinality(field: &FieldDescriptorProto, features: Option<Features>) -> Cardinality {
+    match field.label() {
+        field_descriptor_proto::Label::Optional
+            if features.is_some_and(|f| f.is_legacy_required()) =>
+        {
+            Cardinality::Required
+        }
+        field_descriptor_proto::Label::Optional => Cardinality::Optional,
+        field_descriptor_proto::Label::Required => Cardinality::Required,
+        field_descriptor_proto::Label::Repeated => Cardinality::Repeated,
+    }
+}
+
+fn is_packed(field: &FieldDescriptorProto, syntax: Syntax, features: Option<Features>) -> bool {
+    match features {
+        Some(features) => !features.is_expanded(),
+        None => field
+            .options
+            .as_ref()
+            .map_or(syntax == Syntax::Proto3, |o| {
+                o.value.packed.unwrap_or(syntax == Syntax::Proto3)
+            }),
+    }
 }

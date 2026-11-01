@@ -1,0 +1,41 @@
+edition = "2023";
+
+package editions;
+
+message Fields {
+  int32 explicit_scalar = 1;
+  int32 implicit_scalar = 2 [features.field_presence = IMPLICIT];
+  int32 required_scalar = 3 [features.field_presence = LEGACY_REQUIRED];
+  repeated int32 packed = 4;
+  repeated int32 expanded = 5 [features.repeated_field_encoding = EXPANDED];
+  Inner delimited = 6 [features.message_encoding = DELIMITED];
+  repeated Inner delimited_list = 7 [features.message_encoding = DELIMITED];
+  map<string, int32> map_field = 8;
+  oneof choice {
+    Inner oneof_delimited = 9 [features.message_encoding = DELIMITED];
+    int32 oneof_scalar = 10;
+    Inner oneof_prefixed = 11;
+  }
+  Inner prefixed = 12;
+  ClosedEnum closed = 13;
+
+  extensions 100 to 200;
+}
+
+message Inner {
+  int32 x = 1;
+}
+
+// A closed enum need not start at zero.
+enum ClosedEnum {
+  option features.enum_type = CLOSED;
+
+  CLOSED_ONE = 1;
+}
+
+extend Fields {
+  repeated int32 ext_packed = 100;
+  repeated int32 ext_expanded = 101 [features.repeated_field_encoding = EXPANDED];
+  Inner ext_delimited = 102 [features.message_encoding = DELIMITED];
+  int32 ext_scalar = 103;
+}
